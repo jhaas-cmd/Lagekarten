@@ -749,7 +749,9 @@ return maplibregl$1;
     // in der Mikrolage mit maßstäblicher Breite (Autobahn ~26 m, Hauptstraße ~14 m, Nebenstraße ~6,5 m)
     const road = (id, classes, w, c) => ({ id, type: 'line', source: 'omt', 'source-layer': 'transportation',
       filter: ['all', ['in', ['get', 'class'], ['literal', classes]], notTunnel], paint: { 'line-color': c, 'line-width': mm(w) }, layout: rnd });
-    const RG = { min: ['minor', 'service', 'track'], sec: ['secondary', 'tertiary'], pri: ['primary', 'trunk'], mw: ['motorway'] };
+    // maßstabsabhängig ausdünnen: ab 1:50.000 ohne Feldwege (track) und Zufahrten (service); Ortsstraßen (minor) bleiben
+    const tracks = kind === 'mk' || sc < 50000 || T.road.tracks;
+    const RG = { min: tracks ? ['minor', 'service', 'track'] : ['minor'], sec: ['secondary', 'tertiary'], pri: ['primary', 'trunk'], mw: ['motorway'] };
     const RF = { min: 0.37, sec: 0.68, pri: 1, mw: 1 }, RW = { min: 6.5, sec: 11, pri: 14, mw: 26 };
     const LR = g => g === 'mw' ? T.mw : T.road;
     const rw = g => { const L = LR(g), base = L.w * RF[g]; return L.casing && kind === 'mk' ? Math.max(base, RW[g] * 1000 / sc) : base; };
@@ -2407,7 +2409,7 @@ return maplibregl$1;
       det: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="mw.lbl"> Autobahnnummern (A 8)</label>' : casingUI('mw') },
     { id: 'road', name: k => k === 'ov' ? 'Bundesstraßen' : 'Straßen', eye: 'road.on', col: 'road.color', w: 'road.w', keys: ['road'],
       det: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="road.lbl"> Straßennummern (B 27)</label>'
-        : casingUI('road') + '<div class="row"><label class="check"><input type="checkbox" data-s="road.lbl"> Straßennamen</label><label class="f">Größe (pt)<input type="number" data-s="road.lblSize" min="4" max="14" step="0.5"></label></div>' },
+        : casingUI('road') + (k === 'mi' ? '<label class="check"><input type="checkbox" data-s="road.tracks"> Feldwege und Zufahrten auch ab 1:50.000 zeigen</label>' : '') + '<div class="row"><label class="check"><input type="checkbox" data-s="road.lbl"> Straßennamen</label><label class="f">Größe (pt)<input type="number" data-s="road.lblSize" min="4" max="14" step="0.5"></label></div>' },
     { id: 'rail', name: () => 'Bahn', eye: 'rail.on', col: 'rail.color', w: 'rail.w', keys: ['rail'],
       det: k => '<label class="check"><input type="checkbox" data-s="rail.classic"> Klassisch: schwarz-weiß gestrichelt</label>' + (k !== 'ov' ? '<label class="check"><input type="checkbox" data-s="rail.st"> Bahnhöfe als Symbol</label>' : '') },
     { id: 'border', name: () => 'Grenzen', eye: 'border.on', col: 'border.color', w: 'border.w', only: ['ov'], keys: ['border'], det: () => '' },
