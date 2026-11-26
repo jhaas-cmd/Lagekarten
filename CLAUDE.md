@@ -89,3 +89,10 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - Gespeicherte Projekte und Vorlagen der Nutzer nicht brechen: neue Einstellungen mit Standardwert ergänzen,
   bestehende localStorage-Schlüssel nicht umbenennen.
 - Nach einer Änderung kurz prüfen, dass das Script fehlerfrei bleibt (z. B. `node --check` auf den extrahierten Script-Block).
+
+## Sammelliste fürs nächste Update (noch nicht gebaut)
+- Ebene „Luftbild“ im Stil unter **Kartendarstellung** einordnen (statt Stadt und Landschaft), in allen drei Karten.
+- Dritte Straßenkategorie: „Straßen“ teilen in Haupt-/Nebenstraßen und Wohn-/Anliegerstraßen (eigene Farbe, Strich, Schalter).
+- Hervorheben (und ggf. POIs/Texte) je Karte getrennt: Liste zeigt nur Elemente der aktiven Karte, plus „aus anderer Karte übernehmen“.
+- Vegetation zusammenfassen (Wald, öffentliches Grün, private Gärten, Landwirtschaft) mit grafischem Stil
+  (Skizzen: A Punktdichte, B Halbtonraster, C Baumkronen mit Schatten, D Aquarell-Lavur) – Auswahl durch Julius offen.
