@@ -132,3 +132,5 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - Neue GIEAG-Vorlage `atlas` („ATLAS · Graustufen“, Vegetation `grau` mit Schraffuren), `FAM_VER = 4`.
 - Gastronomie (`gastro`, Wohnen/Büro) und Hotels (`hotel`, Büro) in `INFRA`; `infraStale()` erkennt alte Ergebnisse ohne neue Kategorien.
 - Große Arbeitgeber (`loadEmployers`, Gruppe `arbg`, `P.kz.emp`): Wikidata-SPARQL (`wikibase:around`, P625 + P1128 ≥ 500) im Umkreis 10 km; Beschäftigte = Unternehmen gesamt, nur Organisationen mit eigener Koordinate.
+- Projekteinstieg (Assistent `#startCard.wiz`, `showStart`, `WZ`, `wzShow`, `wzPlan`, `wzSummary`, `wzFinish`): 1 Ort (Nominatim, Titel aus Straße) · 2 Nutzung · 3 Zweck (Expo/Steckbrief/Dossier) + Kartenstil · 4 Zusammenfassung, optional „Alles berechnen“.
+  Vorgaben zentral in `START_DEF` (Radius je Nutzung Stadt/Land, Vorlage je Nutzung, Maßstäbe, Formate je Zweck); Stadt/Land über `isUrban()` (Großstadt ≥ 100.000 EW in 8 bzw. 14 km). Nutzung/Zweck je Projekt in `P.asset`/`P.use`.

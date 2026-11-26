@@ -404,6 +404,24 @@ return maplibregl$1;
   .startcard .step { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; }
   .startcard .step > b { width: 24px; height: 24px; border-radius: 50%; background: var(--blau); color: #fff; display: grid; place-items: center; font-size: 12px; }
   .startcard .step label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; }
+  .wiz { width: min(680px, 92%); padding: 0; gap: 0; overflow: hidden; top: 28px; max-height: calc(100% - 56px); }
+  .wiz .wz-head { display: flex; align-items: center; gap: 14px; padding: 16px 22px; border-bottom: 1px solid #E6E9ED; }
+  .wiz .wz-head .kick { font: 600 9.5px var(--font); letter-spacing: .22em; text-transform: uppercase; color: #5A6B85; }
+  .wiz .wz-dots { display: flex; gap: 6px; flex: 1; } .wiz .wz-dots i { height: 4px; flex: 1; border-radius: 2px; background: #E3E7EC; } .wiz .wz-dots i.on { background: #14284B; } .wiz .wz-dots i.cur { background: #F0642D; }
+  .wiz .wz-x { border: 0; background: none; font-size: 20px; line-height: 1; color: #8A93A0; padding: 2px 6px; box-shadow: none; }
+  .wiz .wz-step { padding: 22px 26px 8px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+  .wiz h3 { font: 900 26px/1.05 'Archivo', var(--font); text-transform: uppercase; color: #14284B; } .wiz h3 em { font-style: normal; color: #F0642D; }
+  .wiz .wz-res { display: flex; flex-direction: column; gap: 6px; } .wiz .wz-res button { text-align: left; white-space: normal; padding: 8px 12px; border-radius: 8px; }
+  .wiz .wz-res button.on { border-color: #14284B; background: #EEF2F8; color: #14284B; font-weight: 600; } .wiz .wz-ok { font-size: 12px; color: #1F6E43; }
+  .wiz .wz-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; } .wiz .wz-tiles.three { grid-template-columns: repeat(3, 1fr); }
+  .wiz .wz-tiles button { text-align: left; white-space: normal; padding: 14px 15px; border-radius: 12px; background: #F3F5F9; border: 1.5px solid transparent; box-shadow: none; display: flex; flex-direction: column; gap: 4px; height: auto; }
+  .wiz .wz-tiles button b { font: 800 14px/1.2 'Archivo', var(--font); color: #14284B; letter-spacing: .02em; } .wiz .wz-tiles button span { font-size: 11px; color: #5A6B85; line-height: 1.45; }
+  .wiz .wz-tiles button:hover { background: #EBEFF5; } .wiz .wz-tiles button.on { border-color: #14284B; background: #fff; box-shadow: 0 2px 10px rgba(20,40,75,.12); }
+  .wiz .wz-tiles button.on b::after { content: ' ✓'; color: #F0642D; }
+  .wiz .wz-sum { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 130px 1fr; border-top: 1.5px solid #14284B; }
+  .wiz .wz-sum > * { padding: 8px 4px; border-bottom: 1px solid #E3E7EC; font-size: 12px; } .wiz .wz-sum dt { font: 600 9px/1.8 var(--font); letter-spacing: .16em; text-transform: uppercase; color: #5A6B85; }
+  .wiz .wz-sum dd { margin: 0; color: #1A1F26; } .wiz .wz-sum dd small { color: #5A6B85; }
+  .wiz .wz-foot { display: flex; gap: 10px; padding: 14px 22px 18px; } .wiz .wz-foot .spacer { flex: 1; }
   .helpgrid { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; font-size: 12px; } .helpgrid kbd { font: 11px/1 var(--font); border: 1px solid #C9CDD2; border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; background: #F7F8FA; }
   .bar .info b { color: var(--ink); }
   .zoom { display: flex; padding-bottom: 8px; }
@@ -562,13 +580,41 @@ return maplibregl$1;
     </div>
     <div class="statusbar" id="status" aria-live="polite"></div>
     <div class="modebar" id="modeBar" hidden><span id="modeTxt"></span><button id="modeEnd">Beenden (Esc)</button></div>
-    <div class="startcard" id="startCard" hidden>
-      <h3>Neues Projekt in drei Schritten</h3>
-      <p>Danach stehen Landkarte, Makrolage und Mikrolage fertig gestaltet bereit – du verfeinerst nur noch.</p>
-      <div class="step"><b>1</b><label>Wo liegt das Projekt?<span class="row"><input type="text" id="gsQ" placeholder="Adresse, Ort oder Koordinaten"><button id="gsGo" class="primary" style="flex:0 0 auto">Suchen</button></span><span class="hint" id="gsHint">Treffer erscheinen links unter „Ort finden“ – einen anklicken.</span></label></div>
-      <div class="step"><b>2</b><label>Projekttitel<input type="text" id="gsName" placeholder="z. B. Kwartier Works"></label></div>
-      <div class="step"><b>3</b><label>Für wen ist die Karte?<select id="gsFam"><option value="">Vorlage beibehalten</option></select></label></div>
-      <div class="row"><button id="gsLater">Später</button><button id="gsDone" class="primary">Fertig – zur Makrolage</button></div>
+    <div class="startcard wiz" id="startCard" hidden role="dialog" aria-label="Projekteinstieg">
+      <div class="wz-head"><span class="kick">Projekteinstieg</span><div class="wz-dots" id="wzDots"><i></i><i></i><i></i><i></i></div><button class="wz-x" id="gsLater" title="Später – ohne Assistent weiter">×</button></div>
+      <div class="wz-step" data-step="1">
+        <h3>Wo liegt <em>das Projekt?</em></h3>
+        <p>Adresse, Ort oder Koordinaten – ein Google-Maps-Link funktioniert auch.</p>
+        <div class="row"><input type="text" id="gsQ" placeholder="z. B. Philipp-Reis-Straße 2, Karlsruhe"><button id="gsGo" class="primary" style="flex:0 0 auto">Suchen</button></div>
+        <div class="wz-res" id="gsRes"></div>
+        <label class="f">Projekttitel<input type="text" id="gsName" placeholder="z. B. Kwartier Works"></label>
+      </div>
+      <div class="wz-step" data-step="2" hidden>
+        <h3>Welche <em>Nutzung?</em></h3>
+        <p>Danach richten sich Kennzahlen, Radius und Kartenstil.</p>
+        <div class="wz-tiles" id="wzAsset">
+          <button data-v="wohnen"><b>Wohnen</b><span>Nahversorgung, Kitas und Schulen, ÖPNV, Mieten, Bevölkerung</span></button>
+          <button data-v="buero"><b>Büro</b><span>ÖPNV, Flughafen, große Arbeitgeber, Hotels, Gastronomie</span></button>
+          <button data-v="light"><b>Light Industrial</b><span>Autobahn, Arbeitsmarkt, Einzugsgebiet</span></button>
+          <button data-v="logistik"><b>Logistik</b><span>Autobahn, Flughafen, Einwohner im Umkreis 25 km</span></button>
+        </div>
+      </div>
+      <div class="wz-step" data-step="3" hidden>
+        <h3>Wofür <em>brauchst du es?</em></h3>
+        <div class="wz-tiles three" id="wzUse">
+          <button data-v="expo"><b>Expo-Folie</b><span>Landkarte, Makro- und Mikrolage im Folienformat</span></button>
+          <button data-v="steckbrief"><b>Steckbrief</b><span>drei Karten im 50/50-Format der Steckbriefe</span></button>
+          <button data-v="dossier"><b>Dossier</b><span>Standortkennzahlen mit Karte, zum Drucken als PDF</span></button>
+        </div>
+        <label class="f">Kartenstil<select id="gsFam"></select></label>
+        <p class="hint" id="wzFamHint"></p>
+      </div>
+      <div class="wz-step" data-step="4" hidden>
+        <h3>Alles <em>bereit</em></h3>
+        <dl class="wz-sum" id="wzSum"></dl>
+        <label class="cb"><input type="checkbox" id="wzCalc" checked> Lagekennzahlen gleich im Hintergrund berechnen</label>
+      </div>
+      <div class="wz-foot"><button id="wzBack">Zurück</button><span class="spacer"></span><button id="wzNext" class="primary">Weiter</button></div>
     </div>
   </main>
   <div class="resizer" id="resizer" title="Ziehen ändert die Breite · Doppelklick: Standardbreite"></div>
@@ -3110,7 +3156,7 @@ return maplibregl$1;
   }
   $('projSel').onchange = () => {
     const p = projects.find(x => x.id === $('projSel').value); if (!p) return;
-    P = JSON.parse(JSON.stringify(p)); drawRing = []; store.set('current', P.id); renderCalc(); if (kzOn) { syncKzUI(); renderKz(); if (kzStale()) runKz(); }
+    P = JSON.parse(JSON.stringify(p)); drawRing = []; store.set('current', P.id); if (P.asset) kzSet().asset = P.asset; renderCalc(); if (kzOn) { syncKzUI(); renderKz(); if (kzStale()) runKz(); }
     $('projName').value = P.name || ''; $('kpiOut').value = P.kpi || ''; renderNotes(); renderPois(); renderHl(); relayout(false); refreshData();
   };
   $('projName').addEventListener('input', () => { P.name = $('projName').value; repaint(); if (typeof syncProjLine === 'function') syncProjLine(); });
@@ -3125,7 +3171,7 @@ return maplibregl$1;
   }
   $('projNew').onclick = () => {
     setTimeout(() => showStart(true), 0);
-    P = { id: 'p' + Date.now(), name: '', lon: P.lon, lat: P.lat, site: [], bld: [], ov: { center: [P.lon, P.lat], zE: P.ov.zE }, miCenter: [P.lon, P.lat], mkCenter: [P.lon, P.lat] };
+    P = { id: 'p' + Date.now(), name: '', place: '', lon: P.lon, lat: P.lat, site: [], bld: [], ov: { center: [P.lon, P.lat], zE: P.ov.zE }, miCenter: [P.lon, P.lat], mkCenter: [P.lon, P.lat] };
     drawRing = []; autosave(); fillProjects(); renderHl(); $('projName').value = ''; $('projName').focus(); refreshData(); relayout(false);
   };
   $('projDel').onclick = () => {
@@ -4086,7 +4132,7 @@ return maplibregl$1;
       : 'Berechnet am ' + new Date(P.kz.at).toLocaleDateString('de-DE') + ' für ' + radTxt(P.kz.r) + (P.kz.city && P.kz.city.name ? ' · Vergleich: ' + P.kz.city.name : '') + '.';
     renderCalc();
   }
-  $('kzAsset').querySelectorAll('button').forEach(b => b.onclick = () => { kzSet().asset = b.dataset.a; if (b.dataset.a === 'logistik' && kzSet().r < 5000) kzSet().r = 10000; saveS(); syncKzUI(); renderKz(); if (kzOn && kzStale()) runKz(); });
+  $('kzAsset').querySelectorAll('button').forEach(b => b.onclick = () => { kzSet().asset = b.dataset.a; P.asset = b.dataset.a; if (b.dataset.a === 'logistik' && kzSet().r < 5000) kzSet().r = 10000; saveS(); syncKzUI(); renderKz(); if (kzOn && kzStale()) runKz(); });
   $('kzR').onchange = () => { kzSet().r = +$('kzR').value; saveS(); syncKzUI(); repaint(); if (kzOn) runKz(); };
   $('kzShowR').onchange = () => { kzSet().showR = $('kzShowR').checked; saveS(); repaint(); };
   let kzBusy = null;
@@ -5274,34 +5320,109 @@ return maplibregl$1;
     rz.addEventListener('dblclick', () => { store.set('sidebarW', setW(320)); relayout(); });
   }
   // Geführter Start: Ort, Titel, Zielgruppe
+  // ---------- Projekteinstieg: Ort → Nutzung → Zweck → Zusammenfassung; Vorgaben zentral in START_DEF ----------
+  const START_DEF = {
+    // Radius der Kennzahlen je Nutzung: Stadt / Land
+    radius: { wohnen: [1000, 2000], buero: [1000, 3000], light: [5000, 5000], logistik: [10000, 10000] },
+    // empfohlene Vorlage je Nutzung
+    fam: { wohnen: 'wohnen', buero: 'buero', light: 'investor', logistik: 'investor' },
+    // Maßstäbe Makro-/Mikrolage: Stadt / Land
+    scale: { mi: [25000, 50000], mk: [10000, 15000] },
+    // Formate je Zweck (Schlüssel aus PRESETS)
+    use: {
+      expo: { ov: '20.93x19.05', mi: '33.87x19.05', mk: '15.19x11.10', tab: 'mi', txt: 'Folienformate: Landkarte A1 Bildhälfte, Makrolage B1 Vollbild, Mikrolage A2 50/50' },
+      steckbrief: { ov: '15.19x11.10', mi: '15.19x11.10', mk: '15.19x11.10', tab: 'mi', txt: 'alle drei Karten im Format A2 50/50' },
+      dossier: { ov: '15.19x11.10', mi: '15.19x11.10', mk: '15.19x11.10', tab: 'kz', txt: 'Standortdossier im Reiter Kennzahlen, Karten im Format A2 50/50' }
+    }
+  };
+  const WZ = { step: 1, placed: false, asset: null, use: null };
+  // Stadt oder Land: liegt eine Großstadt (ab 100.000 EW) in der Nähe?
+  const isUrban = () => CITIES.some(c => c[4] >= 100000 && crow([P.lon, P.lat], [c[1], c[2]]) < (c[4] >= 500000 ? 14 : 8));
   function showStart(on) {
     $('startCard').hidden = !on;
-    if (on) { $('gsQ').value = ''; $('gsName').value = P.name || ''; $('gsHint').textContent = 'Adresse eingeben und „Suchen“ – dann einen Treffer wählen.'; fillFam(); setTimeout(() => $('gsQ').focus(), 50); }
+    if (!on) return;
+    Object.assign(WZ, { step: 1, placed: !!P.place, asset: P.asset || null, use: P.use || null });
+    $('gsQ').value = ''; $('gsName').value = P.name || ''; $('gsRes').innerHTML = P.place ? `<div class="wz-ok">✓ ${esc(P.place.split(',').slice(0, 3).join(','))}</div>` : '';
+    fillFam(); wzShow(); setTimeout(() => $('gsQ').focus(), 50);
   }
   function fillFam() {
     const fams = {}; for (const pr of Object.values(S.presets)) if (pr.fam && !fams[pr.fam]) fams[pr.fam] = pr.famName || pr.name;
-    $('gsFam').innerHTML = '<option value="">Vorlagen beibehalten</option>' + Object.entries(fams).map(([f, n]) => `<option value="${f}">${esc(n)}</option>`).join('');
+    $('gsFam').innerHTML = '<option value="">aktuelle Vorlagen beibehalten</option>' + Object.entries(fams).map(([f, n]) => `<option value="${f}">${esc(n)}</option>`).join('');
   }
+  function wzShow() {
+    document.querySelectorAll('#startCard .wz-step').forEach(x => x.hidden = +x.dataset.step !== WZ.step);
+    document.querySelectorAll('#wzDots i').forEach((d, i) => { d.className = i + 1 < WZ.step ? 'on' : i + 1 === WZ.step ? 'cur' : ''; });
+    $('wzAsset').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === WZ.asset));
+    $('wzUse').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === WZ.use));
+    $('wzBack').style.visibility = WZ.step > 1 ? 'visible' : 'hidden';
+    const ok = WZ.step === 1 ? WZ.placed : WZ.step === 2 ? !!WZ.asset : WZ.step === 3 ? !!WZ.use : true;
+    $('wzNext').disabled = !ok;
+    $('wzNext').textContent = WZ.step === 4 ? (WZ.use === 'dossier' ? 'Projekt anlegen – zum Dossier' : 'Projekt anlegen – zur Makrolage') : 'Weiter';
+    if (WZ.step === 3) {
+      const f = START_DEF.fam[WZ.asset] || '';
+      if (!$('gsFam').dataset.touched) $('gsFam').value = f;
+      const pr = Object.values(S.presets).find(p => p.fam === $('gsFam').value);
+      $('wzFamHint').textContent = pr && pr.desc ? 'Empfohlen für ' + ANAME[WZ.asset] + ' · ' + pr.desc : '';
+    }
+    if (WZ.step === 4) wzSummary();
+  }
+  function wzPlan() {
+    const urb = isUrban() ? 0 : 1, U = START_DEF.use[WZ.use] || START_DEF.use.steckbrief;
+    return { urban: !urb, r: START_DEF.radius[WZ.asset][urb], mi: START_DEF.scale.mi[urb], mk: START_DEF.scale.mk[urb], U };
+  }
+  function wzSummary() {
+    const p = wzPlan(), fam = $('gsFam').value, famN = fam ? (Object.values(S.presets).find(x => x.fam === fam) || {}).famName : 'aktuelle Vorlagen';
+    const fn = id => ((PRESETS.find(x => x[0] === id) || [])[1] || id).split('(')[0].trim();
+    $('wzSum').innerHTML = [
+      ['Projekt', esc(P.name || 'ohne Titel') + (P.place ? `<br><small>${esc(P.place.split(',').slice(0, 3).join(','))}</small>` : '')],
+      ['Nutzung', ANAME[WZ.asset]],
+      ['Lage', p.urban ? 'städtisch – Großstadt in der Nähe' : 'eher ländlich'],
+      ['Radius', radTxt(p.r) + ` <small>für Kennzahlen und Infrastruktur</small>`],
+      ['Karten', `Landkarte ${fn(p.U.ov)}<br>Makrolage ${fn(p.U.mi)} · M 1:${p.mi.toLocaleString('de-DE')}<br>Mikrolage ${fn(p.U.mk)} · M 1:${p.mk.toLocaleString('de-DE')}`],
+      ['Kartenstil', esc(famN || '–')]
+    ].map(([t, d]) => `<dt>${t}</dt><dd>${d}</dd>`).join('');
+  }
+  $('wzAsset').querySelectorAll('button').forEach(b => b.onclick = () => { WZ.asset = b.dataset.v; delete $('gsFam').dataset.touched; wzShow(); });
+  $('wzUse').querySelectorAll('button').forEach(b => b.onclick = () => { WZ.use = b.dataset.v; wzShow(); });
+  $('gsFam').onchange = () => { $('gsFam').dataset.touched = '1'; wzShow(); };
+  $('wzBack').onclick = () => { if (WZ.step > 1) { WZ.step--; wzShow(); } };
+  $('wzNext').onclick = () => { if ($('wzNext').disabled) return; if (WZ.step < 4) { WZ.step++; wzShow(); } else wzFinish(); };
   $('gsGo').onclick = async () => {
     const q = $('gsQ').value.trim(); if (!q) return;
-    const c = parseCoords(q); if (c) { setPoint(c[0], c[1]); $('gsHint').textContent = '✓ Projektpunkt gesetzt.'; return; }
-    $('gsHint').textContent = 'Suche …';
+    const box = $('gsRes'), c = parseCoords(q);
+    if (c) { setPoint(c[0], c[1]); WZ.placed = true; box.innerHTML = '<div class="wz-ok">✓ Projektpunkt gesetzt.</div>'; wzShow(); return; }
+    box.innerHTML = '<div class="hint">Suche …</div>';
     try {
-      const js = await (await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=de,at,ch&accept-language=de&q=' + encodeURIComponent(q))).json();
-      const h = $('gsHint'); h.innerHTML = js.length ? '' : 'Nichts gefunden – Straße und Ort oder Koordinaten versuchen.';
-      for (const it of js) { const b = document.createElement('button'); b.textContent = it.display_name.split(',').slice(0, 3).join(','); b.style.cssText = 'display:block;width:100%;text-align:left;margin-top:4px;white-space:normal';
-        b.onclick = () => { P.place = it.display_name; setPoint(+it.lon, +it.lat); h.textContent = '✓ ' + it.display_name.split(',').slice(0, 2).join(','); syncProjLine(); }; h.appendChild(b); }
-    } catch (e) { $('gsHint').textContent = 'Suche nicht erreichbar – Koordinaten eingeben, z. B. 48.7137, 9.0034.'; }
+      const js = await (await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=de,at,ch&accept-language=de&q=' + encodeURIComponent(q))).json();
+      box.innerHTML = js.length ? '' : '<div class="hint">Nichts gefunden – Straße und Ort oder Koordinaten versuchen.</div>';
+      for (const it of js) {
+        const b = document.createElement('button'); b.textContent = it.display_name.split(',').slice(0, 4).join(',');
+        b.onclick = () => {
+          P.place = it.display_name; setPoint(+it.lon, +it.lat); WZ.placed = true;
+          box.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+          if (!$('gsName').value.trim()) { const a = it.address || {}; const t = a.road ? a.road + (a.house_number ? ' ' + a.house_number : '') : it.name || ''; if (t) { $('gsName').value = t; $('gsName').dispatchEvent(new Event('input')); } }
+          syncProjLine(); wzShow();
+        };
+        box.appendChild(b);
+      }
+      if (js.length === 1) box.querySelector('button').click();
+    } catch (e) { box.innerHTML = '<div class="hint">Suche nicht erreichbar – Koordinaten eingeben, z. B. 48.7137, 9.0034.</div>'; }
   };
   $('gsQ').addEventListener('keydown', e => { if (e.key === 'Enter') $('gsGo').click(); });
   $('gsName').addEventListener('input', () => { P.name = $('gsName').value; $('projName').value = P.name; syncProjLine(); repaint(); });
   $('gsLater').onclick = () => { P.started = true; showStart(false); snap(); };
-  $('gsDone').onclick = () => {
-    const fam = $('gsFam').value;
+  function wzFinish() {
+    const p = wzPlan(), fam = $('gsFam').value;
+    P.asset = WZ.asset; P.use = WZ.use; P.started = true;
+    const K = kzSet(); K.asset = WZ.asset; K.r = p.r;
     if (fam) for (const kk of KINDS) { const id = Object.keys(S.presets).find(i => S.presets[i].fam === fam && S.presets[i].base === kk); if (id) S.use[kk] = id; }
-    P.started = true; showStart(false); saveS(); syncAllPresets(); snap(); setTab('mi');
-    status('Projekt angelegt. Feinheiten unter Stil und Mapping – alles wird automatisch gespeichert.');
-  };
+    S.ovPreset = p.U.ov; S.miPreset = p.U.mi; S.mkPreset = p.U.mk; S.scale = p.mi; S.mkScale = p.mk;
+    P.miCenter = [P.lon, P.lat]; P.mkCenter = [P.lon, P.lat]; P.ov.center = [P.lon, P.lat];
+    showStart(false); saveS(); syncAllUI(); syncAllPresets(); syncKzUI(); snap();
+    if (p.U.tab === 'kz') showKz(); else setTab(p.U.tab);
+    if ($('wzCalc').checked) $('calcAll').click();
+    status(`Projekt angelegt: ${ANAME[WZ.asset]}, ${p.U.txt}. Alles wird automatisch gespeichert.`);
+  }
   const wasKz = store.get('tab') === 'kz';
   setTab(active); if (wasKz) showKz();
   backupInfo(); syncProjLine(); if (!P.name && !P.started) showStart(true);
