@@ -718,7 +718,7 @@ return maplibregl$1;
     field: { on: false, mode: 'green', color: '#E4EEDB', alpha: 100 },
     veg: { on: true, preset: 'eigen' },
     park: { on: false, mode: 'green', color: '#D5E6C6', alpha: 100 },
-    crowns: { on: false, src: 'auto', color: '#86A873', alpha: 85, shadow: true, size: 100, dens: 100, vari: 30 },
+    crowns: { on: false, src: 'auto', color: '#86A873', alpha: 85, shadow: true, size: 100, dens: 100, vari: 30, grp: 0 },
     hill: { on: !!(S.hill && S.hill[kind]), alpha: HILLA[(S.hill && S.hill.strength) || 'mittel'] || 55 },
     contour: { on: false, step: 'auto', color: '#B5A58C', w: 0.1, idx: true, alpha: 100 },
     hypso: { on: false, alpha: 70 },
@@ -1340,6 +1340,35 @@ return maplibregl$1;
   // Einzelbäume (Mikrolage ab 1:15.000): Krone maßstabsabhängig, weicher Schlagschatten nach Südost
   const crownsVisible = kind => kind !== 'ov' && ST(kind).veg.on !== false && ST(kind).crowns.on && (kind === 'mk' || scaleOf(kind) <= 25000);
   const crownSrc = kind => { const c = ST(kind).crowns.src || 'auto'; return c !== 'auto' ? c : (P.regionAt === regionKey() && P.region === 'BY' ? 'luftbild' : 'osm'); };
+  // Baumgruppen: In größeren Grünflächen (viele Bäume im Umkreis von 50 m) werden die Bäume nicht gleichmäßig gestreut,
+  // sondern einem weichen Zufallsfeld (ca. 75 m Wellenlänge) folgend zu Wäldchen verdichtet; dazwischen bleiben zusammenhängende Wiesen frei.
+  // Einzelbäume an Straßen und in kleinen Gärten bleiben, wo sie sind.
+  function groupTrees(pts, grp, mpp, rnd) {
+    if (grp <= 0 || pts.length < 12) return pts;
+    const cl = Math.cos(P.lat * Math.PI / 180), R = 50 / cl, L = 75 / cl, gridM = new Map(), key = (x, y) => Math.floor(x / R) + ',' + Math.floor(y / R);
+    for (const p of pts) { const k = key(p.mx, p.my); (gridM.get(k) || gridM.set(k, []).get(k)).push(p); }
+    const nb = p => { let n = 0; const cx = Math.floor(p.mx / R), cy = Math.floor(p.my / R);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const o of gridM.get((cx + i) + ',' + (cy + j)) || []) if (Math.hypot(o.mx - p.mx, o.my - p.my) < R) n++; return n; };
+    const h = (i, j) => { const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return v - Math.floor(v); };
+    const vnoise = (x, y, l) => { const i = Math.floor(x / l), j = Math.floor(y / l), fx = x / l - i, fy = y / l - j, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      const a = h(i, j), b = h(i + 1, j), c = h(i, j + 1), d = h(i + 1, j + 1); return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy; };
+    const noise = (x, y) => 0.7 * vnoise(x, y, L) + 0.3 * vnoise(x + 1000, y - 1000, L / 2.3);
+    const thr = 0.32 + 0.3 * grp, out = [], px = cl / mpp;
+    for (const p of pts) {
+      if (nb(p) < 10) { out.push(p); continue; }               // keine größere Grünfläche: Baum bleibt
+      const n = noise(p.mx, p.my);
+      if (n < thr || (n < thr + 0.06 && rnd(p.gx, p.gy, 5) > (n - thr) / 0.06)) continue;   // Wiese, am Rand weich auslaufend
+      out.push(p);
+      const extra = Math.round(grp * 4 * Math.min(1, (n - thr) / 0.15));   // im Kern des Wäldchens zu geschlossenem Kronendach verdichten
+      for (let e = 0; e < extra; e++) {
+        const ang = rnd(p.gx, p.gy, 10 + e) * Math.PI * 2, dist = p[2] * (0.9 + rnd(p.gx, p.gy, 20 + e) * 0.9);
+        const dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist, mx = p.mx + dx / px, my = p.my - dy / px;
+        if (noise(mx, my) < thr) continue;
+        const q = [p[0] + dx, p[1] + dy, p[2] * (0.75 + rnd(p.gx, p.gy, 30 + e) * 0.4)]; q.gx = p.gx + dx; q.gy = p.gy + dy; q.mx = mx; q.my = my; out.push(q);
+      }
+    }
+    return out;
+  }
   function drawCrowns(g, map, kind, k, W, H, inF) {
     if (!crownsVisible(kind)) return;
     const T = ST(kind).crowns, mm = v => v * k, mpp = mppOf(map), f = (+T.size || 100) / 100, col = T.color || '#86A873';
@@ -1347,15 +1376,16 @@ return maplibregl$1;
     if (crownSrc(kind) === 'luftbild') {
       const G = GREEN[kind]; if (!G || !G.crowns) return;
       const lat = P.lat * Math.PI / 180;
-      for (const [x, y, r] of G.crowns) { const p = map.project(fromMerc(x, y)), q = [p.x, p.y, Math.max(mm(0.35), r * Math.cos(lat) / mpp * f)]; q.gx = x / 10; q.gy = y / 10; pts.push(q); }
+      for (const [x, y, r] of G.crowns) { const p = map.project(fromMerc(x, y)), q = [p.x, p.y, Math.max(mm(0.35), r * Math.cos(lat) / mpp * f)]; q.gx = x / 10; q.gy = y / 10; q.mx = x; q.my = y; pts.push(q); }
     } else {
       if (!TREES.list || TREES.kind !== kind) { loadTrees(); return; }
       const r = Math.max(mm(0.35), 4 / mpp * f);
-      for (const c of TREES.list) { const p = map.project(c), q = [p.x, p.y, r]; q.gx = c[0] * 1e4; q.gy = c[1] * 1e4; pts.push(q); }
+      for (const c of TREES.list) { const p = map.project(c), q = [p.x, p.y, r]; q.gx = c[0] * 1e4; q.gy = c[1] * 1e4; const m = toMerc(c[0], c[1]); q.mx = m[0]; q.my = m[1]; pts.push(q); }
     }
     // Dichte und Varianz: je Baum ein fester Zufallswert aus seiner Lage, damit das Bild beim Neuzeichnen gleich bleibt
     const dens = (T.dens == null ? 100 : +T.dens) / 100, vari = (T.vari == null ? 30 : +T.vari) / 100;
     const rnd = (x, y, s) => { const v = Math.sin(x * 12.9898 + y * 78.233 + s * 37.719) * 43758.5453; return v - Math.floor(v); };
+    pts = groupTrees(pts, (+T.grp || 0) / 100, mpp, rnd);
     pts = pts.filter((p, i) => rnd(p.gx, p.gy, 1) < dens).map(p => { const q = [p[0], p[1], p[2] * (1 + vari * (rnd(p.gx, p.gy, 2) - 0.5) * 1.4)]; return q; });
     pts = pts.filter(p => p[0] > -p[2] && p[1] > -p[2] && p[0] < W + p[2] && p[1] < H + p[2]);
     if (!pts.length) return;
@@ -2839,7 +2869,7 @@ return maplibregl$1;
   const VEG_PRESETS = {
     baeume: k => ({ wood: { on: true, mode: 'green', color: '#C3D8B2', alpha: 100 }, park: { on: true, mode: 'green', color: '#DCEACF', alpha: 100 },
       field: { on: k !== 'mk', mode: 'green', color: '#EEF4E7', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DCEACF', alpha: 100 },
-      crowns: { on: k !== 'ov', shadow: true, color: '#86A873', alpha: 90, dens: 100, size: 100, vari: 30 } }),
+      crowns: { on: k !== 'ov', shadow: true, color: '#86A873', alpha: 90, dens: 100, size: 100, vari: 30, grp: 60 } }),
     halbton: k => ({ wood: { on: true, mode: 'half-l', color: '#6F9A5A', alpha: 100 }, park: { on: true, mode: 'half-m', color: '#86A873', alpha: 100 },
       field: { on: k !== 'mk', mode: 'half-s', color: '#A3BF92', alpha: 100 }, green: { on: k !== 'ov', mode: 'halbton', color: '#86A873', alpha: 100 },
       crowns: { on: false } }),
@@ -2923,6 +2953,7 @@ return maplibregl$1;
           <label class="f"><span>Baumdichte · <b data-out="crowns.dens"></b></span><input type="range" data-s="crowns.dens" min="10" max="100" step="5"></label>
           <label class="f"><span>Baumgröße · <b data-out="crowns.size"></b></span><input type="range" data-s="crowns.size" min="40" max="250" step="10"></label>
           <label class="f"><span>Varianz der Kronen · <b data-out="crowns.vari"></b></span><input type="range" data-s="crowns.vari" min="0" max="100" step="5"></label>
+          <label class="f"><span>Zu Baumgruppen bündeln · <b data-out="crowns.grp"></b></span><input type="range" data-s="crowns.grp" min="0" max="100" step="10"></label>
           <label class="check"><input type="checkbox" data-s="crowns.shadow"> Schatten unter den Kronen</label></div>
         <label class="f"><span>Empfindlichkeit Luftbild · <b data-out="green.thr"></b></span><input type="range" data-s="green.thr" min="10" max="90" step="10"></label>` : ''}
         </div>
@@ -3071,7 +3102,7 @@ return maplibregl$1;
     if (path === 'grid.type') ST(kind).grid.size = 'auto';
     if (path === 'veg.preset' && VEG_PRESETS[ST(kind).veg.preset]) { const T = ST(kind), V = VEG_PRESETS[T.veg.preset](kind); for (const [key, o] of Object.entries(V)) Object.assign(T[key], o); T.veg.on = true; }
     else if (/^(wood|park|field|green|crowns)\.(mode|color|on)$/.test(path)) ST(kind).veg.preset = 'eigen';
-    if (/^crowns\.(dens|size|vari)$/.test(path)) repaint();
+    if (/^crowns\.(dens|size|vari|grp)$/.test(path)) repaint();
     if (/^(crowns|green|veg)\./.test(path)) { ensureGreen(active); loadTrees(); paintBase(); }
     saveS(); syncAllPresets();
     if (/^(contour|hypso)\./.test(path)) { ensureDem(active); paintBase(); }
