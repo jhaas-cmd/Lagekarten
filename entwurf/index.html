@@ -123,6 +123,7 @@ return maplibregl$1;
   .pal { border: 1px solid var(--linie); padding: 8px; display: flex; flex-direction: column; gap: 6px; background: #fff; }
   .pal .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
   .pal .grid button.sep { margin-top: 4px; }
+  .pal .grid .ph { grid-column: 1 / -1; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--grau); margin-top: 4px; }
   .pal .grid button { height: 20px; padding: 0; border: 0; border-radius: 1px; }
   .pal .grid button.cur { outline: 2px solid var(--ink); outline-offset: 1px; }
   .pal footer { display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: var(--grau); }
@@ -168,7 +169,10 @@ return maplibregl$1;
   .srctest .srow b { display: block; font-size: 11px; }
   .srctest .srow small { display: block; font-size: 10px; color: var(--grau); line-height: 1.35; }
   .srctest .ok { color: #2E7D32; font-weight: 700; } .srctest .no { color: #C62828; font-weight: 700; } .srctest .wait { color: var(--grau); }
-  .vlist { display: flex; flex-direction: column; gap: 5px; margin: 4px 0; }
+  .vlist { display: flex; flex-direction: column; gap: 8px; margin: 4px 0; }
+  .vcat { border-top: 1px solid #EDEFF1; padding-top: 6px; }
+  .vhead { display: grid; grid-template-columns: minmax(0,1fr) 120px; gap: 6px; align-items: center; margin-bottom: 4px; }
+  .vhead select { padding: 4px 6px; font-size: 11px; }
   .vrow { display: grid; grid-template-columns: minmax(0,1fr) 24px 78px 38px; gap: 5px; align-items: center; }
   .vrow .check { font-size: 11px; } .vrow select { padding: 4px 4px; font-size: 10.5px; } .vrow input[type=range] { width: 100%; }
   .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; }
@@ -714,7 +718,7 @@ return maplibregl$1;
     field: { on: false, mode: 'green', color: '#E4EEDB', alpha: 100 },
     veg: { on: true, preset: 'eigen' },
     park: { on: false, mode: 'green', color: '#D5E6C6', alpha: 100 },
-    crowns: { on: false, src: 'auto', color: '#86A873', alpha: 85, shadow: true, size: 100 },
+    crowns: { on: false, src: 'auto', color: '#86A873', alpha: 85, shadow: true, size: 100, dens: 100, vari: 30 },
     hill: { on: !!(S.hill && S.hill[kind]), alpha: HILLA[(S.hill && S.hill.strength) || 'mittel'] || 55 },
     contour: { on: false, step: 'auto', color: '#B5A58C', w: 0.1, idx: true, alpha: 100 },
     hypso: { on: false, alpha: 70 },
@@ -1343,23 +1347,23 @@ return maplibregl$1;
     if (crownSrc(kind) === 'luftbild') {
       const G = GREEN[kind]; if (!G || !G.crowns) return;
       const lat = P.lat * Math.PI / 180;
-      for (const [x, y, r] of G.crowns) { const p = map.project(fromMerc(x, y)); pts.push([p.x, p.y, Math.max(mm(0.35), r * Math.cos(lat) / mpp * f)]); }
+      for (const [x, y, r] of G.crowns) { const p = map.project(fromMerc(x, y)), q = [p.x, p.y, Math.max(mm(0.35), r * Math.cos(lat) / mpp * f)]; q.gx = x / 10; q.gy = y / 10; pts.push(q); }
     } else {
       if (!TREES.list || TREES.kind !== kind) { loadTrees(); return; }
       const r = Math.max(mm(0.35), 4 / mpp * f);
-      for (const c of TREES.list) { const p = map.project(c); pts.push([p.x, p.y, r]); }
+      for (const c of TREES.list) { const p = map.project(c), q = [p.x, p.y, r]; q.gx = c[0] * 1e4; q.gy = c[1] * 1e4; pts.push(q); }
     }
+    // Dichte und Varianz: je Baum ein fester Zufallswert aus seiner Lage, damit das Bild beim Neuzeichnen gleich bleibt
+    const dens = (T.dens == null ? 100 : +T.dens) / 100, vari = (T.vari == null ? 30 : +T.vari) / 100;
+    const rnd = (x, y, s) => { const v = Math.sin(x * 12.9898 + y * 78.233 + s * 37.719) * 43758.5453; return v - Math.floor(v); };
+    pts = pts.filter((p, i) => rnd(p.gx, p.gy, 1) < dens).map(p => { const q = [p[0], p[1], p[2] * (1 + vari * (rnd(p.gx, p.gy, 2) - 0.5) * 1.4)]; return q; });
     pts = pts.filter(p => p[0] > -p[2] && p[1] > -p[2] && p[0] < W + p[2] && p[1] < H + p[2]);
     if (!pts.length) return;
     const a = Math.min(1, (+T.alpha || 85) / 100), off = Math.min(mm(1.2), Math.max(mm(0.2), 6 / mpp));
     g.save();
     if (T.shadow) { g.fillStyle = 'rgba(30,34,38,.18)'; g.beginPath(); for (const [x, y, r] of pts) { g.moveTo(x + off * 0.7 + r, y + off); g.arc(x + off * 0.7, y + off, r, 0, 7); } g.fill(); }
-    for (const [x, y, r] of pts) {
-      const c = inF({ x, y }) ? col : gray(col);
-      g.globalAlpha = a; g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
-      g.globalAlpha = 1; g.strokeStyle = mix(c, '#000000', 0.3); g.lineWidth = mm(0.08); g.stroke();
-      if (r > mm(0.6)) { g.fillStyle = mix(c, '#000000', 0.35); g.beginPath(); g.arc(x, y, mm(0.12), 0, 7); g.fill(); }
-    }
+    g.globalAlpha = a;
+    for (const [x, y, r] of pts) { g.fillStyle = inF({ x, y }) ? col : gray(col); g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
     g.restore();
   }
   function drawTrees(g, map, k, W, H, T, inF) {
@@ -2076,26 +2080,36 @@ return maplibregl$1;
   const setHint = t => { $('mapHint').textContent = t; };
   // Farbwahl aus der Farbwelt: 10 Töne × 3 Schattierungen, darunter „eigene Farbe“
   const NEUTRAL = ['#000000', '#1E1E1E', '#3C4044', '#5A5F64', '#7E8388', '#A3A9AE', '#C4C7CB', '#D5D8DC', '#E3E5E8', '#FFFFFF'];
+  // abgestimmte Palette: Blautöne (GIEAG #255AA8), Grautöne, Grüntöne für die Natur, Signalfarben
+  const PALROWS = [
+    ['Blau', ['#0B2545', '#13315C', '#1D4278', '#255AA8', '#3A6FBF', '#5B8BD0', '#86A8DD', '#AFC6EA', '#D3E0F4', '#EAF0FA']],
+    ['Grün · Natur', ['#22402E', '#2F5A3E', '#3F7350', '#567F55', '#6F9A5A', '#86A873', '#A3BF92', '#C3D8B2', '#DCEACF', '#EEF4E7']],
+    ['Signal', ['#9E2A2B', '#C0392B', '#E8604C', '#E67E22', '#F5A04A', '#F1C40F', '#F9DF74', '#D63384', '#EF85B5', '#F8C9DD']]
+  ];
   function openPalette(after, cur, onPick, extra) {
     const old = document.querySelector('.pal'); const same = old && old.previousElementSibling === after; if (old) old.remove(); if (same) return;
     const pal = document.createElement('div'); pal.className = 'pal';
     const grid = document.createElement('div'); grid.className = 'grid';
-    // eigene Reihe (z. B. Gewässer: Schwarz – Grau – Blau) und Grautöne vor der Farbwelt
-    for (const c of (extra || []).concat(NEUTRAL)) {
+    // eigene Reihe (z. B. Gewässer: Schwarz – Grau – Blau), dann Grautöne
+    if (extra) { const h = document.createElement('span'); h.className = 'ph'; h.textContent = 'Passend zur Ebene'; grid.appendChild(h); }
+    for (const c of (extra || []).concat(['GRAU'], NEUTRAL)) {
+      if (c === 'GRAU') { const h = document.createElement('span'); h.className = 'ph'; h.textContent = 'Grau'; grid.appendChild(h); continue; }
       const b = document.createElement('button'); b.style.background = c; b.title = c; b.setAttribute('aria-label', c);
       if (c.toUpperCase() === String(cur).toUpperCase()) b.classList.add('cur');
       b.onclick = e => { e.preventDefault(); onPick(c); pal.remove(); };
       grid.appendChild(b);
     }
-    for (let row = 0; row < 3; row++) for (const w of WORLD) {
-      const c = SHADES(w.c)[[1, 0, 2][row]];
-      const b = document.createElement('button'); b.style.background = c; b.title = w.n + ' · ' + ['kräftig', 'dunkel', 'hell'][row];
-      b.setAttribute('aria-label', b.title); if (c.toUpperCase() === String(cur).toUpperCase()) b.classList.add('cur');
-      b.onclick = e => { e.preventDefault(); onPick(c); pal.remove(); };
-      grid.appendChild(b);
+    for (const [name, cols] of PALROWS) {
+      const h = document.createElement('span'); h.className = 'ph'; h.textContent = name; grid.appendChild(h);
+      for (const c of cols) {
+        const b = document.createElement('button'); b.style.background = c; b.title = name + ' · ' + c;
+        b.setAttribute('aria-label', b.title); if (c.toUpperCase() === String(cur).toUpperCase()) b.classList.add('cur');
+        b.onclick = e => { e.preventDefault(); onPick(c); pal.remove(); };
+        grid.appendChild(b);
+      }
     }
     const ft = document.createElement('footer');
-    ft.innerHTML = '<span>Farbwelt GIEAG + Aicher</span><label>eigene Farbe <input type="color"></label>';
+    ft.innerHTML = '<span>GIEAG-Palette</span><label>eigene Farbe <input type="color"></label>';
     const ci = ft.querySelector('input'); ci.value = cur; ci.oninput = () => onPick(ci.value);
     pal.append(grid, ft); after.after(pal);
   }
@@ -2816,14 +2830,19 @@ return maplibregl$1;
   const setP = (o, path, v) => { const ks = path.split('.'), last = ks.pop(); ks.reduce((a, k) => a[k] = a[k] || {}, o)[last] = v; };
   // Ebenen der Stil-Liste: An/Aus · Name · Farbe · Strichstärke; Klick auf den Namen öffnet die Details
   const modeSel = p => `<label class="f">Darstellung<select data-s="${p}.mode"><option value="green">Fläche</option><option value="dots">Punktraster</option><option value="hatch">Schraffur</option><option value="green-dots">Fläche + Punktraster</option><option value="green-hatch">Fläche + Schraffur</option><option value="half-s">Halbtonraster fein</option><option value="half-m">Halbtonraster mittel</option><option value="half-l">Halbtonraster grob</option></select></label>`;
-  const vegRow = (p, name, modes) => `<div class="vrow"><label class="check"><input type="checkbox" data-s="${p}.on"> ${name}</label><button class="sw" data-s="${p}.color" aria-label="Farbe ${name}"></button>
-      <select data-s="${p}.mode" aria-label="Darstellung ${name}">${modes}</select><input type="range" data-s="${p}.alpha" min="10" max="100" step="5" aria-label="Deckkraft ${name}" title="Deckkraft"></div>`;
+  const vegRow = (p, name, modes) => `<div class="vcat"><div class="vhead"><label class="check"><input type="checkbox" data-s="${p}.on"> ${name}</label>
+      <select data-s="${p}.mode" aria-label="Darstellung ${name}">${modes}</select></div>
+      <div class="row"><label class="f">Farbe<button class="sw" data-s="${p}.color" aria-label="Farbe ${name}"></button></label>
+      <label class="f"><span>Deckkraft · <b data-out="${p}.alpha"></b></span><input type="range" data-s="${p}.alpha" min="10" max="100" step="5"></label></div></div>`;
   const VMODES = '<option value="green">Fläche</option><option value="dots">Punktraster</option><option value="hatch">Schraffur</option><option value="green-dots">Fläche + Punkte</option><option value="half-s">Halbton fein</option><option value="half-m">Halbton mittel</option><option value="half-l">Halbton grob</option>';
-  // fertige Vegetations-Stimmungen (Halbtonraster + Baumkronen nach Julius' Wahl)
+  // fertige Vegetations-Stimmungen
   const VEG_PRESETS = {
-    halbton: k => ({ wood: { on: true, mode: 'half-l', color: '#6F9A5A', alpha: 100 }, park: { on: true, mode: 'half-m', color: '#7FA86A', alpha: 100 },
-      field: { on: k !== 'mk', mode: 'half-s', color: '#A3BF92', alpha: 100 }, green: { on: k !== 'ov', mode: 'halbton', color: '#7FA86A', alpha: 100 },
-      crowns: { on: k !== 'ov', shadow: true, color: '#86A873', alpha: 85 } }),
+    baeume: k => ({ wood: { on: true, mode: 'green', color: '#C3D8B2', alpha: 100 }, park: { on: true, mode: 'green', color: '#DCEACF', alpha: 100 },
+      field: { on: k !== 'mk', mode: 'green', color: '#EEF4E7', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DCEACF', alpha: 100 },
+      crowns: { on: k !== 'ov', shadow: true, color: '#86A873', alpha: 90, dens: 100, size: 100, vari: 30 } }),
+    halbton: k => ({ wood: { on: true, mode: 'half-l', color: '#6F9A5A', alpha: 100 }, park: { on: true, mode: 'half-m', color: '#86A873', alpha: 100 },
+      field: { on: k !== 'mk', mode: 'half-s', color: '#A3BF92', alpha: 100 }, green: { on: k !== 'ov', mode: 'halbton', color: '#86A873', alpha: 100 },
+      crowns: { on: false } }),
     flaeche: k => ({ wood: { on: true, mode: 'green', color: '#C6DBB4', alpha: 100 }, park: { on: true, mode: 'green', color: '#D5E6C6', alpha: 100 },
       field: { on: k !== 'mk', mode: 'green', color: '#E4EEDB', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DCEACF', alpha: 100 }, crowns: { on: false } }),
     schwarzplan: k => ({ wood: { on: true, mode: 'dots', color: '#8E9399', alpha: 100 }, park: { on: true, mode: 'dots', color: '#B4B8BD', alpha: 100 },
@@ -2891,15 +2910,20 @@ return maplibregl$1;
       opt: () => '<label class="check"><input type="checkbox" data-s="bldg.shadow"> Schlagschatten (ab 1:25.000, Länge maßstabsabhängig)</label><label class="f">Schatten-Deckkraft · <span data-out="bldg.shAlpha"></span><input type="range" data-s="bldg.shAlpha" min="5" max="60" step="5"></label>' },
     { grp: 'stadt', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', alpha: 'water.alpha', keys: ['water'], lbl: () => lblUI('water', 'Flussnamen') },
     { grp: 'stadt', id: 'veg', name: () => 'Vegetation', eye: 'veg.on', col: 'park.color', nofarbe: true, keys: ['veg', 'wood', 'park', 'green', 'field', 'crowns'],
-      opt: k => `<label class="f">Stimmung<select data-s="veg.preset"><option value="eigen">eigene Einstellung</option><option value="halbton">Halbtonraster + Baumkronen</option><option value="flaeche">Grün zart (Flächen)</option><option value="schwarzplan">Schwarzplan (Punktraster grau)</option></select></label>
+      opt: k => `<label class="f">Stimmung<select data-s="veg.preset"><option value="eigen">eigene Einstellung</option><option value="baeume">Bäume mit Schatten auf zarter Fläche</option><option value="halbton">Halbtonraster</option><option value="flaeche">Grün zart (Flächen)</option><option value="schwarzplan">Schwarzplan (Punktraster grau)</option></select></label>
         <div class="vlist">
         ${vegRow('wood', 'Wald', VMODES)}
         ${vegRow('park', 'Öffentliches Grün', VMODES)}
         ${k !== 'ov' ? vegRow('green', 'Private Gärten', '<option value="flaeche">Fläche</option><option value="halbton">Halbtonraster</option>') : ''}
         ${vegRow('field', 'Landwirtschaft', VMODES)}
-        ${k !== 'ov' ? `<div class="vrow"><label class="check"><input type="checkbox" data-s="crowns.on"> Baumkronen</label><button class="sw" data-s="crowns.color" aria-label="Farbe Baumkronen"></button>
-          <select data-s="crowns.src" aria-label="Quelle Baumkronen"><option value="auto">automatisch</option><option value="luftbild">aus Luftbild</option><option value="osm">aus OpenStreetMap</option></select><input type="range" data-s="crowns.alpha" min="10" max="100" step="5" aria-label="Deckkraft Baumkronen" title="Deckkraft"></div>
-        <div class="row"><label class="check"><input type="checkbox" data-s="crowns.shadow"> Schatten unter den Kronen</label><label class="f">Kronengröße %<input type="number" data-s="crowns.size" min="50" max="200" step="10"></label></div>
+        ${k !== 'ov' ? `<div class="vcat"><div class="vhead"><label class="check"><input type="checkbox" data-s="crowns.on"> Bäume</label>
+          <select data-s="crowns.src" aria-label="Quelle Bäume"><option value="auto">automatisch</option><option value="luftbild">aus Luftbild</option><option value="osm">aus OpenStreetMap</option></select></div>
+          <div class="row"><label class="f">Farbe<button class="sw" data-s="crowns.color" aria-label="Farbe Bäume"></button></label>
+          <label class="f"><span>Deckkraft · <b data-out="crowns.alpha"></b></span><input type="range" data-s="crowns.alpha" min="10" max="100" step="5"></label></div>
+          <label class="f"><span>Baumdichte · <b data-out="crowns.dens"></b></span><input type="range" data-s="crowns.dens" min="10" max="100" step="5"></label>
+          <label class="f"><span>Baumgröße · <b data-out="crowns.size"></b></span><input type="range" data-s="crowns.size" min="40" max="250" step="10"></label>
+          <label class="f"><span>Varianz der Kronen · <b data-out="crowns.vari"></b></span><input type="range" data-s="crowns.vari" min="0" max="100" step="5"></label>
+          <label class="check"><input type="checkbox" data-s="crowns.shadow"> Schatten unter den Kronen</label></div>
         <label class="f"><span>Empfindlichkeit Luftbild · <b data-out="green.thr"></b></span><input type="range" data-s="green.thr" min="10" max="90" step="10"></label>` : ''}
         </div>
         <p class="hint">Wald und öffentliches Grün (Parks, Friedhöfe, Sport- und Spielplätze) aus OpenStreetMap. Private Gärten und Baumkronen werden in Bayern aus dem Infrarot-Luftbild erkannt; außerhalb Bayerns werden Gärten als Tönung der Wohngebiete gezeigt und Baumkronen aus OpenStreetMap übernommen (dort oft lückenhaft). Baumkronen erscheinen ab 1:25.000.</p>` },
@@ -3047,6 +3071,7 @@ return maplibregl$1;
     if (path === 'grid.type') ST(kind).grid.size = 'auto';
     if (path === 'veg.preset' && VEG_PRESETS[ST(kind).veg.preset]) { const T = ST(kind), V = VEG_PRESETS[T.veg.preset](kind); for (const [key, o] of Object.entries(V)) Object.assign(T[key], o); T.veg.on = true; }
     else if (/^(wood|park|field|green|crowns)\.(mode|color|on)$/.test(path)) ST(kind).veg.preset = 'eigen';
+    if (/^crowns\.(dens|size|vari)$/.test(path)) repaint();
     if (/^(crowns|green|veg)\./.test(path)) { ensureGreen(active); loadTrees(); paintBase(); }
     saveS(); syncAllPresets();
     if (/^(contour|hypso)\./.test(path)) { ensureDem(active); paintBase(); }
