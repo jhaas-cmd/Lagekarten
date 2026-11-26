@@ -90,10 +90,11 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
   bestehende localStorage-Schlüssel nicht umbenennen.
 - Nach einer Änderung kurz prüfen, dass das Script fehlerfrei bleibt (z. B. `node --check` auf den extrahierten Script-Block).
 
-## Sammelliste fürs nächste Update (noch nicht gebaut)
-- Ebene „Luftbild“ im Stil unter **Kartendarstellung** einordnen (statt Stadt und Landschaft), in allen drei Karten.
-- Dritte Straßenkategorie: „Straßen“ teilen in Haupt-/Nebenstraßen und Wohn-/Anliegerstraßen (eigene Farbe, Strich, Schalter).
-- Hervorheben (und ggf. POIs/Texte) je Karte getrennt: Liste zeigt nur Elemente der aktiven Karte, plus „aus anderer Karte übernehmen“.
-- Vegetation zusammenfassen (Wald, öffentliches Grün, private Gärten, Landwirtschaft) mit grafischem Stil
-  (Skizzen: A Punktdichte, B Halbtonraster, C Baumkronen mit Schatten, D Aquarell-Lavur).
-  Entscheidung Julius: Grünflächen als **Halbtonraster (B)** + **Baumkronen mit Schatten (C)**; dafür ein Preset in der Ebene Grün/Vegetation anlegen.
+## Stand Etappe 1 (umgesetzt)
+- Luftbild unter Kartendarstellung. Straßen: `mw` Autobahnen · `road` Haupt-/Nebenstraßen (sec/pri) · `minor` Wohn-/Anliegerstraßen (min; Migration aus road).
+- Vegetation (`veg` + `wood`, `park`, `green` (Gärten, Bayern-CIR, sonst Wohngebiets-Tönung `garden`), `field`, `crowns`): Stimmungen `VEG_PRESETS` (halbton, flaeche, schwarzplan);
+  Halbtonmuster `half-s/m/l`; Baumkronen `drawCrowns` aus CIR (`findCrowns`, experimentell) oder OSM (`loadTrees`).
+- Hervorheben und POIs je Karte (`inK`, `hidK`, `takeOver`, `dropK`): Liste zeigt nur Elemente der aktiven Karte; „Aus anderen Karten übernehmen“.
+
+## Offen (Etappen 2–4)
+- 05 Kennzahlen (Zensus-Kacheln in `daten/zensus/`, Radius, Assetklassen), Zensus-Kartenebene, Gemeindekennzahlen, Bodenrichtwerte BW, Verkehrszählungen auf Knopfdruck.

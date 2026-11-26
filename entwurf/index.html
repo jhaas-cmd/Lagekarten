@@ -168,6 +168,10 @@ return maplibregl$1;
   .srctest .srow b { display: block; font-size: 11px; }
   .srctest .srow small { display: block; font-size: 10px; color: var(--grau); line-height: 1.35; }
   .srctest .ok { color: #2E7D32; font-weight: 700; } .srctest .no { color: #C62828; font-weight: 700; } .srctest .wait { color: var(--grau); }
+  .vlist { display: flex; flex-direction: column; gap: 5px; margin: 4px 0; }
+  .vrow { display: grid; grid-template-columns: minmax(0,1fr) 24px 78px 38px; gap: 5px; align-items: center; }
+  .vrow .check { font-size: 11px; } .vrow select { padding: 4px 4px; font-size: 10.5px; } .vrow input[type=range] { width: 100%; }
+  .hlchoice.take { margin-top: 6px; background: #FAFBFC; } .hlchoice.take button { font-size: 10.5px; padding: 4px 8px; }
   .hlchoice { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--linie); border-radius: 7px; background: #F4F5F7; }
   .hlchoice b { width: 100%; font-size: 10px; font-weight: 600; color: var(--grau); }
   .hlchoice button { width: auto; padding: 5px 10px; border-radius: 6px; }
@@ -659,16 +663,21 @@ return maplibregl$1;
       : { on: true, color: '#999DA2', w: 0.5, lbl: false, mode: kind === 'mk' ? 'both' : 'line', fill: '#FFFFFF', alpha: 100 },
     road: kind === 'ov' ? LBL({ on: false, color: '#C4C7CB', w: 0.15, mode: 'line', fill: '#FFFFFF', alpha: 100 })
       : LBL({ on: true, color: kind === 'mk' ? '#8F9398' : '#A9ACB1', w: 0.35, mode: kind === 'mk' ? 'both' : 'line', fill: '#FFFFFF', lbl: kind === 'mk', lblSize: kind === 'mk' ? 5.5 : 5, lblAuto: true, tracks: false, alpha: 100 }),
+    minor: kind === 'ov' ? { on: false, color: '#D5D7DA', w: 0.15, mode: 'line', fill: '#FFFFFF', alpha: 100 }
+      : { on: true, color: kind === 'mk' ? '#8F9398' : '#CFD1D4', w: 0.35, mode: kind === 'mk' ? 'both' : 'line', fill: '#FFFFFF', alpha: 100 },
     rail: kind === 'ov' ? { on: true, color: '#7E8388', w: 0.15, classic: false, st: false, alpha: 100 } : { on: true, color: '#3C4044', w: 0.35, classic: true, st: true, alpha: 100 },
     border: { on: true, color: '#9A9EA3', w: 0.25, dash: 'solid', alpha: 100 },
     water: LBL({ on: true, color: S.waterBlack === false ? '#8FB8DE' : '#111111', lblItalic: true, lblSize: 5.5, lblColor: '#3A3F44', alpha: 100 }),
     wood: { on: kind !== 'ov', mode: 'dots', color: '#B4B8BD', alpha: 100 },
     field: { on: false, mode: 'green', color: '#E4EEDB', alpha: 100 },
+    veg: { on: true, preset: 'eigen' },
+    park: { on: false, mode: 'green', color: '#D5E6C6', alpha: 100 },
+    crowns: { on: false, src: 'auto', color: '#86A873', alpha: 85, shadow: true, size: 100 },
     hill: { on: !!(S.hill && S.hill[kind]), alpha: HILLA[(S.hill && S.hill.strength) || 'mittel'] || 55 },
     contour: { on: false, step: 'auto', color: '#B5A58C', w: 0.1, idx: true, alpha: 100 },
     hypso: { on: false, alpha: 70 },
     photo: { on: false, src: 'auto', alpha: 100, gray: 0, light: 0 },
-    green: { on: false, color: '#C9DFB5', alpha: 100, thr: 50 },
+    green: { on: false, color: '#C9DFB5', alpha: 100, thr: 50, mode: 'flaeche' },
     grid: { on: false, type: 'km', size: 'auto', color: '#5A5F64', w: 0.1, dash: 'dashed', lbl: true, alpha: 100 }
   });
   // ältere Preset-Fassungen in die neue Ebenenstruktur übernehmen
@@ -678,6 +687,8 @@ return maplibregl$1;
     if (st.water && st.water.col) { st.water.color = WCOL[st.water.col] || '#111111'; delete st.water.col; }
     for (const r of ['road', 'mw']) if (st[r] && st[r].casing != null && !st[r].mode) { st[r].mode = st[r].casing ? 'both' : 'line'; delete st[r].casing; }
     if (st.halo && st.halo.roads != null) { for (const r of ['road', 'water']) if (st[r] && st[r].lblBg == null) st[r].lblBg = st.halo.roads; delete st.halo.roads; }
+    if (st.road && !st.minor) { const r = st.road, line = (r.mode || 'line') === 'line';
+      st.minor = { on: r.on !== false, color: line ? mix(r.color || '#A9ACB1', '#FFFFFF', 0.45) : (r.color || '#8F9398'), w: r.w || 0.35, mode: r.mode || 'line', fill: r.fill || '#FFFFFF', alpha: r.alpha == null ? 100 : r.alpha }; }
     if (st.cities && st.cities.settle) { st.settle = Object.assign({}, st.settle, { on: st.cities.settle !== 'off', mode: st.cities.settle === 'big' ? 'big' : 'shown' }); delete st.cities.settle; }
     return st;
   };
@@ -790,7 +801,7 @@ return maplibregl$1;
     const at = st.layers.findIndex(l => l.id === 'bg') + 1;
     st.layers.splice(at, 0, ...L);
   }
-  const photoLic = kind => { const T = ST(kind); if (!T.photo.on && !(T.green.on && kind !== 'ov')) return '';
+  const photoLic = kind => { const T = ST(kind); if (!T.photo.on && !(kind !== 'ov' && T.veg.on !== false && (T.green.on || (T.crowns.on && crownSrc(kind) === 'luftbild')) && P.region === 'BY')) return '';
     const R = P.regionAt === regionKey() ? P.region : null, d = kind !== 'ov' && T.photo.src === 'auto' && DOP[R];
     return ' · Luftbild: ' + (T.photo.on && !d ? SAT.lic : d ? d.lic : DOP.BY.lic); };
   function styleFor(kind, k) {
@@ -825,11 +836,22 @@ return maplibregl$1;
       const pat = m => ({ id: id + (L.mode.startsWith('green-') ? '-pat' : ''), type: 'fill', source: 'omt', 'source-layer': 'landcover', filter,
         paint: { 'fill-opacity': op, 'fill-pattern': `pat-${m}-${hex(L.mode.startsWith('green-') ? mix(L.color, '#000000', 0.35) : L.color)}-${Math.round(k * 100)}` } });
       const flat = { id, type: 'fill', source: 'omt', 'source-layer': 'landcover', filter, paint: { 'fill-color': L.color, 'fill-opacity': op } };
+      if (L.mode && L.mode.startsWith('half')) return [pat(L.mode)];
       return L.mode === 'green' ? [flat] : L.mode === 'green-dots' ? [flat, pat('dots')] : L.mode === 'green-hatch' ? [flat, pat('hatch')] : [pat(L.mode === 'hatch' ? 'hatch' : 'dots')];
     };
+    // Vegetation: Landwirtschaft, öffentliches Grün (Parks, Friedhöfe, Sport), Gärten ohne Luftbild als Wohngebiets-Tönung, Wald
+    const VG = T.veg.on !== false, PARKSUB = ['park', 'garden', 'village_green', 'recreation_ground', 'allotments', 'playground', 'golf_course'];
+    const parkOn = VG && T.park && T.park.on;
+    const R0 = P.regionAt === regionKey() ? P.region : null;
+    const gardenFallback = VG && kind !== 'ov' && T.green.on && R0 && R0 !== 'BY';
+    const lcl = (id, filter, L, layer) => lc(id, filter, L).map(x => Object.assign(x, layer ? { 'source-layer': layer } : {}));
     const land = [
-      ...(T.field.on ? lc('field', ['in', ['get', 'class'], ['literal', ['grass', 'farmland', 'wetland']]], T.field) : []),
-      ...(T.wood.on ? lc('wood', ['==', ['get', 'class'], 'wood'], T.wood) : [])
+      ...(VG && T.field.on ? lc('field', parkOn ? ['any', ['in', ['get', 'class'], ['literal', ['farmland', 'wetland']]], ['all', ['==', ['get', 'class'], 'grass'], ['!', ['in', ['get', 'subclass'], ['literal', PARKSUB]]]]]
+        : ['in', ['get', 'class'], ['literal', ['grass', 'farmland', 'wetland']]], T.field) : []),
+      ...(gardenFallback ? lcl('garden', ['==', ['get', 'class'], 'residential'], Object.assign({}, T.green, { mode: T.green.mode === 'halbton' ? 'half-s' : 'green', alpha: Math.round((+T.green.alpha || 100) * 0.7) }), 'landuse') : []),
+      ...(parkOn ? lc('park', ['all', ['==', ['get', 'class'], 'grass'], ['in', ['get', 'subclass'], ['literal', PARKSUB]]], T.park) : []),
+      ...(parkOn ? lcl('park2', ['in', ['get', 'class'], ['literal', ['cemetery', 'pitch', 'playground', 'stadium', 'park']]], T.park, 'landuse') : []),
+      ...(VG && T.wood.on ? lc('wood', ['==', ['get', 'class'], 'wood'], T.wood) : [])
     ];
     const railF = ['all', ['==', ['get', 'class'], 'rail'], notTunnel, ['!', ['has', 'service']]];
     // Bahn klassisch: dunkle Linie mit weißen Unterbrechungen
@@ -879,9 +901,9 @@ return maplibregl$1;
     const tracks = kind === 'mk' || sc < 50000 || T.road.tracks;
     const RG = { min: tracks ? ['minor', 'service', 'track'] : ['minor'], sec: ['secondary', 'tertiary'], pri: ['primary', 'trunk'], mw: ['motorway'] };
     const RF = { min: 0.37, sec: 0.68, pri: 1, mw: 1 }, RW = { min: 6.5, sec: 11, pri: 14, mw: 26 };
-    const LR = g => g === 'mw' ? T.mw : T.road, MD = g => LR(g).mode || 'line';
+    const LR = g => g === 'mw' ? T.mw : g === 'min' ? T.minor : T.road, MD = g => LR(g).mode || 'line';
     const rw = g => { const base = LR(g).w * RF[g]; return MD(g) !== 'line' && kind === 'mk' ? Math.max(base, RW[g] * 1000 / sc) : base; };
-    const grp = [...(T.road.on ? ['min', 'sec', 'pri'] : []), ...(T.mw.on ? ['mw'] : [])];
+    const grp = [...(T.minor.on ? ['min'] : []), ...(T.road.on ? ['sec', 'pri'] : []), ...(T.mw.on ? ['mw'] : [])];
     const OL = 0.12;                                                         // Konturstärke in mm
     const roads = [];
     for (const g of grp) if (MD(g) === 'both') roads.push(road('c-' + g, RG[g], rw(g), LR(g).color, 0, op(LR(g))));   // erst alle Konturen, dann die Füllungen: Kreuzungen verschmelzen
@@ -891,7 +913,7 @@ return maplibregl$1;
       if (m === 'both') roads.push(road('r-' + g, RG[g], Math.max(w - 2 * OL, w * 0.5), L.fill || '#FFFFFF', 0, o));
       else if (m === 'fill') roads.push(road('r-' + g, RG[g], w, L.fill || '#FFFFFF', 0, o));
       else if (m === 'outline') roads.push(road('r-' + g, RG[g], OL, L.color, Math.max(w - 2 * OL, 0.08), o));
-      else roads.push(road('r-' + g, RG[g], w, g === 'min' ? mix(L.color, '#FFFFFF', 0.45) : g === 'sec' ? mix(L.color, '#FFFFFF', 0.2) : L.color, 0, o));
+      else roads.push(road('r-' + g, RG[g], w, g === 'sec' ? mix(L.color, '#FFFFFF', 0.2) : L.color, 0, o));
     }
     const A = S.accent;
     const bau = builtMode(kind);
@@ -993,6 +1015,9 @@ return maplibregl$1;
     if (mode === 'hatch') {
       g.strokeStyle = col; g.lineWidth = Math.max(1, 0.12 * k * pr);
       g.beginPath(); g.moveTo(0, n); g.lineTo(n, 0); g.moveTo(-1, 1); g.lineTo(1, -1); g.moveTo(n - 1, n + 1); g.lineTo(n + 1, n - 1); g.stroke();
+    } else if (mode.startsWith('half')) {
+      const r = ({ 'half-s': 0.1, 'half-m': 0.17, 'half-l': 0.24 })[mode] * k * pr; g.fillStyle = col;
+      g.beginPath(); g.arc(n / 4, n / 4, r, 0, 7); g.arc(3 * n / 4, 3 * n / 4, r, 0, 7); g.fill();
     } else {
       const r = 0.13 * k * pr; g.fillStyle = col;
       g.beginPath(); g.arc(n / 4, n / 4, r, 0, 7); g.arc(3 * n / 4, 3 * n / 4, r, 0, 7); g.fill();
@@ -1002,7 +1027,7 @@ return maplibregl$1;
   function hookPatterns(map, k, pr) {
     const h = e => {
       if (map.hasImage(e.id)) return;
-      const m = /^pat-(dots|hatch)-([0-9a-fA-F]{6})-/.exec(e.id);
+      const m = /^pat-(dots|hatch|half-[sml])-([0-9a-fA-F]{6})-/.exec(e.id);
       if (m) map.addImage(e.id, patImage(m[1], m[2], k, pr), { pixelRatio: pr });
       else if (e.id.startsWith('dots-')) map.addImage(e.id, patImage('dots', 'B4B8BD', k, pr), { pixelRatio: pr });
     };
@@ -1066,6 +1091,7 @@ return maplibregl$1;
     const box0 = titleOn ? projectLabel(off, kind, k, proj, fsT, plate) : null;
     const zoneBoxes = drawZ(g, map, k, proj, W, H, kind);
     if (kind !== 'ov' && S.mapIn[kind]) drawMapping(g, map, k, W, H, inF);
+    drawCrowns(g, map, kind, k, W, H, inF);
     const hlB = drawHl(g, map, kind, k); if (view) view.hlBoxes = hlB;
     if (kind !== 'ov' && T.rail.on && T.rail.st) drawStations(g, map, k, W, H, T, inF);
     const poiHits = drawPois(g, map, kind, k); if (view) view.poiHits = poiHits;
@@ -1265,6 +1291,34 @@ return maplibregl$1;
     }
   }
   // Einzelbäume (Mikrolage ab 1:15.000): Krone maßstabsabhängig, weicher Schlagschatten nach Südost
+  const crownsVisible = kind => kind !== 'ov' && ST(kind).veg.on !== false && ST(kind).crowns.on && (kind === 'mk' || scaleOf(kind) <= 25000);
+  const crownSrc = kind => { const c = ST(kind).crowns.src || 'auto'; return c !== 'auto' ? c : (P.regionAt === regionKey() && P.region === 'BY' ? 'luftbild' : 'osm'); };
+  function drawCrowns(g, map, kind, k, W, H, inF) {
+    if (!crownsVisible(kind)) return;
+    const T = ST(kind).crowns, mm = v => v * k, mpp = mppOf(map), f = (+T.size || 100) / 100, col = T.color || '#86A873';
+    let pts = [];
+    if (crownSrc(kind) === 'luftbild') {
+      const G = GREEN[kind]; if (!G || !G.crowns) return;
+      const lat = P.lat * Math.PI / 180;
+      for (const [x, y, r] of G.crowns) { const p = map.project(fromMerc(x, y)); pts.push([p.x, p.y, Math.max(mm(0.35), r * Math.cos(lat) / mpp * f)]); }
+    } else {
+      if (!TREES.list || TREES.kind !== kind) { loadTrees(); return; }
+      const r = Math.max(mm(0.35), 4 / mpp * f);
+      for (const c of TREES.list) { const p = map.project(c); pts.push([p.x, p.y, r]); }
+    }
+    pts = pts.filter(p => p[0] > -p[2] && p[1] > -p[2] && p[0] < W + p[2] && p[1] < H + p[2]);
+    if (!pts.length) return;
+    const a = Math.min(1, (+T.alpha || 85) / 100), off = Math.min(mm(1.2), Math.max(mm(0.2), 6 / mpp));
+    g.save();
+    if (T.shadow) { g.fillStyle = 'rgba(30,34,38,.18)'; g.beginPath(); for (const [x, y, r] of pts) { g.moveTo(x + off * 0.7 + r, y + off); g.arc(x + off * 0.7, y + off, r, 0, 7); } g.fill(); }
+    for (const [x, y, r] of pts) {
+      const c = inF({ x, y }) ? col : gray(col);
+      g.globalAlpha = a; g.fillStyle = c; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+      g.globalAlpha = 1; g.strokeStyle = mix(c, '#000000', 0.3); g.lineWidth = mm(0.08); g.stroke();
+      if (r > mm(0.6)) { g.fillStyle = mix(c, '#000000', 0.35); g.beginPath(); g.arc(x, y, mm(0.12), 0, 7); g.fill(); }
+    }
+    g.restore();
+  }
   function drawTrees(g, map, k, W, H, T, inF) {
     const sc = scaleOf('mk'); if (sc > 15000 || !TREES.list) return;
     const mm = v => v * k, r = mm(Math.min(1.3, Math.max(0.35, 4500 / sc))), off = mm(Math.min(1.2, Math.max(0.2, 6000 / sc)));
@@ -1328,7 +1382,7 @@ return maplibregl$1;
     for (const o of (P.pois || [])) {
       if (o.v !== 2) Object.assign(o, { size: 7, weight: 300, tcol: '#0A0A0A', v: 2 });   // bestehende POIs auf die Großstadt-Schrift umstellen
       if (o.mk == null) o.mk = o.mi !== false;            // neue Mikrolage: bisherige Lageplan-Einstellung übernehmen
-      if (!o.on || !o[kind]) continue;
+      if (!o.on || !o[kind] || hidK(o, kind)) continue;
       const p = map.project([o.lon, o.lat]);
       drawDot(g, p.x, p.y, k, o);
       const dotB = { x: p.x - mm(o.r + 0.6), y: p.y - mm(o.r + 0.6), w: mm(2 * o.r + 1.2), h: mm(2 * o.r + 1.2) };
@@ -1350,7 +1404,7 @@ return maplibregl$1;
   // Hervorhebungen: einzelne Straßen, Bahnlinien, Gebäude in eigener Farbe, mit Schild oder Text
   const HL_DEF = { on: true, lbl: '', color: '#255AA8', w: 1.2, alpha: 100, casing: true, dash: false, lst: 'schild', ls: 7, ov: false, mi: true, mk: true, dx: 0, dy: 0 };
   function drawHl(g, map, kind, k) {
-    const mm = v => v * k, pt = v => v * 0.3528 * k, out = [], list = (P.hl || []).filter(h => h.on && h[kind]);
+    const mm = v => v * k, pt = v => v * 0.3528 * k, out = [], list = (P.hl || []).filter(h => h.on && h[kind] && !hidK(h, kind));
     const path = h => {
       g.beginPath();
       for (const l of h.lines || []) l.forEach((c, i) => { const p = map.project(c); i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y); });
@@ -2089,7 +2143,7 @@ return maplibregl$1;
   function drawBase(g, map, kind, W, H, transparent) {
     if (!transparent) { g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H); }
     if (ST(kind).hypso.on) drawHypso(g, map, kind);
-    if (kind !== 'ov' && ST(kind).green.on) drawGreen(g, map, kind);
+    if (kind !== 'ov' && ST(kind).veg.on !== false && ST(kind).green.on) drawGreen(g, map, kind);
     if (kind === 'ov') drawSettlements(g, map, W, H, true);
   }
   function paintBase() {
@@ -2107,7 +2161,7 @@ return maplibregl$1;
   const toMerc = (lon, lat) => [lon * Math.PI / 180 * 6378137, Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) * 6378137];
   const fromMerc = (x, y) => [x / 6378137 * 180 / Math.PI, (2 * Math.atan(Math.exp(y / 6378137)) - Math.PI / 2) * 180 / Math.PI];
   // Maske in Stücken bis 2000 px laden (Grenze der Dienste), Schwelle = Vegetationsindex aus Infrarot und Rot
-  async function greenMask(url, layer, bb, W, H, thr) {
+  async function greenMask(url, layer, bb, W, H, thr, crowns) {
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d', { willReadFrequently: true }), T = 2000, jobs = [];
     for (let x0 = 0; x0 < W; x0 += T) for (let y0 = 0; y0 < H; y0 += T) {
@@ -2117,33 +2171,92 @@ return maplibregl$1;
     }
     await Promise.all(jobs);
     const im = g.getImageData(0, 0, W, H), d = im.data, t = 0.4 - thr * 0.004;
-    for (let i = 0; i < d.length; i += 4) {
+    const N = W * H, nirA = crowns ? new Uint8Array(N) : null, veg = crowns ? new Uint8Array(N) : null, alpha = new Uint8Array(N);
+    for (let i = 0, q = 0; q < N; i += 4, q++) {
       const nir = d[i], red = d[i + 1], a = d[i + 3], v = a && nir + red > 30 ? (nir - red) / (nir + red) : -1;
       const m = v > t ? Math.min(255, (v - t) * 2550) : 0;       // weicher Übergang an der Schwelle
-      d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = m;
+      if (crowns) { nirA[q] = nir; veg[q] = v > t + 0.05 ? 1 : 0; }
+      d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = m; alpha[q] = m;
     }
-    g.putImageData(im, 0, 0); return c;
+    g.putImageData(im, 0, 0); c.alpha = alpha;
+    if (crowns) c.crowns = findCrowns(nirA, veg, W, H, (bb[2] - bb[0]) / W, bb);
+    return c;
+  }
+  // Baumkronen (experimentell): Bäume sind im Infrarotbild grün UND unruhig (Licht und Schatten in der Krone), Rasen ist gleichmäßig.
+  // Dichte solcher Pixel glätten, dann die stärksten Stellen als Kronenmittelpunkte nehmen.
+  function findCrowns(nir, veg, W, H, mpx, bb) {
+    const I = (a, f) => { const S = new Float64Array((W + 1) * (H + 1)); for (let y = 0; y < H; y++) { let row = 0; for (let x = 0; x < W; x++) { row += f(a[y * W + x]); S[(y + 1) * (W + 1) + x + 1] = S[y * (W + 1) + x + 1] + row; } } return S; };
+    const box = (S, x, y, r) => { const x0 = Math.max(0, x - r), y0 = Math.max(0, y - r), x1 = Math.min(W, x + r + 1), y1 = Math.min(H, y + r + 1);
+      return [(S[y1 * (W + 1) + x1] - S[y0 * (W + 1) + x1] - S[y1 * (W + 1) + x0] + S[y0 * (W + 1) + x0]), (x1 - x0) * (y1 - y0)]; };
+    const S1 = I(nir, v => v), S2 = I(nir, v => v * v), rt = Math.max(1, Math.round(1.2 / mpx));
+    const tree = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const q = y * W + x; if (!veg[q]) continue;
+      const [s1, n] = box(S1, x, y, rt), [s2] = box(S2, x, y, rt), mean = s1 / n, sd = Math.sqrt(Math.max(0, s2 / n - mean * mean));
+      if (sd > 11) tree[q] = 1;
+    }
+    const ST1 = I(tree, v => v), rd = Math.max(2, Math.round(3 / mpx)), step = Math.max(1, Math.round(1.5 / mpx)), cand = [];
+    for (let y = rd; y < H - rd; y += step) for (let x = rd; x < W - rd; x += step) {
+      const [s, n] = box(ST1, x, y, rd), D = s / n; if (D > 0.45) cand.push([D, x, y]);
+    }
+    cand.sort((a, b) => b[0] - a[0]);
+    const out = [], minD = 5 / mpx, cell = Math.ceil(minD), grid = new Map(), key = (x, y) => (Math.floor(x / cell)) + ',' + (Math.floor(y / cell));
+    for (const [D, x, y] of cand) {
+      let ok = true;
+      for (let gx = -1; gx <= 1 && ok; gx++) for (let gy = -1; gy <= 1 && ok; gy++) for (const o of grid.get((Math.floor(x / cell) + gx) + ',' + (Math.floor(y / cell) + gy)) || []) if (Math.hypot(o[0] - x, o[1] - y) < minD) { ok = false; break; }
+      if (!ok) continue;
+      const k = key(x, y); (grid.get(k) || grid.set(k, []).get(k)).push([x, y]);
+      out.push([bb[0] + (x + 0.5) * mpx, bb[3] - (y + 0.5) * mpx, 2.6 + 4.4 * Math.min(1, (D - 0.45) / 0.5)]);
+      if (out.length > 8000) break;
+    }
+    return out;           // [x, y, Radius] in Web-Mercator-Metern
   }
   async function ensureGreen(kind, force) {
-    const v = views[kind], T = ST(kind); if (!v || kind === 'ov' || kind !== active || !T.green.on) return;
+    const v = views[kind], T = ST(kind); if (!v || kind === 'ov' || kind !== active || T.veg.on === false) return;
+    const wantCrowns = crownSrc(kind) === 'luftbild' && crownsVisible(kind);
+    if (!T.green.on && !wantCrowns) return;
     if (P.regionAt !== regionKey()) { setTimeout(ensureRegion, 0); return; }
-    if (P.region !== 'BY') { status('„Grün aus Luftbild“ gibt es derzeit nur für Projekte in Bayern.'); return; }
+    if (P.region !== 'BY') { if (!S.greenHint) { status('Gärten aus dem Luftbild gibt es derzeit nur in Bayern – hier als Tönung der Wohngebiete.'); S.greenHint = 1; } return; }
     if (!photoL.BYcir) { setTimeout(resolvePhotoL, 0); return; }
     const b = v.map.getBounds(), p0 = toMerc(b.getWest(), b.getSouth()), p1 = toMerc(b.getEast(), b.getNorth());
     const W = Math.min(3000, Math.round(v.sz.w * v.f * 1.5)), H = Math.round(W * (p1[1] - p0[1]) / (p1[0] - p0[0]));
-    const key = [p0, p1, W, T.green.thr].join('/');
+    const key = [p0, p1, W, T.green.thr, wantCrowns].join('/');
     if ((GREEN[kind] && GREEN[kind].key === key) || greenBusy[kind] === key) return;
     greenBusy[kind] = key; status('Grünflächen werden aus dem Luftbild berechnet …');
     try {
-      const mask = await greenMask(DOP.BY.url, photoL.BYcir, [...p0, ...p1], W, H, +T.green.thr || 50);
+      const mask = await greenMask(DOP.BY.url, photoL.BYcir, [...p0, ...p1], W, H, +T.green.thr || 50, wantCrowns);
       if (greenBusy[kind] !== key) return;
-      GREEN[kind] = { key, bb: [...p0, ...p1], mask, tint: {} }; status('');
+      GREEN[kind] = { key, bb: [...p0, ...p1], mask, tint: {}, crowns: mask.crowns || null }; status('');
     } catch (e) { status('Luftbild gerade nicht erreichbar – Grünflächen fehlen.'); }
     greenBusy[kind] = null; paintBase(); repaint();
   }
   function drawGreen(g, map, kind) {
-    const G = GREEN_EXP || GREEN[kind], T = ST(kind).green; if (!G) return;
+    const G = GREEN_EXP || GREEN[kind], T = ST(kind).green; if (!G || !T.on) return;
     const col = T.color || '#C9DFB5';
+    if (T.mode === 'halbton' && G.mask.alpha) {
+      const k = (views[kind] && views[kind].map === map) ? views[kind].k : DPI[kind] / 25.4;
+      const W = g.canvas.width, H = g.canvas.height, tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H;
+      const t = tmp.getContext('2d'); t.setTransform(g.getTransform());
+      const a = map.project(fromMerc(G.bb[0], G.bb[3])), b = map.project(fromMerc(G.bb[2], G.bb[1])), MW = G.mask.width, MH = G.mask.height;
+      const cs = 1.0 * k, rmax = 0.26 * k, cw = map.getCanvas().clientWidth || W, ch = map.getCanvas().clientHeight || H;
+      t.fillStyle = col; t.beginPath();
+      for (let y = cs / 2, row = 0; y < ch; y += cs / 2, row++) for (let x = (row % 2 ? cs / 2 : 0) + cs / 4; x < cw; x += cs) {
+        const mx = Math.floor((x - a.x) / (b.x - a.x) * MW), my = Math.floor((y - a.y) / (b.y - a.y) * MH);
+        if (mx < 0 || my < 0 || mx >= MW || my >= MH) continue;
+        const v = G.mask.alpha[my * MW + mx]; if (v < 40) continue;
+        const r = rmax * Math.sqrt(v / 255); t.moveTo(x + r, y); t.arc(x, y, r, 0, 7);
+      }
+      t.fill();
+      // wo OpenStreetMap bereits Park oder Wald zeigt, kein zweites Raster
+      const ids = ['park', 'park2', 'wood'].filter(id => map.getLayer(id));
+      if (ids.length) { let fs = []; try { fs = map.queryRenderedFeatures({ layers: ids }); } catch (e) {}
+        t.globalCompositeOperation = 'destination-out'; t.beginPath();
+        for (const f of fs) { const gm = f.geometry, polys = gm.type === 'Polygon' ? [gm.coordinates] : gm.type === 'MultiPolygon' ? gm.coordinates : [];
+          for (const poly of polys) for (const r of poly) r.forEach((c, i) => { const q = map.project(c); i ? t.lineTo(q.x, q.y) : t.moveTo(q.x, q.y); }); }
+        t.fill('evenodd'); }
+      g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = Math.min(1, (+T.alpha || 100) / 100); g.drawImage(tmp, 0, 0); g.restore();
+      return;
+    }
     if (!G.tint[col]) {
       const c = document.createElement('canvas'); c.width = G.mask.width; c.height = G.mask.height;
       const t = c.getContext('2d'); t.fillStyle = col; t.fillRect(0, 0, c.width, c.height);
@@ -2340,10 +2453,10 @@ return maplibregl$1;
     finally { PLACES.busy = false; }
   }
   async function loadTrees() {
-    if (active !== 'mk' || !ST('mk').trees.on || scaleOf('mk') > 15000 || !views.mk) return;
-    const bb = bboxOf(views.mk.map, 4); if (TREES.key === bb || TREES.busy) return;
+    const kind = active; if (!views[kind] || !crownsVisible(kind) || crownSrc(kind) !== 'osm') return;
+    const bb = bboxOf(views[kind].map, 4); if ((TREES.key === bb && TREES.kind === kind) || TREES.busy) return;
     TREES.busy = true;
-    try { const els = await overpassQ(`[out:json][timeout:40];node["natural"="tree"](${bb});out skel 6000;`); TREES.list = els.map(e => [e.lon, e.lat]); TREES.key = bb; repaint(); }
+    try { const els = await overpassQ(`[out:json][timeout:40];node["natural"="tree"](${bb});out skel 12000;`); TREES.list = els.map(e => [e.lon, e.lat]); TREES.key = bb; TREES.kind = kind; repaint(); }
     catch (e) { status('Baumdaten gerade nicht abrufbar.'); }
     finally { TREES.busy = false; }
   }
@@ -2384,7 +2497,7 @@ return maplibregl$1;
     views[kind] = v;
     map.on('render', () => paint(v));
     if (kind === 'ov') map.on('movestart', () => { $('ovSc').style.opacity = 0.25; });
-    map.on('idle', () => { if (active !== kind) return; paintBase(); ensureDem(kind); ensureGreen(kind); if (kind === 'mi') loadPlaces(); });
+    map.on('idle', () => { if (active !== kind) return; paintBase(); ensureDem(kind); ensureGreen(kind); loadTrees(); if (kind === 'mi') loadPlaces(); });
     map.on('moveend', () => {
       if (v.relayouting) return;
       if (kind === 'ov') {
@@ -2658,7 +2771,20 @@ return maplibregl$1;
   const getP = (o, path) => path.split('.').reduce((a, k) => a == null ? a : a[k], o);
   const setP = (o, path, v) => { const ks = path.split('.'), last = ks.pop(); ks.reduce((a, k) => a[k] = a[k] || {}, o)[last] = v; };
   // Ebenen der Stil-Liste: An/Aus · Name · Farbe · Strichstärke; Klick auf den Namen öffnet die Details
-  const modeSel = p => `<label class="f">Darstellung<select data-s="${p}.mode"><option value="green">Fläche</option><option value="dots">Punktraster</option><option value="hatch">Schraffur</option><option value="green-dots">Fläche + Punktraster</option><option value="green-hatch">Fläche + Schraffur</option></select></label>`;
+  const modeSel = p => `<label class="f">Darstellung<select data-s="${p}.mode"><option value="green">Fläche</option><option value="dots">Punktraster</option><option value="hatch">Schraffur</option><option value="green-dots">Fläche + Punktraster</option><option value="green-hatch">Fläche + Schraffur</option><option value="half-s">Halbtonraster fein</option><option value="half-m">Halbtonraster mittel</option><option value="half-l">Halbtonraster grob</option></select></label>`;
+  const vegRow = (p, name, modes) => `<div class="vrow"><label class="check"><input type="checkbox" data-s="${p}.on"> ${name}</label><button class="sw" data-s="${p}.color" aria-label="Farbe ${name}"></button>
+      <select data-s="${p}.mode" aria-label="Darstellung ${name}">${modes}</select><input type="range" data-s="${p}.alpha" min="10" max="100" step="5" aria-label="Deckkraft ${name}" title="Deckkraft"></div>`;
+  const VMODES = '<option value="green">Fläche</option><option value="dots">Punktraster</option><option value="hatch">Schraffur</option><option value="green-dots">Fläche + Punkte</option><option value="half-s">Halbton fein</option><option value="half-m">Halbton mittel</option><option value="half-l">Halbton grob</option>';
+  // fertige Vegetations-Stimmungen (Halbtonraster + Baumkronen nach Julius' Wahl)
+  const VEG_PRESETS = {
+    halbton: k => ({ wood: { on: true, mode: 'half-l', color: '#6F9A5A', alpha: 100 }, park: { on: true, mode: 'half-m', color: '#7FA86A', alpha: 100 },
+      field: { on: k !== 'mk', mode: 'half-s', color: '#A3BF92', alpha: 100 }, green: { on: k !== 'ov', mode: 'halbton', color: '#7FA86A', alpha: 100 },
+      crowns: { on: k !== 'ov', shadow: true, color: '#86A873', alpha: 85 } }),
+    flaeche: k => ({ wood: { on: true, mode: 'green', color: '#C6DBB4', alpha: 100 }, park: { on: true, mode: 'green', color: '#D5E6C6', alpha: 100 },
+      field: { on: k !== 'mk', mode: 'green', color: '#E4EEDB', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DCEACF', alpha: 100 }, crowns: { on: false } }),
+    schwarzplan: k => ({ wood: { on: true, mode: 'dots', color: '#8E9399', alpha: 100 }, park: { on: true, mode: 'dots', color: '#B4B8BD', alpha: 100 },
+      field: { on: false }, green: { on: false }, crowns: { on: false } })
+  };
   const roadMode = p => `<div class="row"><label class="f">Darstellung<select data-s="${p}.mode"><option value="line">Linie</option><option value="fill">Fläche</option><option value="outline">Nur Kontur</option><option value="both">Fläche mit Kontur</option></select></label>
     </div>
     <p class="hint">Linie/Kontur und Füllung stellst du oben bei „Farbe“ ein. Fläche und Kontur sind in der Mikrolage maßstäblich breit.</p>`;
@@ -2702,9 +2828,11 @@ return maplibregl$1;
     { grp: 'verk', id: 'mw', name: () => 'Autobahnen', eye: 'mw.on', col: 'mw.color', fill: k => k !== 'ov' && 'mw.fill', alpha: 'mw.alpha', w: 'mw.w', keys: ['mw'],
       opt: k => k === 'ov' ? '' : roadMode('mw'),
       lbl: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="mw.lbl"> Autobahnnummern (A 8)</label>' : '' },
-    { grp: 'verk', id: 'road', name: k => k === 'ov' ? 'Bundesstraßen' : 'Straßen', eye: 'road.on', col: 'road.color', fill: k => k !== 'ov' && 'road.fill', alpha: 'road.alpha', w: 'road.w', keys: ['road'],
-      opt: k => k === 'ov' ? '' : roadMode('road') + (k === 'mi' ? '<label class="check"><input type="checkbox" data-s="road.tracks"> Feldwege und Zufahrten auch ab 1:50.000</label>' : ''),
+    { grp: 'verk', id: 'road', name: k => k === 'ov' ? 'Bundesstraßen' : 'Haupt- und Nebenstraßen', eye: 'road.on', col: 'road.color', fill: k => k !== 'ov' && 'road.fill', alpha: 'road.alpha', w: 'road.w', keys: ['road'],
+      opt: k => k === 'ov' ? '' : roadMode('road') + '<p class="hint">Bundes-, Staats- und Kreisstraßen sowie Sammelstraßen. Straßennamen gelten für alle Straßen.</p>',
       lbl: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="road.lbl"> Straßennummern (B 27)</label>' : lblUI('road', 'Straßennamen', k === 'mk' ? '1:10.000' : '1:50.000') },
+    { grp: 'verk', id: 'minor', name: () => 'Wohn- und Anliegerstraßen', eye: 'minor.on', col: 'minor.color', fill: 'minor.fill', alpha: 'minor.alpha', w: 'minor.w', only: ['mi', 'mk'], keys: ['minor'],
+      opt: k => roadMode('minor') + (k === 'mi' ? '<label class="check"><input type="checkbox" data-s="road.tracks"> Feldwege und Zufahrten auch ab 1:50.000</label>' : '') + '<p class="hint">Ortsstraßen, Zufahrten und Wege. Im Stadtgebiet zum Beruhigen dezent grau oder ganz ausblenden.</p>' },
     { grp: 'verk', id: 'rail', name: () => 'Bahn', eye: 'rail.on', col: 'rail.color', alpha: 'rail.alpha', w: 'rail.w', keys: ['rail'],
       opt: k => '<label class="check"><input type="checkbox" data-s="rail.classic"> Klassisch: schwarz-weiß gestrichelt</label>' + (k !== 'ov' ? '<label class="check"><input type="checkbox" data-s="rail.st"> Bahnhöfe als Symbol</label>' : '') },
     { grp: 'stadt', id: 'cities', name: k => k === 'ov' ? 'Städte' : 'Ortsnamen', eye: 'cities.on', only: ['ov', 'mi'], keys: ['cities'],
@@ -2718,12 +2846,20 @@ return maplibregl$1;
     { grp: 'stadt', id: 'bldg', name: () => 'Gebäude', eye: 'bldg.on', col: 'bldg.color', alpha: 'bldg.alpha', only: ['mi', 'mk'], keys: ['bldg'],
       opt: () => '<label class="check"><input type="checkbox" data-s="bldg.shadow"> Schlagschatten (ab 1:25.000, Länge maßstabsabhängig)</label><label class="f">Schatten-Deckkraft · <span data-out="bldg.shAlpha"></span><input type="range" data-s="bldg.shAlpha" min="5" max="60" step="5"></label>' },
     { grp: 'stadt', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', alpha: 'water.alpha', keys: ['water'], lbl: () => lblUI('water', 'Flussnamen') },
-    { grp: 'stadt', id: 'wood', name: () => 'Wald', eye: 'wood.on', col: 'wood.color', alpha: 'wood.alpha', keys: ['wood'], opt: () => modeSel('wood') },
-    { grp: 'stadt', id: 'field', name: () => 'Wiesen & Felder', eye: 'field.on', col: 'field.color', alpha: 'field.alpha', keys: ['field'], opt: () => modeSel('field') },
-    { grp: 'stadt', id: 'green', name: () => 'Grün aus Luftbild', eye: 'green.on', col: 'green.color', alpha: 'green.alpha', only: ['mi', 'mk'], keys: ['green'],
-      opt: () => `<label class="f"><span>Empfindlichkeit · <b data-out="green.thr"></b></span><input type="range" data-s="green.thr" min="10" max="90" step="10"></label>
-        <p class="hint">Erkennt Pflanzen im Infrarot-Luftbild – auch Gärten, Innenhöfe und Baumkronen – und legt sie als ruhige Fläche unter Gebäude und Straßen. Mehr Empfindlichkeit = mehr Grün. Derzeit nur in Bayern; „Wiesen & Felder“ und „Wald“ dann am besten ausschalten.</p>` },
-    { grp: 'stadt', id: 'photo', name: () => 'Luftbild', eye: 'photo.on', alpha: 'photo.alpha', keys: ['photo'],
+    { grp: 'stadt', id: 'veg', name: () => 'Vegetation', eye: 'veg.on', col: 'park.color', nofarbe: true, keys: ['veg', 'wood', 'park', 'green', 'field', 'crowns'],
+      opt: k => `<label class="f">Stimmung<select data-s="veg.preset"><option value="eigen">eigene Einstellung</option><option value="halbton">Halbtonraster + Baumkronen</option><option value="flaeche">Grün zart (Flächen)</option><option value="schwarzplan">Schwarzplan (Punktraster grau)</option></select></label>
+        <div class="vlist">
+        ${vegRow('wood', 'Wald', VMODES)}
+        ${vegRow('park', 'Öffentliches Grün', VMODES)}
+        ${k !== 'ov' ? vegRow('green', 'Private Gärten', '<option value="flaeche">Fläche</option><option value="halbton">Halbtonraster</option>') : ''}
+        ${vegRow('field', 'Landwirtschaft', VMODES)}
+        ${k !== 'ov' ? `<div class="vrow"><label class="check"><input type="checkbox" data-s="crowns.on"> Baumkronen</label><button class="sw" data-s="crowns.color" aria-label="Farbe Baumkronen"></button>
+          <select data-s="crowns.src" aria-label="Quelle Baumkronen"><option value="auto">automatisch</option><option value="luftbild">aus Luftbild</option><option value="osm">aus OpenStreetMap</option></select><input type="range" data-s="crowns.alpha" min="10" max="100" step="5" aria-label="Deckkraft Baumkronen" title="Deckkraft"></div>
+        <div class="row"><label class="check"><input type="checkbox" data-s="crowns.shadow"> Schatten unter den Kronen</label><label class="f">Kronengröße %<input type="number" data-s="crowns.size" min="50" max="200" step="10"></label></div>
+        <label class="f"><span>Empfindlichkeit Luftbild · <b data-out="green.thr"></b></span><input type="range" data-s="green.thr" min="10" max="90" step="10"></label>` : ''}
+        </div>
+        <p class="hint">Wald und öffentliches Grün (Parks, Friedhöfe, Sport- und Spielplätze) aus OpenStreetMap. Private Gärten und Baumkronen werden in Bayern aus dem Infrarot-Luftbild erkannt; außerhalb Bayerns werden Gärten als Tönung der Wohngebiete gezeigt und Baumkronen aus OpenStreetMap übernommen (dort oft lückenhaft). Baumkronen erscheinen ab 1:25.000.</p>` },
+    { grp: 'darst', id: 'photo', name: () => 'Luftbild', eye: 'photo.on', alpha: 'photo.alpha', keys: ['photo'],
       opt: k => `<label class="f">Quelle<select data-s="photo.src"><option value="auto">Amtliches Luftbild (Bayern, BW), sonst Satellit</option><option value="sat">Satellitenbild 2016 (10 m)</option></select></label>
         <label class="f"><span>Graustufen · <b data-out="photo.gray"></b></span><input type="range" data-s="photo.gray" min="0" max="100" step="10"></label>
         <label class="f"><span>Aufhellen · <b data-out="photo.light"></b></span><input type="range" data-s="photo.light" min="0" max="80" step="10"></label>
@@ -2741,7 +2877,7 @@ return maplibregl$1;
   function boardOf(L, kind) {
     const n = L.name(kind), fill = typeof L.fill === 'function' ? L.fill(kind) : L.fill;
     const sec = (t, body) => body && body.trim() ? `<div class="msec"><div class="mh">${t}</div>${body}</div>` : '';
-    const farbe = (L.col || fill ? `<div class="row">${L.col ? `<label class="f">${fill ? 'Linie / Kontur' : 'Farbe'}<button class="sw" data-s="${L.col}" aria-label="Farbe ${n}"></button></label>` : ''}${fill ? `<label class="f">Füllung<button class="sw" data-s="${fill}" aria-label="Füllfarbe ${n}"></button></label>` : ''}</div>` : '')
+    const farbe = L.nofarbe ? '' : (L.col || fill ? `<div class="row">${L.col ? `<label class="f">${fill ? 'Linie / Kontur' : 'Farbe'}<button class="sw" data-s="${L.col}" aria-label="Farbe ${n}"></button></label>` : ''}${fill ? `<label class="f">Füllung<button class="sw" data-s="${fill}" aria-label="Füllfarbe ${n}"></button></label>` : ''}</div>` : '')
       + (L.alpha ? `<label class="f"><span>Deckkraft · <b data-out="${L.alpha}"></b></span><input type="range" data-s="${L.alpha}" min="10" max="100" step="5"></label>` : '');
     const strich = L.w ? `<div class="row"><label class="f">Strichstärke (mm)<select data-s="${L.w}" data-num data-near>${WSTEPS.map(v => `<option value="${v}">${String(v).replace('.', ',')}</option>`).join('')}</select></label>${L.dash ? `<label class="f">Linienart<select data-s="${L.dash}">${DASH_OPTS}</select></label>` : ''}</div>` : '';
     return `<div class="board" data-board="${L.id}" hidden>
@@ -2837,7 +2973,7 @@ return maplibregl$1;
     <div class="slot" data-slot="note"></div>
     </div>`;
   }
-  const RESTYLE = /^(mw|road|rail|border|water|hill|wood|field|settle|bldg|photo)\./;   // Änderungen, die einen neuen Kartenstil brauchen
+  const RESTYLE = /^(mw|road|minor|rail|border|water|hill|wood|field|settle|bldg|photo|veg|park|green)\./;   // Änderungen, die einen neuen Kartenstil brauchen
   const usersOf = id => KINDS.filter(kk => S.use[kk] === id);
   function syncStyleUI(kind) {
     const root = $('ui_' + kind), T = ST(kind);
@@ -2864,6 +3000,9 @@ return maplibregl$1;
   const syncAllPresets = () => KINDS.forEach(syncStyleUI);
   function afterStyle(kind, path) {
     if (path === 'grid.type') ST(kind).grid.size = 'auto';
+    if (path === 'veg.preset' && VEG_PRESETS[ST(kind).veg.preset]) { const T = ST(kind), V = VEG_PRESETS[T.veg.preset](kind); for (const [key, o] of Object.entries(V)) Object.assign(T[key], o); T.veg.on = true; }
+    else if (/^(wood|park|field|green|crowns)\.(mode|color|on)$/.test(path)) ST(kind).veg.preset = 'eigen';
+    if (/^(crowns|green|veg)\./.test(path)) { ensureGreen(active); loadTrees(); paintBase(); }
     saveS(); syncAllPresets();
     if (/^(contour|hypso)\./.test(path)) { ensureDem(active); paintBase(); }
     if (/^green\./.test(path)) { ensureGreen(active); paintBase(); }
@@ -3158,6 +3297,24 @@ return maplibregl$1;
     $('srcTestGo').disabled = false;
   };
 
+  // ---------- Elemente je Karte: Liste zeigt nur die aktive Karte, andere lassen sich übernehmen ----------
+  const inK = (o, k) => k === 'mk' && o.mk == null ? o.mi !== false : !!o[k];
+  const hidK = (o, k) => !!(o.hid && o.hid[k]);
+  function takeOver(box, items, label, onTake) {
+    const rest = items.filter(o => !inK(o, active)); if (!rest.length) return;
+    const d = document.createElement('div'); d.className = 'hlchoice take';
+    d.innerHTML = '<b>Aus anderen Karten übernehmen</b>';
+    for (const o of rest) {
+      const b = document.createElement('button'), from = KINDS.filter(k => inK(o, k)).map(k => ({ ov: 'LK', mi: 'MA', mk: 'MI' })[k]).join('/');
+      b.textContent = '+ ' + (label(o) || '(ohne Namen)') + (from ? ' · ' + from : ''); b.title = 'In die ' + KNAME[active] + ' übernehmen';
+      b.onclick = () => { o[active] = true; if (o.hid) delete o.hid[active]; o.on = true; onTake(); repaint(); };
+      d.appendChild(b);
+    }
+    box.appendChild(d);
+  }
+  // Löschen: aus dieser Karte nehmen; ganz löschen nur, wenn keine andere Karte es noch zeigt
+  const dropK = (list, o) => { if (KINDS.some(k => k !== active && inK(o, k))) { o[active] = false; return list; } return list.filter(x => x !== o); };
+
   // ---------- Hervorheben ----------
   const HL_HINT = 'Element anklicken oder eine Bahnlinie nach Namen laden.';
   const hlMsg = t => { $('hlHint').textContent = t || HL_HINT; };
@@ -3208,7 +3365,7 @@ return maplibregl$1;
   }
   function addHl(o) {
     P.hl = P.hl || [];
-    const h = Object.assign({}, HL_DEF, { id: 'hl' + Date.now(), color: S.accent || HL_DEF.color, ov: active === 'ov' }, o);
+    const h = Object.assign({}, HL_DEF, { id: 'hl' + Date.now(), color: S.accent || HL_DEF.color }, o, { ov: false, mi: false, mk: false });
     if (h.lines) h.lines = h.lines.map(l => simp(l)).filter(l => l.length > 1);
     if (h.polys) h.polys = h.polys.map(poly => poly.map(r => simp(r, 0.000002)));
     h[active] = true;
@@ -3322,16 +3479,16 @@ return maplibregl$1;
     if (open !== undefined) hlOpen = open;
     const box = $('hlList'); if (!box) return; box.innerHTML = '';
     if (!$('hlPick').classList.contains('on')) hlMsg();
-    for (const h of P.hl || []) {
+    for (const h of (P.hl || []).filter(x => inK(x, active))) {
       const r = document.createElement('div'); r.className = 'prow'; r.dataset.id = h.id;
       r.innerHTML = `<input type="checkbox" aria-label="Hervorhebung anzeigen"><input type="text"><button class="sw" aria-label="Farbe"></button><button aria-label="Gestaltung">▾</button><button aria-label="Hervorhebung löschen">×</button>`;
       const [cb, nm, sw, more, del] = r.children;
-      cb.checked = h.on && !!h[active]; cb.title = 'in dieser Karte zeigen';
-      cb.onchange = () => { h[active] = cb.checked; if (cb.checked) h.on = true; repaint(); };
+      cb.checked = h.on && !hidK(h, active); cb.title = 'in dieser Karte zeigen';
+      cb.onchange = () => { h.hid = h.hid || {}; h.hid[active] = !cb.checked; if (cb.checked) h.on = true; repaint(); };
       nm.value = h.lbl || ''; nm.placeholder = (HL_TYPE[h.kind] || '') + (h.name && h.name !== HL_TYPE[h.kind] ? ' · ' + h.name : '') + ' – Beschriftung';
       nm.title = HL_TYPE[h.kind] + (h.name ? ': ' + h.name : '');
       nm.oninput = () => { h.lbl = nm.value; if (h.lbl && h.lst === 'aus') h.lst = 'text'; repaint(); };
-      del.onclick = () => { P.hl = P.hl.filter(x => x !== h); renderHl(); repaint(); };
+      del.onclick = () => { P.hl = dropK(P.hl, h); renderHl(); repaint(); };
       more.onclick = () => renderHl(hlOpen === h.id ? null : h.id);
       box.appendChild(r);
       swatchBtn(sw, () => h.color, c => { h.color = c; repaint(); }, r);
@@ -3348,13 +3505,14 @@ return maplibregl$1;
         <div class="row"><button data-act="lbl">Beschriftung zurück an die Linie</button></div>`;
       d.querySelectorAll('[data-k]').forEach(el => {
         const k = el.dataset.k, o = d.querySelector(`[data-o=${k}]`);
-        if (el.type === 'checkbox') { el.checked = !!h[k]; el.onchange = () => { h[k] = el.checked; if (k === active) cb.checked = el.checked; repaint(); }; return; }
+        if (el.type === 'checkbox') { el.checked = !!h[k]; el.onchange = () => { h[k] = el.checked; if (k === active && !el.checked) renderHl(); repaint(); }; return; }
         el.value = String(h[k]); if (o) o.textContent = h[k] + ' %';
         el.oninput = el.onchange = () => { h[k] = el.tagName === 'SELECT' ? el.value : (el.value === '' ? HL_DEF[k] : +el.value); if (o) o.textContent = h[k] + ' %'; repaint(); };
       });
       d.querySelector('[data-act=lbl]').onclick = () => { h.dx = 0; h.dy = h.kind === 'strasse' ? -3 : 0; repaint(); };
       box.appendChild(d);
     }
+    takeOver(box, P.hl || [], h => h.lbl || h.name, () => renderHl());
   }
   // ---------- Eigene POIs ----------
   function setPoiPlace(id) {
@@ -3365,7 +3523,7 @@ return maplibregl$1;
   $('poiAdd').onclick = () => {
     P.pois = P.pois || [];
     const cc = centerOf(active), c = { lng: cc[0], lat: cc[1] }, off = P.pois.length * (active === 'ov' ? 0.03 : 0.0006);
-    const o = Object.assign({}, POI_DEF, { id: 'poi' + Date.now(), lon: c.lng + off, lat: c.lat + 0.0012 + off });
+    const o = Object.assign({}, POI_DEF, { id: 'poi' + Date.now(), lon: c.lng + off, lat: c.lat + 0.0012 + off, ov: false, mi: false, mk: false, [active]: true });
     P.pois.push(o); renderPois(o.id); repaint();
     const inp = document.querySelector(`.prow[data-id="${o.id}"] input[type=text]`); if (inp) inp.focus();
   };
@@ -3373,14 +3531,14 @@ return maplibregl$1;
   function renderPois(open) {
     if (open !== undefined) poiOpen = open;
     const box = $('poiList'); if (!box) return; box.innerHTML = '';
-    for (const o of P.pois || []) {
+    for (const o of (P.pois || []).filter(x => inK(x, active))) {
       const r = document.createElement('div'); r.className = 'prow'; r.dataset.id = o.id;
       r.innerHTML = `<input type="checkbox" aria-label="POI anzeigen"><input type="text" placeholder="Name, z. B. Messe München"><button class="sw" aria-label="Punktfarbe"></button><button aria-label="Gestaltung">▾</button><button aria-label="POI löschen">×</button>`;
       const [cb, nm, sw, more, del] = r.children;
-      cb.checked = o.on && o[active] !== false; cb.title = 'in dieser Karte zeigen';
-      cb.onchange = () => { o[active] = cb.checked; if (cb.checked) o.on = true; repaint(); };
+      cb.checked = o.on && !hidK(o, active); cb.title = 'in dieser Karte zeigen';
+      cb.onchange = () => { o.hid = o.hid || {}; o.hid[active] = !cb.checked; if (cb.checked) o.on = true; repaint(); };
       nm.value = o.name; nm.oninput = () => { o.name = nm.value; repaint(); };
-      del.onclick = () => { P.pois = P.pois.filter(x => x !== o); renderPois(); repaint(); };
+      del.onclick = () => { P.pois = dropK(P.pois, o); renderPois(); repaint(); };
       more.onclick = () => renderPois(poiOpen === o.id ? null : o.id);
       box.appendChild(r);
       swatchBtn(sw, () => o.color, c => { o.color = c; repaint(); }, r);
@@ -3398,13 +3556,14 @@ return maplibregl$1;
       d.querySelectorAll('[data-k]').forEach(el => {
         const k = el.dataset.k;
         if (el.classList.contains('sw')) { swatchBtn(el, () => o[k], c => { o[k] = c; repaint(); }, el.closest('.row')); return; }
-        if (el.type === 'checkbox') { el.checked = !!o[k]; el.onchange = () => { o[k] = el.checked; repaint(); }; return; }
+        if (el.type === 'checkbox') { el.checked = !!o[k]; el.onchange = () => { o[k] = el.checked; if (k === active && !el.checked) renderPois(); repaint(); }; return; }
         el.value = String(o[k]); el.oninput = el.onchange = () => { o[k] = +el.value || POI_DEF[k]; repaint(); };
       });
       d.querySelector('[data-act=place]').onclick = () => setPoiPlace(poiPlace === o.id ? null : o.id);
       d.querySelector('[data-act=lbl]').onclick = () => { o.dx = null; o.dy = 0; repaint(); };
       box.appendChild(d);
     }
+    takeOver(box, P.pois || [], o => o.name, () => renderPois());
   }
   document.addEventListener('mousedown', e => { const pal = document.querySelector('.pal'); if (pal && !pal.contains(e.target) && !e.target.classList.contains('sw')) pal.remove(); });
 
@@ -3436,10 +3595,10 @@ return maplibregl$1;
       });
       const out = document.createElement('canvas'); out.width = Wd; out.height = Hd;
       const g = out.getContext('2d');
-      if (kind !== 'ov' && ST(kind).green.on && P.region === 'BY' && photoL.BYcir) {
+      if (kind !== 'ov' && ST(kind).veg.on !== false && ST(kind).green.on && P.region === 'BY' && photoL.BYcir) {
         status('Grünflächen in Druckauflösung …');
         const b = map.getBounds(), p0 = toMerc(b.getWest(), b.getSouth()), p1 = toMerc(b.getEast(), b.getNorth());
-        try { GREEN_EXP = { bb: [...p0, ...p1], mask: await greenMask(DOP.BY.url, photoL.BYcir, [...p0, ...p1], Math.min(Wd, 8000), Math.round(Math.min(Wd, 8000) * Hd / Wd), +ST(kind).green.thr || 50), tint: {} }; } catch (e) { GREEN_EXP = null; }
+        try { GREEN_EXP = { bb: [...p0, ...p1], mask: await greenMask(DOP.BY.url, photoL.BYcir, [...p0, ...p1], Math.min(Wd, 6000), Math.round(Math.min(Wd, 6000) * Hd / Wd), +ST(kind).green.thr || 50, false), tint: {} }; } catch (e) { GREEN_EXP = null; }
       }
       g.setTransform(Wd / ec.w, 0, 0, Hd / ec.h, 0, 0); drawBase(g, map, kind, ec.w, ec.h, !!S.transp); g.setTransform(1, 0, 0, 1, 0, 0); GREEN_EXP = null;
       g.drawImage(map.getCanvas(), 0, 0, Wd, Hd);
