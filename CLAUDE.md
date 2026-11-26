@@ -95,4 +95,5 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - Dritte Straßenkategorie: „Straßen“ teilen in Haupt-/Nebenstraßen und Wohn-/Anliegerstraßen (eigene Farbe, Strich, Schalter).
 - Hervorheben (und ggf. POIs/Texte) je Karte getrennt: Liste zeigt nur Elemente der aktiven Karte, plus „aus anderer Karte übernehmen“.
 - Vegetation zusammenfassen (Wald, öffentliches Grün, private Gärten, Landwirtschaft) mit grafischem Stil
-  (Skizzen: A Punktdichte, B Halbtonraster, C Baumkronen mit Schatten, D Aquarell-Lavur) – Auswahl durch Julius offen.
+  (Skizzen: A Punktdichte, B Halbtonraster, C Baumkronen mit Schatten, D Aquarell-Lavur).
+  Entscheidung Julius: Grünflächen als **Halbtonraster (B)** + **Baumkronen mit Schatten (C)**; dafür ein Preset in der Ebene Grün/Vegetation anlegen.
