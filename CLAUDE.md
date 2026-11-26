@@ -30,10 +30,13 @@ Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), fu
     gegliedert nach `GRP`: Kartendarstellung – Schrift, Fokus, Nordpfeil (Typen kreis/pfeil/nadel/kompass), Maßstabsleiste, Raster, Grenzen ·
     Verkehr – Autobahnen, Straßen (Darstellung Linie/Fläche/Kontur/beides, Straßennamen mit eigener Schrift), Bahn ·
     Stadt und Landschaft – Orte, Siedlung, Gebäude (Schatten), Gewässer (Flussnamen), Wald, Wiesen & Felder · Topographie – Schummerung, Höhenlinien, Höhenstufen)
-    · *Mapping* (Fahrzeiten, Funktionen, POIs, freie Texte). Bäume sind vorerst ausgeblendet (OSM-Daten zu lückenhaft).
+    · *Mapping* (Fahrzeiten, Funktionen, Hervorheben, POIs, freie Texte).
+    Hervorheben (`#sec_hl`, `P.hl`, `drawHl`, `pickHl`, `loadLine`): Klick wählt Straße (ganze Straße gleichen Namens, zusammenhängend, per Overpass),
+    Gleis (Auswahl der dort fahrenden Linien → Linienverlauf aus Route-Relationen) oder Gebäude (Kachelgeometrie); Bahnlinie auch per Name (z. B. S7) im Ausschnitt.
+    Je Element Farbe, Strich, Deckkraft, weißer Rand, gestrichelt, Beschriftung als Schild/Text (verschiebbar), Sichtbarkeit je Karte. Bäume sind vorerst ausgeblendet (OSM-Daten zu lückenhaft).
   - Abschnitte als Akkordeon (nur einer offen je Bereich); statische Hinweise hinter (i)
   - Nur die Gruppe der aktiven Karte ist sichtbar. Gemeinsame Abschnitte (`#sec_mark`, `#sec_funk`, `#sec_poi`, `#sec_note`)
-    liegen in `#shared` und werden von `setTab` in die Platzhalter (`.slot[data-slot]`) der aktiven Karte gehängt.
+    (+ `#sec_hl`) liegen in `#shared` und werden von `setTab` in die Platzhalter (`.slot[data-slot]`) der aktiven Karte gehängt.
   - Maßstäbe: Landkarte 1:500.000–1:10 Mio. (500.000er), Makrolage 1:25.000–1:100.000 (25.000er), Mikrolage 1:5.000–1:25.000 (5.000er)
 - Kartenebenen außerhalb des Vektorstils (Overlay-Canvas bzw. Grundfläche `${kind}Sc` unter der Karte):
   `drawBase` (Weiß, Höhenstufen, Siedlungsflächen der Landkarte), `drawContours`/`drawHypso` aus `DEMS` (Terrarium-Kacheln, `ensureDem`),

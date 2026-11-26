@@ -162,6 +162,11 @@ return maplibregl$1;
   .pdet { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--linie); margin-bottom: 4px; }
   .pdet .row label.f { font-size: 10px; }
   .pdet input, .pdet select { padding: 5px 6px; }
+  .hlchoice { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--linie); border-radius: 7px; background: #F4F5F7; }
+  .hlchoice b { width: 100%; font-size: 10px; font-weight: 600; color: var(--grau); }
+  .hlchoice button { width: auto; padding: 5px 10px; border-radius: 6px; }
+  .hlchoice button i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; font-style: normal; }
+  #hlPick.on { background: var(--akzent, #255AA8); color: #fff; }
   .nrow { display: grid; grid-template-columns: 26px 1fr 52px 26px; gap: 6px; align-items: center; }
   .nrow b { font-size: 9px; letter-spacing: .1em; color: var(--grau); font-weight: 600; }
   .nrow input { padding: 5px 6px; }
@@ -400,6 +405,18 @@ return maplibregl$1;
       <p class="hint" id="mapSkip"></p>
       <p class="hint" id="mapHint">Standorte aus OpenStreetMap für den sichtbaren Ausschnitt. In Großstädten sehr vollständig, auf dem Land teils lückenhaft.</p>
     </section>
+    <section id="sec_hl">
+      <h2>Hervorheben</h2>
+      <button id="hlPick">+ In der Karte anklicken</button>
+      <div class="row">
+        <label class="f" style="flex:1.7">Bahnlinie nach Namen<input type="text" id="hlRef" placeholder="z. B. S7, U3, Tram 17"></label>
+        <label class="f">&nbsp;<button id="hlRefGo">Linie laden</button></label>
+      </div>
+      <div id="hlChoice" class="hlchoice" hidden></div>
+      <div id="hlList" class="pois"></div>
+      <p class="hint" id="hlHint"></p>
+      <p class="hint">Straße anklicken: die ganze Straße wird markiert. Gleis anklicken: die dort fahrenden Linien stehen zur Wahl. Gebäude anklicken: der Baukörper wird markiert. Die Beschriftung lässt sich mit der Maus verschieben; ▾ öffnet Farbe, Strichstärke, Deckkraft und Schild.</p>
+    </section>
     <section id="sec_poi">
       <h2>Eigene POIs</h2>
       <button id="poiAdd">+ POI hinzufügen</button>
@@ -544,7 +561,7 @@ return maplibregl$1;
   let P = JSON.parse(JSON.stringify(projects.find(p => p.id === store.get('current', 'beispiel')) || projects[0]));
   // nach „Stilvorlage anwenden“ wird neu geladen – ungespeicherte Projektänderungen kommen aus dem Zwischenstand zurück
   { const dr = store.get('draft', null); if (dr && dr.id === P.id) P = dr; store.set('draft', null); }
-  let noteMode = null, poiPlace = null;
+  let noteMode = null, poiPlace = null, hlPick = false;
   const S = Object.assign({ ovPreset: '15.19x11.10', ovCw: 15, ovCh: 10, miPreset: '15.19x11.10', miCw: 15, miCh: 10,
     dpi: 300, scale: 25000, ovScale: '3000000', accent: '#255AA8', built: 'auto',
     cityMin: 50000, abroad: false, motorway: true, ovTitle: true, miTitle: true, airport: true,
@@ -979,10 +996,11 @@ return maplibregl$1;
     const box0 = titleOn ? projectLabel(off, kind, k, proj, fsT, plate) : null;
     const zoneBoxes = drawZ(g, map, k, proj, W, H, kind);
     if (kind !== 'ov' && S.mapIn[kind]) drawMapping(g, map, k, W, H, inF);
+    const hlB = drawHl(g, map, kind, k); if (view) view.hlBoxes = hlB;
     if (kind !== 'ov' && T.rail.on && T.rail.st) drawStations(g, map, k, W, H, T, inF);
     const poiHits = drawPois(g, map, kind, k); if (view) view.poiHits = poiHits;
     const pr0 = (+pp.r || 1.2) + 0.7, dotBox = { x: proj.x - mm(pr0), y: proj.y - mm(pr0), w: mm(2 * pr0), h: mm(2 * pr0) };
-    const obst = [dotBox].concat(box0 ? [box0] : [], zoneBoxes, poiHits.flatMap(h => [h.dotB, h.lab].filter(Boolean)));
+    const obst = [dotBox].concat(box0 ? [box0] : [], zoneBoxes, poiHits.flatMap(h => [h.dotB, h.lab].filter(Boolean)), hlB.map(h => h.b));
     if (T.scalebar.on) obst.push({ x: W - mm(34), y: H - mm(14), w: mm(34), h: mm(14) });   // Maßstabsleiste freihalten
     if (T.north.on) obst.push(northBox(k, W, H, T));
     if (T.txt) {
@@ -1258,6 +1276,62 @@ return maplibregl$1;
       hits.push({ id: o.id, dot: { x: p.x, y: p.y, r: mm(o.r + 0.8) }, dotB, lab });
     }
     return hits;
+  }
+  // Hervorhebungen: einzelne Straßen, Bahnlinien, Gebäude in eigener Farbe, mit Schild oder Text
+  const HL_DEF = { on: true, lbl: '', color: '#255AA8', w: 1.2, alpha: 100, casing: true, dash: false, lst: 'schild', ls: 7, ov: false, mi: true, mk: true, dx: 0, dy: 0 };
+  function drawHl(g, map, kind, k) {
+    const mm = v => v * k, pt = v => v * 0.3528 * k, out = [], list = (P.hl || []).filter(h => h.on && h[kind]);
+    const path = h => {
+      g.beginPath();
+      for (const l of h.lines || []) l.forEach((c, i) => { const p = map.project(c); i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y); });
+      for (const poly of h.polys || []) for (const r of poly) { r.forEach((c, i) => { const p = map.project(c); i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y); }); g.closePath(); }
+    };
+    for (const h of list) {
+      g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.setLineDash([]);
+      const a = Math.max(0.05, (+h.alpha || 100) / 100);
+      if (h.lines) {
+        if (h.casing) { path(h); g.strokeStyle = '#FFFFFF'; g.lineWidth = mm(+h.w + 0.6); g.stroke(); }
+        path(h); g.strokeStyle = h.color; g.globalAlpha = a; g.lineWidth = mm(+h.w);
+        if (h.dash) { g.lineCap = 'butt'; g.setLineDash([mm(+h.w * 3), mm(+h.w * 1.8)]); }
+        g.stroke();
+      } else {
+        path(h); g.globalAlpha = a; g.fillStyle = h.color; g.fill('evenodd');
+        if (+h.w > 0) { g.globalAlpha = 1; g.strokeStyle = h.casing ? '#FFFFFF' : h.color; g.lineWidth = mm(+h.w); g.stroke(); }
+      }
+      g.restore();
+    }
+    // Beschriftungen über allen Linien
+    for (const h of list) {
+      if (h.lst === 'aus' || !h.lbl || !h.at) continue;
+      const a = map.project(h.at), x = a.x + mm(+h.dx || 0), y = a.y + mm(+h.dy || 0), fs = pt(+h.ls || 7);
+      const lines = String(h.lbl).split(/\s*\/\/\s*|\n/), lh = fs * 1.15;
+      g.save(); g.textBaseline = 'middle'; g.setLineDash([]);
+      g.font = `${h.lst === 'schild' ? 700 : 600} ${fs}px ${FONT}`;
+      const tw = Math.max(...lines.map(t => g.measureText(t).width)), th = lh * lines.length;
+      const padX = h.lst === 'schild' ? fs * 0.38 : 0, padY = h.lst === 'schild' ? fs * 0.16 : 0;
+      const b = { x: x - tw / 2 - padX, y: y - th / 2 - padY, w: tw + 2 * padX, h: th + 2 * padY };
+      if (Math.hypot(+h.dx || 0, +h.dy || 0) > 3) {
+        const tx = Math.max(b.x, Math.min(a.x, b.x + b.w)), ty = Math.max(b.y, Math.min(a.y, b.y + b.h));
+        g.strokeStyle = h.color; g.lineWidth = mm(0.18); g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(tx, ty); g.stroke();
+      }
+      g.textAlign = 'center';
+      if (h.lst === 'schild') {
+        const r = Math.min(b.h / 2, fs * 0.28);
+        g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = mm(0.6); g.shadowOffsetY = mm(0.15);
+        g.fillStyle = h.color; g.beginPath(); g.roundRect ? g.roundRect(b.x, b.y, b.w, b.h, r) : g.rect(b.x, b.y, b.w, b.h); g.fill();
+        g.shadowColor = 'transparent'; g.strokeStyle = '#FFFFFF'; g.lineWidth = mm(0.25); g.stroke();
+        g.fillStyle = '#FFFFFF';
+      } else {
+        g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = mm(0.9);
+        lines.forEach((t, i) => g.strokeText(t, x, y - th / 2 + lh * (i + 0.5)));
+        g.fillStyle = h.color;
+      }
+      lines.forEach((t, i) => g.fillText(t, x, y - th / 2 + lh * (i + 0.5)));
+      g.restore();
+      out.push({ id: h.id, b: { x: b.x - mm(0.4), y: b.y - mm(0.4), w: b.w + mm(0.8), h: b.h + mm(0.8) } });
+    }
+    g.textAlign = 'left';
+    return out;
   }
   // Ausschnitt der nächstgrößeren Karte als feiner Rahmen (genau das exportierte Format im gewählten Maßstab)
   function drawMiFrame(g, map, k, fk = 'mi') {
@@ -2204,18 +2278,19 @@ return maplibregl$1;
     const noteAt = pt => (v.noteBoxes || []).slice().reverse().find(n => inBox(n.b, pt));
     const poiDot = pt => (v.poiHits || []).slice().reverse().find(h => Math.hypot(pt.x - h.dot.x, pt.y - h.dot.y) <= h.dot.r);
     const poiLab = pt => (v.poiHits || []).slice().reverse().find(h => inBox(h.lab, pt));
-    const inLbl = pt => inBox(v.lblBox, pt) || !!noteAt(pt) || !!poiDot(pt) || !!poiLab(pt);
+    const hlAt = pt => (v.hlBoxes || []).slice().reverse().find(h => inBox(h.b, pt));
+    const inLbl = pt => inBox(v.lblBox, pt) || !!noteAt(pt) || !!poiDot(pt) || !!poiLab(pt) || !!hlAt(pt);
     map.on('mousedown', e => {
-      const pd = poiDot(e.point), pl = !pd && poiLab(e.point), nt = !pd && !pl && noteAt(e.point);
-      if (!pd && !pl && !nt && !inBox(v.lblBox, e.point)) return;
+      const pd = poiDot(e.point), pl = !pd && poiLab(e.point), nt = !pd && !pl && noteAt(e.point), hb = !pd && !pl && !nt && hlAt(e.point);
+      if (!pd && !pl && !nt && !hb && !inBox(v.lblBox, e.point)) return;
       e.preventDefault();
       if (pd) { v.drag = { poi: P.pois.find(o => o.id === pd.id), moved: false }; return; }    // Punkt selbst verschieben
-      const L = pl ? P.pois.find(o => o.id === pl.id) : nt ? P.notes.find(n => n.id === nt.id) : lbl(kind);
+      const L = pl ? P.pois.find(o => o.id === pl.id) : nt ? P.notes.find(n => n.id === nt.id) : hb ? P.hl.find(h => h.id === hb.id) : lbl(kind);
       if (pl && L.dx == null) L.dx = +L.r + 1.1;
       v.drag = { x: e.point.x, y: e.point.y, dx: L.dx, dy: L.dy, moved: false, L };
     });
     map.on('mousemove', e => {
-      map.getCanvas().style.cursor = v.drag || inLbl(e.point) ? 'move' : (noteMode === kind || poiPlace ? 'crosshair' : '');
+      map.getCanvas().style.cursor = v.drag || inLbl(e.point) ? 'move' : (noteMode === kind || poiPlace || hlPick ? 'crosshair' : '');
       if (!v.drag) return;
       if (v.drag.poi) { v.drag.poi.lon = e.lngLat.lng; v.drag.poi.lat = e.lngLat.lat; v.drag.moved = true; repaint(); return; }
       const L = v.drag.L;
@@ -2227,6 +2302,7 @@ return maplibregl$1;
     map.on('click', e => {
       if (v.justDragged || inLbl(e.point)) return;
       if (noteMode === kind) { addNote(kind, e.lngLat); return; }
+      if (hlPick) { pickHl(v, e); return; }
       if (poiPlace) { const o = (P.pois || []).find(x => x.id === poiPlace); if (o) { o.lon = e.lngLat.lng; o.lat = e.lngLat.lat; o[kind] = true; } setPoiPlace(null); renderPois(); repaint(); return; }
       onClick(v, e);
     });
@@ -2379,7 +2455,7 @@ return maplibregl$1;
   $('projSel').onchange = () => {
     const p = projects.find(x => x.id === $('projSel').value); if (!p) return;
     P = JSON.parse(JSON.stringify(p)); drawRing = []; store.set('current', P.id);
-    $('projName').value = P.name || ''; $('kpiOut').value = P.kpi || ''; renderNotes(); renderPois(); relayout(false); refreshData();
+    $('projName').value = P.name || ''; $('kpiOut').value = P.kpi || ''; renderNotes(); renderPois(); renderHl(); relayout(false); refreshData();
   };
   $('projName').addEventListener('input', () => { P.name = $('projName').value; repaint(); });
   // automatisch speichern: das aktuelle Projekt wird nach jeder Änderung in die Projektliste geschrieben
@@ -2393,7 +2469,7 @@ return maplibregl$1;
   }
   $('projNew').onclick = () => {
     P = { id: 'p' + Date.now(), name: '', lon: P.lon, lat: P.lat, site: [], bld: [], ov: { center: [P.lon, P.lat], zE: P.ov.zE }, miCenter: [P.lon, P.lat], mkCenter: [P.lon, P.lat] };
-    drawRing = []; autosave(); fillProjects(); $('projName').value = ''; $('projName').focus(); refreshData(); relayout(false);
+    drawRing = []; autosave(); fillProjects(); renderHl(); $('projName').value = ''; $('projName').focus(); refreshData(); relayout(false);
   };
   $('projDel').onclick = () => {
     projects = projects.filter(x => x.id !== P.id); if (!projects.length) projects = [JSON.parse(JSON.stringify(sample))];
@@ -2625,6 +2701,7 @@ return maplibregl$1;
       <p class="hint zhint"></p>
     </section>
     ${kind !== 'ov' ? '<div class="slot" data-slot="funk"></div>' : ''}
+    <div class="slot" data-slot="hl"></div>
     <div class="slot" data-slot="poi"></div>
     <div class="slot" data-slot="note"></div>
     </div>`;
@@ -2791,7 +2868,7 @@ return maplibregl$1;
     $('mapLegend').checked = !!S.mapLegend; $('mapMode').value = S.mapMode || 'bld'; $('mapInCur').checked = !!S.mapIn[active];
     const rows = $('mapCats').querySelectorAll('.mrow');
     MAPCATS.forEach((c, i) => { rows[i].querySelector('input').checked = S.map[c.id].on; rows[i].querySelector('button.sw').style.background = S.map[c.id].color; });
-    renderMapCats(); renderNotes(); renderPois(); syncBar();
+    renderMapCats(); renderNotes(); renderPois(); renderHl(); syncBar();
   }
   // Maßstab und Format der aktiven Karte direkt in der Reiterleiste
   function syncBar() {
@@ -2884,6 +2961,202 @@ return maplibregl$1;
       sel.value = String(n.size); sel.onchange = () => { n.size = +sel.value; repaint(); };
       del.onclick = () => { P.notes = P.notes.filter(x => x !== n); renderNotes(); repaint(); };
       box.appendChild(r);
+    }
+  }
+  // ---------- Hervorheben ----------
+  const HL_HINT = 'Element anklicken oder eine Bahnlinie nach Namen laden.';
+  const hlMsg = t => { $('hlHint').textContent = t || HL_HINT; };
+  function setHlPick(on) {
+    hlPick = !!on; $('hlPick').classList.toggle('on', hlPick);
+    $('hlPick').textContent = hlPick ? 'Auswahl beenden (Esc)' : '+ In der Karte anklicken';
+    if (on) { setPoiPlace(null); if (noteMode) setNoteMode(false); }
+    hlMsg(hlPick ? 'Jetzt Straße, Gleis oder Gebäude in der ' + KNAME[active] + ' anklicken.' : '');
+  }
+  $('hlPick').onclick = () => setHlPick(!hlPick);
+  // Linien vereinfachen (Toleranz ca. 1 m) und Koordinaten runden, damit Projekte klein bleiben
+  function simp(pts, tol = 0.00001) {
+    if (pts.length < 3) return pts;
+    const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+    const st = [[0, pts.length - 1]];
+    while (st.length) {
+      const [a, b] = st.pop(); let md = 0, mi = -1;
+      const [ax, ay] = pts[a], [bx, by] = pts[b], dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      for (let i = a + 1; i < b; i++) {
+        const [px, py] = pts[i]; let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+        const d = Math.hypot(px - ax - t * dx, (py - ay - t * dy));
+        if (d > md) { md = d; mi = i; }
+      }
+      if (md > tol) { keep[mi] = 1; st.push([a, mi], [mi, b]); }
+    }
+    return pts.filter((_, i) => keep[i]).map(c => [+c[0].toFixed(6), +c[1].toFixed(6)]);
+  }
+  const geomOf = w => (w.geometry || []).filter(Boolean).map(q => [q.lon, q.lat]);
+  // Abstand Punkt–Linie in Metern (für „nächstgelegene Straße / nächstes Gleis“)
+  function distTo(line, lon, lat) {
+    const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540; let best = Infinity;
+    for (let i = 1; i < line.length; i++) {
+      const ax = (line[i - 1][0] - lon) * kx, ay = (line[i - 1][1] - lat) * ky, bx = (line[i][0] - lon) * kx, by = (line[i][1] - lat) * ky;
+      const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy; let t = L ? -(ax * dx + ay * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+      best = Math.min(best, Math.hypot(ax + t * dx, ay + t * dy));
+    }
+    return best;
+  }
+  // Punkt auf der Geometrie, der dem Klick (bzw. dem Projektpunkt) am nächsten liegt: dort sitzt die Beschriftung
+  function nearestOn(lines, lon, lat) {
+    let best = null, bd = Infinity;
+    for (const l of lines) for (const c of l) { const d = Math.hypot((c[0] - lon) * Math.cos(lat * Math.PI / 180), c[1] - lat); if (d < bd) { bd = d; best = c; } }
+    return best ? [best[0], best[1]] : [lon, lat];
+  }
+  function viewBox(grow = 0) {
+    const b = views[active].map.getBounds(), w = b.getEast() - b.getWest(), h = b.getNorth() - b.getSouth();
+    return [b.getSouth() - h * grow, b.getWest() - w * grow, b.getNorth() + h * grow, b.getEast() + w * grow].map(x => x.toFixed(5)).join(',');
+  }
+  function addHl(o) {
+    P.hl = P.hl || [];
+    const h = Object.assign({}, HL_DEF, { id: 'hl' + Date.now(), color: S.accent || HL_DEF.color, ov: active === 'ov' }, o);
+    if (h.lines) h.lines = h.lines.map(l => simp(l)).filter(l => l.length > 1);
+    if (h.polys) h.polys = h.polys.map(poly => poly.map(r => simp(r, 0.000002)));
+    h[active] = true;
+    P.hl.push(h); renderHl(h.id); repaint();
+    hlMsg('„' + (h.lbl || h.name) + '“ hervorgehoben. Weiteres Element anklicken oder Auswahl beenden.');
+    return h;
+  }
+  const RAILQ = '["railway"~"^(rail|light_rail|subway|tram|narrow_gauge)$"]';
+  const ROUTEQ = '["type"="route"]["route"~"^(train|light_rail|subway|tram)$"]';
+  const RAILCOL = { S: '#408335', U: '#0065AE', RB: '#6E7378', RE: '#6E7378', IC: '#6E7378', ICE: '#6E7378' };
+  // Linienverlauf aus den Routen (beide Fahrtrichtungen, jedes Gleisstück nur einmal)
+  function lineFromRels(rels) {
+    const seen = new Set(), lines = [];
+    for (const r of rels) for (const m of r.members || []) {
+      if (m.type !== 'way' || /platform|stop/.test(m.role || '') || seen.has(m.ref) || !m.geometry) continue;
+      seen.add(m.ref); const l = geomOf(m); if (l.length > 1) lines.push(l);
+    }
+    return lines;
+  }
+  function relColor(r, ref) {
+    const c = r && r.tags && (r.tags.colour || r.tags.color);
+    if (c && /^#?[0-9a-f]{3,6}$/i.test(c)) return c[0] === '#' ? c : '#' + c;
+    const pre = String(ref || '').toUpperCase().match(/^[A-Z]+/); return (pre && RAILCOL[pre[0]]) || S.accent || HL_DEF.color;
+  }
+  async function loadLine(q, at) {
+    hlMsg('Linie wird geladen …'); $('hlChoice').hidden = true;
+    try {
+      let sel;
+      if (q.ids) sel = `rel(id:${q.ids.join(',')});`;
+      else {
+        const m = String(q.ref).trim().replace(/\s+/g, ' ').match(/^(tram\s*|[a-zäöü]*)\s*(\d+[a-z]?)$/i);
+        if (!m) { hlMsg('Bitte eine Linie wie „S7“, „U3“ oder „Tram 17“ eingeben.'); return; }
+        const pre = m[1].trim(), rx = (pre && !/^tram$/i.test(pre) ? pre + ' ?' : '') + m[2];
+        sel = `way(${viewBox(0.5)})${RAILQ}->.w;rel(bw.w)${ROUTEQ}["ref"~"^${rx}$",i];`;
+      }
+      const els = await overpassQ(`[out:json][timeout:60];${sel}out geom;`);
+      const rels = els.filter(e => e.type === 'relation');
+      if (!rels.length) { hlMsg('Keine Linie „' + (q.ref || '') + '“ in diesem Kartenausschnitt gefunden.'); return; }
+      const lines = lineFromRels(rels), ref = (rels[0].tags.ref || q.ref || rels[0].tags.name || 'Linie').trim();
+      if (!lines.length) { hlMsg('Für diese Linie liegen keine Gleisdaten vor.'); return; }
+      const c = at || centerOf(active);
+      addHl({ kind: 'linie', name: rels[0].tags.name || ref, lbl: ref, lines, color: relColor(rels[0], ref), w: 1.2, lst: 'schild', at: nearestOn(lines, c[0], c[1]) });
+    } catch (err) { hlMsg('Der Datendienst antwortet gerade nicht. Bitte in einer Minute erneut versuchen.'); }
+  }
+  $('hlRefGo').onclick = () => { const r = $('hlRef').value.trim(); if (r) loadLine({ ref: r }); };
+  $('hlRef').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('hlRefGo').click(); } });
+  // Klick in die Karte: Gleis → Linienauswahl, Straße → ganze Straße, Gebäude → Baukörper
+  async function pickHl(v, e) {
+    const { lng, lat } = e.lngLat, pt = e.point, m = v.map;
+    const near = r => { try { return m.queryRenderedFeatures([[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]); } catch (x) { return []; } };
+    const isRail = f => f.sourceLayer === 'transportation' && /^(rail|transit)$/.test(f.properties.class);
+    const isRoad = f => f.sourceLayer === 'transportation' && !isRail(f) && !/^(ferry|aerialway)$/.test(f.properties.class);
+    const isBld = f => f.sourceLayer === 'building';
+    const r6 = near(6), r0 = near(0);
+    let what = r6.some(isRail) ? 'rail' : r6.some(isRoad) ? 'road' : r0.some(isBld) ? 'bld' : null;
+    if (!what) { const r14 = near(14); what = r14.some(isRail) ? 'rail' : r14.some(isRoad) ? 'road' : null; }
+    try {
+      if (what === 'bld' || !what) {
+        const f = r0.find(isBld);
+        if (f) { const gm = f.geometry; addHl({ kind: 'gebaeude', name: 'Gebäude', lbl: '', polys: gm.type === 'Polygon' ? [gm.coordinates] : gm.coordinates, w: 0.25, alpha: 100, lst: 'text', at: [lng, lat], dx: 3, dy: -3 }); return; }
+        hlMsg('Suche Gebäude …');
+        const els = await overpassQ(`[out:json][timeout:25];is_in(${lat},${lng})->.a;way(pivot.a)["building"];out geom;`);
+        const w = els.find(x => x.type === 'way');
+        if (w) { addHl({ kind: 'gebaeude', name: (w.tags && w.tags.name) || 'Gebäude', lbl: '', polys: [[geomOf(w)]], w: 0.25, alpha: 100, lst: 'text', at: [lng, lat], dx: 3, dy: -3 }); return; }
+        if (!what) { hlMsg('Hier liegt weder Straße noch Gleis noch Gebäude. Bitte genauer auf die Linie bzw. Fläche klicken.'); return; }
+      }
+      if (what === 'rail') {
+        hlMsg('Suche Linien an diesem Gleis …');
+        const els = await overpassQ(`[out:json][timeout:30];way(around:25,${lat},${lng})${RAILQ}->.w;.w out tags geom;rel(bw.w)${ROUTEQ};out tags;`);
+        const ways = els.filter(x => x.type === 'way'), rels = els.filter(x => x.type === 'relation');
+        if (!ways.length) { hlMsg('Hier wurde kein Gleis gefunden. Bitte genauer auf die Bahnlinie klicken.'); return; }
+        const w0 = ways.map(w => ({ w, d: distTo(geomOf(w), lng, lat) })).sort((a, b) => a.d - b.d)[0].w;
+        const grp = {};
+        for (const r of rels) { const ref = (r.tags.ref || r.tags.name || '').trim(); if (!ref) continue; (grp[ref] = grp[ref] || { ref, ids: [], r }).ids.push(r.id); }
+        const box = $('hlChoice'); box.innerHTML = '<b>Welche Linie soll hervorgehoben werden?</b>';
+        Object.values(grp).sort((a, b) => a.ref.localeCompare(b.ref, 'de', { numeric: true })).forEach(gp => {
+          const b = document.createElement('button'); b.innerHTML = `<i style="background:${relColor(gp.r, gp.ref)}"></i>`; b.append(gp.ref.length > 28 ? gp.ref.slice(0, 26) + '…' : gp.ref);
+          b.onclick = () => loadLine({ ids: gp.ids, ref: gp.ref }, [lng, lat]); box.appendChild(b);
+        });
+        const only = document.createElement('button'); only.textContent = 'Nur dieses Gleisstück';
+        only.onclick = () => { box.hidden = true; addHl({ kind: 'gleis', name: (w0.tags && w0.tags.name) || 'Gleis', lbl: '', lines: [geomOf(w0)], w: 1.0, lst: 'text', at: [lng, lat] }); };
+        box.appendChild(only); box.hidden = false;
+        hlMsg(Object.keys(grp).length ? 'Linie wählen.' : 'Hier ist keine benannte Linie hinterlegt; das Gleisstück lässt sich trotzdem markieren.');
+        return;
+      }
+      // Straße: nächstgelegene Straße, dann alle zusammenhängenden Abschnitte gleichen Namens
+      hlMsg('Suche Straße …');
+      const els = await overpassQ(`[out:json][timeout:25];way(around:25,${lat},${lng})["highway"];out tags geom;`);
+      const ws = els.filter(x => x.type === 'way' && x.geometry);
+      if (!ws.length) { hlMsg('Hier wurde keine Straße gefunden. Bitte genauer auf die Straße klicken.'); return; }
+      const w0 = ws.map(w => ({ w, d: distTo(geomOf(w), lng, lat) })).sort((a, b) => a.d - b.d)[0].w, nm = w0.tags && w0.tags.name;
+      let lines = [geomOf(w0)];
+      if (nm) {
+        hlMsg('Lade „' + nm + '“ …');
+        const all = (await overpassQ(`[out:json][timeout:40];way["highway"]["name"="${nm.replace(/"/g, '\\"')}"](${viewBox(1)});out geom;`)).filter(x => x.geometry).map(geomOf);
+        const key = c => c[0].toFixed(6) + ',' + c[1].toFixed(6), have = new Set(lines[0].map(key)), rest = all.slice();
+        let grow = true;
+        while (grow) {
+          grow = false;
+          for (let i = rest.length - 1; i >= 0; i--) if (rest[i].some(c => have.has(key(c)))) { rest[i].forEach(c => have.add(key(c))); lines.push(rest[i]); rest.splice(i, 1); grow = true; }
+        }
+      }
+      addHl({ kind: 'strasse', name: nm || 'Straße', lbl: nm || '', lines, w: 1.0, alpha: 85, casing: false, lst: 'text', ls: 6.5, at: nearestOn(lines, lng, lat), dx: 0, dy: -3 });
+    } catch (err) { hlMsg('Der Datendienst antwortet gerade nicht. Bitte in einer Minute erneut versuchen.'); }
+  }
+  let hlOpen = null;
+  const HL_TYPE = { linie: 'Bahnlinie', gleis: 'Gleisstück', strasse: 'Straße', gebaeude: 'Gebäude' };
+  function renderHl(open) {
+    if (open !== undefined) hlOpen = open;
+    const box = $('hlList'); if (!box) return; box.innerHTML = '';
+    if (!$('hlPick').classList.contains('on')) hlMsg();
+    for (const h of P.hl || []) {
+      const r = document.createElement('div'); r.className = 'prow'; r.dataset.id = h.id;
+      r.innerHTML = `<input type="checkbox" aria-label="Hervorhebung anzeigen"><input type="text"><button class="sw" aria-label="Farbe"></button><button aria-label="Gestaltung">▾</button><button aria-label="Hervorhebung löschen">×</button>`;
+      const [cb, nm, sw, more, del] = r.children;
+      cb.checked = h.on && !!h[active]; cb.title = 'in dieser Karte zeigen';
+      cb.onchange = () => { h[active] = cb.checked; if (cb.checked) h.on = true; repaint(); };
+      nm.value = h.lbl || ''; nm.placeholder = (HL_TYPE[h.kind] || '') + (h.name && h.name !== HL_TYPE[h.kind] ? ' · ' + h.name : '') + ' – Beschriftung';
+      nm.title = HL_TYPE[h.kind] + (h.name ? ': ' + h.name : '');
+      nm.oninput = () => { h.lbl = nm.value; if (h.lbl && h.lst === 'aus') h.lst = 'text'; repaint(); };
+      del.onclick = () => { P.hl = P.hl.filter(x => x !== h); renderHl(); repaint(); };
+      more.onclick = () => renderHl(hlOpen === h.id ? null : h.id);
+      box.appendChild(r);
+      swatchBtn(sw, () => h.color, c => { h.color = c; repaint(); }, r);
+      if (hlOpen !== h.id) continue;
+      const area = !!h.polys, d = document.createElement('div'); d.className = 'pdet';
+      d.innerHTML = `
+        <div class="row"><label class="f">${area ? 'Kontur (mm)' : 'Strichstärke (mm)'}<input type="number" data-k="w" min="0" max="5" step="0.1"></label>
+          <label class="f">${area ? 'Deckkraft Fläche' : 'Deckkraft'} <span data-o="alpha"></span><input type="range" data-k="alpha" min="10" max="100" step="5"></label></div>
+        <div class="row"><label class="check"><input type="checkbox" data-k="casing"> ${area ? 'Kontur weiß' : 'Weißer Rand'}</label>
+          ${area ? '' : '<label class="check"><input type="checkbox" data-k="dash"> Gestrichelt</label>'}</div>
+        <div class="row"><label class="f">Beschriftung<select data-k="lst"><option value="schild">Schild (farbig)</option><option value="text">Text</option><option value="aus">keine</option></select></label>
+          <label class="f">Schrift (pt)<input type="number" data-k="ls" min="4" max="24" step="0.5"></label></div>
+        <div class="row"><label class="check"><input type="checkbox" data-k="ov"> Landkarte</label><label class="check"><input type="checkbox" data-k="mi"> Makro</label><label class="check"><input type="checkbox" data-k="mk"> Mikro</label></div>
+        <div class="row"><button data-act="lbl">Beschriftung zurück an die Linie</button></div>`;
+      d.querySelectorAll('[data-k]').forEach(el => {
+        const k = el.dataset.k, o = d.querySelector(`[data-o=${k}]`);
+        if (el.type === 'checkbox') { el.checked = !!h[k]; el.onchange = () => { h[k] = el.checked; if (k === active) cb.checked = el.checked; repaint(); }; return; }
+        el.value = String(h[k]); if (o) o.textContent = h[k] + ' %';
+        el.oninput = el.onchange = () => { h[k] = el.tagName === 'SELECT' ? el.value : (el.value === '' ? HL_DEF[k] : +el.value); if (o) o.textContent = h[k] + ' %'; repaint(); };
+      });
+      d.querySelector('[data-act=lbl]').onclick = () => { h.dx = 0; h.dy = h.kind === 'strasse' ? -3 : 0; repaint(); };
+      box.appendChild(d);
     }
   }
   // ---------- Eigene POIs ----------
@@ -3075,13 +3348,13 @@ return maplibregl$1;
     document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === kind)));
     document.querySelectorAll('.stage .panel').forEach(p => { p.hidden = p.dataset.kind !== kind; });
     for (const g of groups) if (g.tabs.length) { const on = g.tabs.includes(kind); g.gh.hidden = !on; if (on) g.set(!!groupState['map']); else g.body.hidden = true; g.gh.classList.toggle('act', on); }
-    const SHARED = { mark: ['mi', 'mk'], funk: ['mi', 'mk'], poi: KINDS, note: KINDS };
+    const SHARED = { mark: ['mi', 'mk'], funk: ['mi', 'mk'], hl: KINDS, poi: KINDS, note: KINDS };
     for (const [name, ks] of Object.entries(SHARED)) {
       const sec = $('sec_' + name), slot = ks.includes(kind) && $('ui_' + kind).querySelector(`[data-slot=${name}]`);
       (slot || $('shared')).appendChild(sec);
     }
     $('mapInCur').checked = !!S.mapIn[kind];
-    noteMode = null; if ($('noteAdd')) setNoteMode(false); renderNotes(); renderPois(); isoHint();
+    noteMode = null; if ($('noteAdd')) setNoteMode(false); setHlPick(false); renderNotes(); renderPois(); renderHl(); isoHint();
     $('actHint').textContent = HINT[kind] + ' · Mausrad zoomt · Leertaste + Ziehen verschiebt das Blatt · Tasten 1/2/3, 0, +/−';
     $('barPreset').dataset.k = '';
     relayout(true);
@@ -3160,6 +3433,7 @@ return maplibregl$1;
     }
     if (e.altKey) return;
     if (e.key === 'Escape' && !$('expDlg').hidden) { $('expDlg').hidden = true; return; }
+    if (e.key === 'Escape' && hlPick) { setHlPick(false); return; }
     if (!$('expDlg').hidden) return;
     if (['1', '2', '3'].includes(e.key)) { const kk = KINDS[+e.key - 1]; if (kk !== active) setTab(kk); }
     else if (e.key === '0') setZoom(0);
