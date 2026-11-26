@@ -450,6 +450,19 @@ return maplibregl$1;
       <p class="hint" id="mapSkip"></p>
       <p class="hint" id="mapHint">Standorte aus OpenStreetMap für den sichtbaren Ausschnitt. In Großstädten sehr vollständig, auf dem Land teils lückenhaft.</p>
     </section>
+    <section id="sec_zg">
+      <h2>Zensus-Raster</h2>
+      <label class="check"><input type="checkbox" id="zgOn"> In dieser Karte zeigen</label>
+      <label class="f">Merkmal<select id="zgAttr"></select></label>
+      <div class="row">
+        <label class="f">Darstellung<select id="zgLook"><option value="halbton">Halbtonraster</option><option value="stufen">Farbstufen</option></select></label>
+        <label class="f">Farbe<button class="sw" id="zgCol" aria-label="Farbe Zensus-Raster"></button></label>
+      </div>
+      <label class="f"><span>Deckkraft · <b id="zgAOut"></b></span><input type="range" id="zgAlpha" min="10" max="100" step="5"></label>
+      <label class="check"><input type="checkbox" id="zgLeg"> Legende in der Karte</label>
+      <p class="hint" id="zgHint"></p>
+      <p class="hint">Werte aus dem Zensus 2022 in 100-m-Zellen, in fünf Stufen nach den im Ausschnitt vorkommenden Werten (je Stufe etwa gleich viele Zellen). Liegt unter Straßen und Gebäuden. Zellen ohne Wert (Datenschutz, unbewohnt) bleiben frei.</p>
+    </section>
     <section id="sec_hl">
       <h2>Hervorheben</h2>
       <button id="hlPick">+ In der Karte anklicken</button>
@@ -1143,6 +1156,7 @@ return maplibregl$1;
     if (T.scalebar.on) scaleBar(g, map, k, W, H, kind);
     if (T.north.on) drawNorth(g, k, W, H, T);
     if (kind !== 'ov' && S.mapLegend) mapLegend(g, k, W, H, kind);
+    if (kind !== 'ov' && zg(kind).on && zg(kind).leg) zgLegend(g, k, W, H, kind);
     const nb = drawNotes(g, map, kind, k);
     if (view) { view.lblBox = box; view.noteBoxes = nb; }
     if (S.attrib) {
@@ -2172,6 +2186,7 @@ return maplibregl$1;
     if (!transparent) { g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H); }
     if (ST(kind).hypso.on) drawHypso(g, map, kind);
     if (kind !== 'ov' && ST(kind).veg.on !== false && ST(kind).green.on) drawGreen(g, map, kind);
+    if (kind !== 'ov' && zg(kind).on) drawZg(g, map, kind);
     if (kind === 'ov') drawSettlements(g, map, W, H, true);
   }
   function paintBase() {
@@ -2525,7 +2540,7 @@ return maplibregl$1;
     views[kind] = v;
     map.on('render', () => paint(v));
     if (kind === 'ov') map.on('movestart', () => { $('ovSc').style.opacity = 0.25; });
-    map.on('idle', () => { if (active !== kind) return; paintBase(); ensureDem(kind); ensureGreen(kind); loadTrees(); if (kind === 'mi') loadPlaces(); });
+    map.on('idle', () => { if (active !== kind) return; paintBase(); ensureDem(kind); ensureGreen(kind); ensureZg(kind); loadTrees(); if (kind === 'mi') loadPlaces(); });
     map.on('moveend', () => {
       if (v.relayouting) return;
       if (kind === 'ov') {
@@ -2996,6 +3011,7 @@ return maplibregl$1;
       <p class="hint zhint"></p>
     </section>
     ${kind !== 'ov' ? '<div class="slot" data-slot="funk"></div>' : ''}
+    ${kind !== 'ov' ? '<div class="slot" data-slot="zg"></div>' : ''}
     <div class="slot" data-slot="hl"></div>
     <div class="slot" data-slot="poi"></div>
     <div class="slot" data-slot="note"></div>
@@ -3167,7 +3183,7 @@ return maplibregl$1;
     $('mapLegend').checked = !!S.mapLegend; $('mapMode').value = S.mapMode || 'bld'; $('mapInCur').checked = !!S.mapIn[active];
     const rows = $('mapCats').querySelectorAll('.mrow');
     MAPCATS.forEach((c, i) => { rows[i].querySelector('input').checked = S.map[c.id].on; rows[i].querySelector('button.sw').style.background = S.map[c.id].color; });
-    renderMapCats(); renderNotes(); renderPois(); renderHl(); syncBar();
+    renderMapCats(); renderNotes(); renderPois(); renderHl(); syncZg(); syncBar();
   }
   // Maßstab und Format der aktiven Karte direkt in der Reiterleiste
   function syncBar() {
@@ -3493,6 +3509,120 @@ return maplibregl$1;
     a.download = `${(P.name || 'Projekt').replace(/\s+/g, '_').replace(/[^\wÄÖÜäöüß_-]/g, '')}_Kennzahlen_${kzSet().asset}_${Z.r}m.png`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   };
+
+  // ---------- Zensus-Raster als Kartenebene (Makro- und Mikrolage) ----------
+  const ZATTR = {
+    r: { n: 'Nettokaltmiete', u: '€/m²', d: 2, f: (t, j) => t.r && t.r[j] >= 0 ? t.r[j] / 100 : null },
+    p: { n: 'Einwohner je Hektar', u: 'EW/ha', d: 0, f: (t, j) => t.p && t.p[j] > 0 ? t.p[j] : null },
+    dev: { n: 'Einwohnerentwicklung 2011–2022', u: '%', d: 0, div: true, f: (t, j) => t.p && t.q && t.q[j] >= 10 && t.p[j] >= 0 ? (t.p[j] / t.q[j] - 1) * 100 : null },
+    u: { n: 'Anteil unter 18 Jahre', u: '%', d: 0, f: (t, j) => t.u && t.u[j] >= 0 ? t.u[j] / 10 : null },
+    o: { n: 'Anteil ab 65 Jahre', u: '%', d: 0, f: (t, j) => t.o && t.o[j] >= 0 ? t.o[j] / 10 : null },
+    h: { n: 'Ø Haushaltsgröße', u: 'Pers.', d: 1, f: (t, j) => t.h && t.h[j] >= 0 && t.h[j] < 800 ? t.h[j] / 100 : null },
+    e: { n: 'Eigentümerquote', u: '%', d: 0, f: (t, j) => t.e && t.e[j] >= 0 ? t.e[j] / 10 : null },
+    s: { n: 'Wohnfläche je Einwohner', u: 'm²', d: 0, f: (t, j) => t.s && t.s[j] >= 0 && t.s[j] < 3000 ? t.s[j] / 10 : null },
+    neu: { n: 'Gebäude ab 2011', u: '%', d: 0, f: (t, j) => zbs(t, j, 6, 8) },
+    alt: { n: 'Gebäude vor 1949', u: '%', d: 0, f: (t, j) => zbs(t, j, 0, 2) }
+  };
+  const zbs = (t, j, a, b) => { let s = 0, x = 0; for (let i = 1; i <= 8; i++) { const c = t['b' + i]; const v = c && c[j] > 0 ? c[j] : 0; s += v; if (i > a && i <= b) x += v; } return s >= 3 ? x / s * 100 : null; };
+  const zg = kind => { S.zg = S.zg || {}; return S.zg[kind] || (S.zg[kind] = { on: false, attr: 'r', look: 'halbton', color: '#255AA8', alpha: 85, leg: true }); };
+  const ZGS = {};                      // je Karte: geladene Zellen im Ausschnitt und Stufengrenzen
+  async function ensureZg(kind) {
+    const v = views[kind], Z = zg(kind); if (!v || kind === 'ov' || kind !== active || !Z.on) return;
+    const b = v.map.getBounds(), pts = [[b.getWest(), b.getSouth()], [b.getEast(), b.getNorth()], [b.getWest(), b.getNorth()], [b.getEast(), b.getSouth()]].map(c => laea(c[0], c[1]));
+    const x0 = Math.min(...pts.map(p => p[0])), x1 = Math.max(...pts.map(p => p[0])), y0 = Math.min(...pts.map(p => p[1])), y1 = Math.max(...pts.map(p => p[1]));
+    const key = [Math.floor(x0 / 1e4), Math.floor(y0 / 1e4), Math.floor(x1 / 1e4), Math.floor(y1 / 1e4), Z.attr].join('/');
+    if (ZGS[kind] && ZGS[kind].key === key) return;
+    $('zgHint').textContent = 'Zensusdaten werden geladen …';
+    try {
+      const keys = []; for (let tx = Math.floor(x0 / 1e4); tx <= Math.floor(x1 / 1e4); tx++) for (let ty = Math.floor(y0 / 1e4); ty <= Math.floor(y1 / 1e4); ty++) keys.push([tx, ty]);
+      if (keys.length > 80) { $('zgHint').textContent = 'Ausschnitt zu groß für das 100-m-Raster.'; return; }
+      const tiles = (await Promise.all(keys.map(([tx, ty]) => zTile(tx + '_' + ty).then(t => [tx, ty, t])))).filter(x => x[2]);
+      const A = ZATTR[Z.attr], cells = [];
+      for (const [tx, ty, t] of tiles) for (let j = 0; j < t.i.length; j++) {
+        const i = t.i[j], x = tx * 1e4 + (i % 100) * 100 + 50, y = ty * 1e4 + Math.floor(i / 100) * 100 + 50;
+        if (x < x0 - 100 || x > x1 + 100 || y < y0 - 100 || y > y1 + 100) continue;
+        const val = A.f(t, j); if (val != null && isFinite(val)) cells.push([x, y, val]);
+      }
+      // fünf Stufen nach Quantilen der sichtbaren Zellen, auf runde Werte gebracht
+      const vs = cells.map(c => A.div ? Math.abs(c[2]) : c[2]).sort((a, b) => a - b), q = f => vs[Math.min(vs.length - 1, Math.floor(f * vs.length))];
+      const nice = x => { if (!x) return 0; const m = Math.pow(10, Math.floor(Math.log10(Math.abs(x))) - 1); return Math.round(x / m) * m; };
+      const br = vs.length ? [0.2, 0.4, 0.6, 0.8].map(f => nice(q(f))) : [];
+      ZGS[kind] = { key, cells, br, attr: Z.attr };
+      $('zgHint').textContent = cells.length ? cells.length.toLocaleString('de-DE') + ' Rasterzellen mit Wert im Ausschnitt.' : 'Keine Werte im Ausschnitt.';
+      paintBase(); repaint();
+    } catch (e) { $('zgHint').textContent = 'Zensusdaten gerade nicht erreichbar.'; }
+  }
+  const zClass = (br, v) => { let c = 0; while (c < br.length && v > br[c]) c++; return c; };     // 0 … 4
+  // affine Abbildung Zensus-Meter → Bildschirm aus drei Stützpunkten um die Kartenmitte
+  function zAffine(map) {
+    const c = map.getCenter(), P0 = [c.lng, c.lat], P1 = [c.lng + 0.01, c.lat], P2 = [c.lng, c.lat + 0.01];
+    const L = [P0, P1, P2].map(p => laea(p[0], p[1])), S2 = [P0, P1, P2].map(p => map.project(p));
+    const [X0, Y0] = L[0], ax = L[1][0] - X0, ay = L[1][1] - Y0, bx = L[2][0] - X0, by = L[2][1] - Y0, det = ax * by - ay * bx;
+    const du1 = S2[1].x - S2[0].x, dv1 = S2[1].y - S2[0].y, du2 = S2[2].x - S2[0].x, dv2 = S2[2].y - S2[0].y;
+    const a = (du1 * by - du2 * ay) / det, b = (du2 * ax - du1 * bx) / det, d = (dv1 * by - dv2 * ay) / det, e = (dv2 * ax - dv1 * bx) / det;
+    return [a, d, b, e, S2[0].x - a * X0 - b * Y0, S2[0].y - d * X0 - e * Y0];
+  }
+  function drawZg(g, map, kind) {
+    const Z = zg(kind), G = ZGS[kind]; if (!G || G.attr !== Z.attr || !G.cells.length) return;
+    const A = ZATTR[Z.attr], m = zAffine(map), k = (views[kind] && views[kind].map === map) ? views[kind].k : DPI[kind] / 25.4;
+    const col = Z.color || '#255AA8', neg = '#C0392B', alpha = Math.min(1, (+Z.alpha || 85) / 100);
+    g.save(); g.globalAlpha = alpha;
+    const base = g.getTransform();
+    g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+    if (Z.look === 'stufen') {
+      const tones = [0.16, 0.32, 0.5, 0.7, 0.9];
+      for (const [x, y, v] of G.cells) {
+        const c = zClass(G.br, A.div ? Math.abs(v) : v), hue = A.div && v < 0 ? neg : col;
+        g.fillStyle = mix('#FFFFFF', hue, tones[c]); g.fillRect(x - 50.5, y - 50.5, 101, 101);
+      }
+    } else {
+      // Halbtonraster: Punktabstand 1 mm auf dem Plan, Punktgröße nach Stufe
+      const mpmm = scaleOf(kind) / 1000, sp = Math.max(4, Math.min(100, mpmm)), n = Math.max(1, Math.round(100 / sp)), st = 100 / n;
+      const rmax = Math.min(st * 0.48, 0.3 * mpmm), RF = [0.3, 0.46, 0.62, 0.8, 1];
+      const paths = { pos: new Path2D(), neg: new Path2D() };
+      for (const [x, y, v] of G.cells) {
+        const c = zClass(G.br, A.div ? Math.abs(v) : v), r = rmax * RF[c], P2d = A.div && v < 0 ? paths.neg : paths.pos;
+        for (let ix = 0; ix < n; ix++) for (let iy = 0; iy < n; iy++) { const px = x - 50 + (ix + 0.5) * st, py = y - 50 + (iy + 0.5) * st; P2d.moveTo(px + r, py); P2d.arc(px, py, r, 0, 7); }
+      }
+      g.fillStyle = col; g.fill(paths.pos); if (A.div) { g.fillStyle = neg; g.fill(paths.neg); }
+    }
+    g.setTransform(base); g.restore();
+  }
+  function zgLegend(g, k, W, H, kind) {
+    const Z = zg(kind), G = ZGS[kind]; if (!G || !G.br.length || G.attr !== Z.attr) return;
+    const A = ZATTR[Z.attr], mm = v => v * k, pt = v => v * 0.3528 * k, f = v => v.toLocaleString('de-DE', { maximumFractionDigits: A.d });
+    const lab = G.br.map((b, i) => i === 0 ? 'bis ' + f(b) : f(G.br[i - 1]) + ' – ' + f(b)).concat(['über ' + f(G.br[3])]).map(t => (A.div ? '± ' : '') + t);
+    const title = A.n + ' (' + A.u + ')', rowH = pt(6) * 1.45;
+    g.save(); g.font = `400 ${pt(6)}px ${FONT}`; g.textBaseline = 'middle';
+    const w = Math.max(g.measureText(title).width + mm(1), ...lab.map(t => g.measureText(t).width + mm(6))) + mm(3), h = rowH * (lab.length + 1) + pt(5) * 1.5 + mm(2.5);
+    const x = mm(2), y = mm(2);
+    if (ST(kind).halo.legend) { g.fillStyle = 'rgba(255,255,255,.92)'; g.fillRect(x, y, w, h); }
+    g.fillStyle = TCOL; g.font = `700 ${pt(6)}px ${FONT}`; g.fillText(title, x + mm(1.2), y + mm(1.2) + rowH / 2);
+    g.font = `400 ${pt(6)}px ${FONT}`;
+    const RF = [0.3, 0.46, 0.62, 0.8, 1], tones = [0.16, 0.32, 0.5, 0.7, 0.9];
+    lab.forEach((t, i) => {
+      const cy = y + mm(1.2) + rowH * (i + 1.5), cx = x + mm(2.6);
+      if (Z.look === 'stufen') { g.fillStyle = mix('#FFFFFF', Z.color, tones[i]); g.fillRect(cx - mm(1.1), cy - mm(1.1), mm(2.2), mm(2.2)); }
+      else { g.fillStyle = Z.color; g.beginPath(); g.arc(cx, cy, mm(1.1) * RF[i], 0, 7); g.fill(); }
+      g.fillStyle = TCOL; g.fillText(t, x + mm(5), cy);
+    });
+    g.fillStyle = '#6E747A'; g.font = `400 ${pt(5)}px ${FONT}`; g.fillText('Zensus 2022, 100-m-Raster' + (A.div ? ' · rot = Rückgang' : ''), x + mm(1.2), y + h - mm(1.2) - pt(5) * 0.5);
+    g.restore();
+  }
+  function syncZg() {
+    if (!$('zgOn')) return;
+    if (!$('zgAttr').options.length) $('zgAttr').innerHTML = Object.entries(ZATTR).map(([id, a]) => `<option value="${id}">${a.n}</option>`).join('');
+    const Z = zg(active);
+    $('zgOn').checked = !!Z.on; $('zgAttr').value = Z.attr; $('zgLook').value = Z.look; $('zgAlpha').value = Z.alpha; $('zgAOut').textContent = Z.alpha + ' %';
+    $('zgLeg').checked = !!Z.leg; $('zgCol').style.background = Z.color; $('zgHint').textContent = Z.on ? $('zgHint').textContent : '';
+  }
+  const zgChange = (reload) => { saveS(); if (reload) { delete ZGS[active]; ensureZg(active); } paintBase(); repaint(); };
+  $('zgOn').onchange = () => { zg(active).on = $('zgOn').checked; zgChange(true); };
+  $('zgAttr').onchange = () => { zg(active).attr = $('zgAttr').value; zgChange(true); };
+  $('zgLook').onchange = () => { zg(active).look = $('zgLook').value; zgChange(false); };
+  $('zgAlpha').oninput = () => { zg(active).alpha = +$('zgAlpha').value; $('zgAOut').textContent = $('zgAlpha').value + ' %'; zgChange(false); };
+  $('zgLeg').onchange = () => { zg(active).leg = $('zgLeg').checked; zgChange(false); };
+  swatchBtn($('zgCol'), () => zg(active).color, c => { zg(active).color = c; zgChange(false); });
 
   // ---------- Elemente je Karte: Liste zeigt nur die aktive Karte, andere lassen sich übernehmen ----------
   const inK = (o, k) => k === 'mk' && o.mk == null ? o.mi !== false : !!o[k];
@@ -3916,13 +4046,13 @@ return maplibregl$1;
     document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === kind)));
     document.querySelectorAll('.stage .panel').forEach(p => { p.hidden = p.dataset.kind !== kind; });
     for (const g of groups) if (g.tabs.length) { const on = g.tabs.includes(kind); g.gh.hidden = !on; if (on) g.set(!!groupState['map']); else g.body.hidden = true; g.gh.classList.toggle('act', on); }
-    const SHARED = { mark: ['mi', 'mk'], funk: ['mi', 'mk'], hl: KINDS, poi: KINDS, note: KINDS };
+    const SHARED = { mark: ['mi', 'mk'], funk: ['mi', 'mk'], zg: ['mi', 'mk'], hl: KINDS, poi: KINDS, note: KINDS };
     for (const [name, ks] of Object.entries(SHARED)) {
       const sec = $('sec_' + name), slot = ks.includes(kind) && $('ui_' + kind).querySelector(`[data-slot=${name}]`);
       (slot || $('shared')).appendChild(sec);
     }
     $('mapInCur').checked = !!S.mapIn[kind];
-    noteMode = null; if ($('noteAdd')) setNoteMode(false); setHlPick(false); renderNotes(); renderPois(); renderHl(); isoHint();
+    noteMode = null; if ($('noteAdd')) setNoteMode(false); setHlPick(false); renderNotes(); renderPois(); renderHl(); syncZg(); isoHint();
     $('actHint').textContent = HINT[kind] + ' · Mausrad zoomt · Leertaste + Ziehen verschiebt das Blatt · Tasten 1/2/3, 0, +/−';
     $('barPreset').dataset.k = '';
     relayout(true);
@@ -4060,7 +4190,7 @@ return maplibregl$1;
   loadFonts().then(() => repaint()); if (document.fonts) document.fonts.ready.then(() => repaint());
   // Verlauf starten
   hist.stack = [stateStr()]; hist.i = 0; hist.ready = true; updUndo();
-  window.__lk = { ISO: () => ISO, views, P: () => P, S, styleFor, zoomForScale, cities: () => CITIES, mapData: () => mapData, tileItems: () => tileItems(), catOf, setTab, setZoom, vzoom, active: () => active, undo, redo, hist, DEMS, PLACES, TREES, ST, repaint };
+  window.__lk = { ISO: () => ISO, views, P: () => P, S, styleFor, zoomForScale, cities: () => CITIES, mapData: () => mapData, tileItems: () => tileItems(), catOf, setTab, setZoom, vzoom, active: () => active, undo, redo, hist, DEMS, PLACES, TREES, ST, repaint, drawBase };
 })();
 </script>
 </body>
