@@ -171,6 +171,19 @@ return maplibregl$1;
   .vlist { display: flex; flex-direction: column; gap: 5px; margin: 4px 0; }
   .vrow { display: grid; grid-template-columns: minmax(0,1fr) 24px 78px 38px; gap: 5px; align-items: center; }
   .vrow .check { font-size: 11px; } .vrow select { padding: 4px 4px; font-size: 10.5px; } .vrow input[type=range] { width: 100%; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; }
+  .seg button { padding: 6px 4px; font-size: 11px; border-radius: 6px; }
+  .seg button.on { background: var(--blau); border-color: var(--blau); color: #fff; }
+  body.kzmode .quick, body.kzmode .bar .zoom:last-child, body.kzmode .info { visibility: hidden; }
+  .kzrep { background: #fff; width: min(900px, 100%); padding: 34px 40px; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.08); align-self: flex-start; }
+  .kzrep h1 { font-size: 22px; margin: 0 0 2px; letter-spacing: .01em; } .kzrep .sub { color: var(--grau); font-size: 12px; margin-bottom: 22px; }
+  .kzrep h3 { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--blau); margin: 20px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--ink); }
+  .kzrep table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .kzrep td { padding: 5px 6px; border-bottom: 1px solid #EDEFF1; vertical-align: top; }
+  .kzrep td.v { text-align: right; font-weight: 700; white-space: nowrap; } .kzrep td.c { text-align: right; color: var(--grau); white-space: nowrap; }
+  .kzrep td.s { color: var(--grau); font-size: 10.5px; width: 22%; } .kzrep th { font-size: 10px; color: var(--grau); font-weight: 600; text-align: right; padding: 2px 6px; }
+  .kzrep th:first-child { text-align: left; } .kzrep .ext td { color: #9AA0A6; font-style: italic; }
+  .kzrep .empty { color: var(--grau); font-size: 13px; line-height: 1.6; } .kzrep .foot { margin-top: 22px; font-size: 10px; color: var(--grau); line-height: 1.5; }
   .hlchoice.take { margin-top: 6px; background: #FAFBFC; } .hlchoice.take button { font-size: 10.5px; padding: 4px 8px; }
   .hlchoice { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--linie); border-radius: 7px; background: #F4F5F7; }
   .hlchoice b { width: 100%; font-size: 10px; font-weight: 600; color: var(--grau); }
@@ -356,6 +369,20 @@ return maplibregl$1;
     <div class="group" data-tab="mk"><span>04</span>Mikrolage</div>
     <div class="mapui" id="ui_mk"></div>
 
+    <div class="group" data-tab="kz"><span>05</span>Kennzahlen</div>
+    <div class="mapui" id="ui_kz">
+      <section id="sec_kz" data-open>
+        <h2>Standortkennzahlen</h2>
+        <label class="f">Assetklasse</label>
+        <div class="seg" id="kzAsset"><button data-a="wohnen">Wohnen</button><button data-a="buero">Büro</button><button data-a="light">Light Industrial</button><button data-a="logistik">Logistik</button></div>
+        <label class="f">Radius um den Projektpunkt<select id="kzR"><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option><option value="3000">3 km</option><option value="5000">5 km</option><option value="10000">10 km</option><option value="20000">20 km</option></select></label>
+        <button id="kzGo" class="primary">Kennzahlen berechnen</button>
+        <div class="row"><button id="kzCopy">Text kopieren</button><button id="kzPng">Kachel als PNG</button></div>
+        <p class="hint" id="kzHint"></p>
+        <p class="hint">Kleinräumige Werte aus dem Zensus 2022 im 100-m-Raster – ausgewertet für alle Rasterzellen, deren Mittelpunkt im Radius liegt. Zum Vergleich: das Umland im 15-km-Radius und Deutschland. Gemeinde- und Kreiswerte (Kaufkraft, Pendler, Bauland, Bodenrichtwerte) folgen. Bestandsmieten Stand Mai 2022, keine Angebotsmieten.</p>
+      </section>
+    </div>
+
     <div class="expbar">
       <button id="expOpen" class="primary">Exportieren …</button>
     </div>
@@ -365,7 +392,7 @@ return maplibregl$1;
     <div id="diag" class="diag" hidden></div>
     <nav class="bar">
       <div class="tabs" role="tablist">
-        <button role="tab" data-tab="ov">Landkarte</button><button role="tab" data-tab="mi">Makrolage</button><button role="tab" data-tab="mk">Mikrolage</button>
+        <button role="tab" data-tab="ov">Landkarte</button><button role="tab" data-tab="mi">Makrolage</button><button role="tab" data-tab="mk">Mikrolage</button><button role="tab" data-tab="kz">Kennzahlen</button>
       </div>
       <div class="quick">
         <select id="barPreset" aria-label="Ausgabegröße der aktiven Karte"></select>
@@ -382,6 +409,7 @@ return maplibregl$1;
     <div class="stage" id="stage">
       <div class="panel" data-kind="ov"><div class="frame" id="ovFrame"><canvas class="ov" id="ovSc"></canvas><div class="map" id="ovMap"></div><div class="focus" id="ovFocus" hidden></div><canvas class="ov" id="ovCanvas"></canvas></div></div>
       <div class="panel" data-kind="mi"><div class="frame" id="miFrame"><canvas class="ov" id="miSc"></canvas><div class="map" id="miMap"></div><div class="focus" id="miFocus" hidden></div><canvas class="ov" id="miCanvas"></canvas></div></div>
+      <div class="panel kzpanel" data-kind="kz" hidden><div class="kzrep" id="kzRep"></div></div>
       <div class="panel" data-kind="mk"><div class="frame" id="mkFrame"><canvas class="ov" id="mkSc"></canvas><div class="map" id="mkMap"></div><div class="focus" id="mkFocus" hidden></div><canvas class="ov" id="mkCanvas"></canvas></div></div>
     </div>
     <div class="statusbar" id="status" aria-live="polite"></div>
@@ -2690,7 +2718,7 @@ return maplibregl$1;
   }
   $('projSel').onchange = () => {
     const p = projects.find(x => x.id === $('projSel').value); if (!p) return;
-    P = JSON.parse(JSON.stringify(p)); drawRing = []; store.set('current', P.id);
+    P = JSON.parse(JSON.stringify(p)); drawRing = []; store.set('current', P.id); if (kzOn) { syncKzUI(); renderKz(); }
     $('projName').value = P.name || ''; $('kpiOut').value = P.kpi || ''; renderNotes(); renderPois(); renderHl(); relayout(false); refreshData();
   };
   $('projName').addEventListener('input', () => { P.name = $('projName').value; repaint(); });
@@ -3297,6 +3325,175 @@ return maplibregl$1;
     $('srcTestGo').disabled = false;
   };
 
+  // ---------- 05 Kennzahlen: Zensus 2022 im 100-m-Raster, ausgewertet im Radius um den Projektpunkt ----------
+  const ZBASE = /^https?:/.test(location.protocol) && /github\.io$/.test(location.hostname)
+    ? new URL(location.pathname.includes('/entwurf/') ? '../daten/zensus/' : 'daten/zensus/', location.href).href
+    : 'https://jhaas-cmd.github.io/Lagekarten/daten/zensus/';
+  const ZC = { idx: null, de: null, tiles: {} };
+  // Lambert-Projektion ETRS89-LAEA (EPSG:3035) – das Bezugssystem der Zensus-Gitter
+  const laea = (() => { const a = 6378137, e2 = 0.00669438002290, e = Math.sqrt(e2), R = Math.PI / 180;
+    const q = p => { const s = Math.sin(p); return (1 - e2) * (s / (1 - e2 * s * s) - 1 / (2 * e) * Math.log((1 - e * s) / (1 + e * s))); };
+    const qP = q(Math.PI / 2), Rq = a * Math.sqrt(qP / 2), p0 = 52 * R, b0 = Math.asin(q(p0) / qP), D = a * (Math.cos(p0) / Math.sqrt(1 - e2 * Math.sin(p0) ** 2)) / (Rq * Math.cos(b0));
+    return (lon, lat) => { const b = Math.asin(q(lat * R) / qP), dl = (lon - 10) * R, B = Rq * Math.sqrt(2 / (1 + Math.sin(b0) * Math.sin(b) + Math.cos(b0) * Math.cos(b) * Math.cos(dl)));
+      return [4321000 + B * D * Math.cos(b) * Math.sin(dl), 3210000 + B / D * (Math.cos(b0) * Math.sin(b) - Math.sin(b0) * Math.cos(b) * Math.cos(dl))]; }; })();
+  const zjson = async f => { const r = await fetch(ZBASE + f); if (!r.ok) throw new Error(f + ' ' + r.status); return r.json(); };
+  async function zTile(key) {
+    if (!ZC.idx) ZC.idx = await zjson('index.json');
+    if (!ZC.idx[key]) return null;
+    return ZC.tiles[key] || (ZC.tiles[key] = await zjson(key + '.json'));
+  }
+  // Summen und gewichtete Mittel aller Zellen im Radius
+  async function zAgg(cx, cy, R) {
+    const A = { p: 0, q: 0, n: 0, d: 0, cells: 0, w: {}, b: [0, 0, 0, 0, 0, 0, 0, 0] };
+    const W = { r: 'd', u: 'p', o: 'p', a: 'p', h: 'n', e: 'n', v: 'd', s: 'p' };
+    for (const k in W) A.w[k] = [0, 0];
+    const keys = [];
+    for (let tx = Math.floor((cx - R) / 1e4); tx <= Math.floor((cx + R) / 1e4); tx++) for (let ty = Math.floor((cy - R) / 1e4); ty <= Math.floor((cy + R) / 1e4); ty++) keys.push([tx, ty]);
+    const tiles = await Promise.all(keys.map(([tx, ty]) => zTile(tx + '_' + ty).then(t => [tx, ty, t])));
+    const R2 = R * R;
+    for (const [tx, ty, t] of tiles) {
+      if (!t) continue;
+      const L = t.i.length, col = k => t[k];
+      for (let j = 0; j < L; j++) {
+        const i = t.i[j], x = tx * 1e4 + (i % 100) * 100 + 50 - cx, y = ty * 1e4 + Math.floor(i / 100) * 100 + 50 - cy;
+        if (x * x + y * y > R2) continue;
+        A.cells++;
+        for (const k of ['p', 'q', 'n', 'd']) { const c = col(k); if (c && c[j] > 0) A[k] += c[j]; }
+        for (const k in W) { const c = col(k), wc = col(W[k]); if (c && c[j] >= 0 && wc && wc[j] > 0) { A.w[k][0] += c[j] * wc[j]; A.w[k][1] += wc[j]; } }
+        for (let b = 0; b < 8; b++) { const c = col('b' + (b + 1)); if (c && c[j] > 0) A.b[b] += c[j]; }
+      }
+    }
+    const out = { p: A.p, q: A.q, n: A.n, d: A.d, cells: A.cells, km2: Math.PI * R2 / 1e6, b: A.b };
+    for (const k in W) out[k] = A.w[k][1] ? A.w[k][0] / A.w[k][1] : null;
+    return out;
+  }
+  const bShare = (s, from, to) => { const t = s.b.reduce((a, v) => a + v, 0); return t ? s.b.slice(from, to).reduce((a, v) => a + v, 0) / t * 100 : null; };
+  // Kennzahlen: Gruppe, Rechenregel, ob Summe (dann kein Vergleich), Assetklassen-Reihenfolge
+  const KZK = [
+    { g: 'miete', n: 'Ø Nettokaltmiete (Bestand)', u: '€/m²', d: 2, f: s => s.r == null ? null : s.r / 100, src: 'Zensus 2022' },
+    { g: 'miete', n: 'Mietentwicklung (Angebotsmieten)', ext: 'Kreisebene · folgt' },
+    { g: 'bev', n: 'Einwohner im Radius', u: '', d: 0, sum: true, f: s => s.p, src: 'Zensus 2022' },
+    { g: 'bev', n: 'Einwohnerdichte', u: 'EW/km²', d: 0, f: s => s.p / s.km2, src: 'Zensus 2022' },
+    { g: 'bev', n: 'Entwicklung 2011–2022', u: '%', d: 1, sign: true, f: s => s.q > 0 ? (s.p / s.q - 1) * 100 : null, src: 'Zensus 2011/2022' },
+    { g: 'bev', n: 'Einwohner im Umkreis 25 km', u: '', d: 0, sum: true, big: true, f: (s, x) => x.r25 ? x.r25.p : null, assets: ['buero', 'light', 'logistik'], src: 'Zensus 2022' },
+    { g: 'kk', n: 'Kaufkraft / verfügbares Einkommen je Einwohner', ext: 'Kreisebene · folgt' },
+    { g: 'pend', n: 'Ein- und Auspendler, Pendlersaldo', ext: 'Gemeindeebene · folgt' },
+    { g: 'boden', n: 'Bodenrichtwert', ext: 'BORIS-BW · folgt (Bayern kostenpflichtig)' },
+    { g: 'boden', n: 'Kaufpreise für Bauland', ext: 'Kreisebene · folgt' },
+    { g: 'hh', n: 'Ø Haushaltsgröße', u: 'Pers.', d: 2, f: s => s.h == null ? null : s.h / 100, src: 'Zensus 2022' },
+    { g: 'hh', n: 'Haushalte im Radius', u: '', d: 0, sum: true, f: s => s.n, src: 'Zensus 2022' },
+    { g: 'alter', n: 'Anteil unter 18 Jahre', u: '%', d: 1, f: s => s.u == null ? null : s.u / 10, src: 'Zensus 2022' },
+    { g: 'alter', n: 'Anteil ab 65 Jahre', u: '%', d: 1, f: s => s.o == null ? null : s.o / 10, src: 'Zensus 2022' },
+    { g: 'alter', n: 'Ø Alter', u: 'Jahre', d: 1, f: s => s.a == null ? null : s.a / 10, src: 'Zensus 2022' },
+    { g: 'bestand', n: 'Eigentümerquote', u: '%', d: 1, f: s => s.e == null ? null : s.e / 10, src: 'Zensus 2022 (Zellen mit Angabe)' },
+    { g: 'bestand', n: 'Leerstand marktaktiv', u: '%', d: 1, f: s => s.v == null ? null : s.v / 10, src: 'Zensus 2022 (nur ausgewiesene Zellen)' },
+    { g: 'bestand', n: 'Wohnfläche je Einwohner', u: 'm²', d: 1, f: s => s.s == null ? null : s.s / 10, src: 'Zensus 2022' },
+    { g: 'bestand', n: 'Gebäude vor 1949', u: '%', d: 1, f: s => bShare(s, 0, 2), src: 'Zensus 2022' },
+    { g: 'bestand', n: 'Gebäude 1949–1990', u: '%', d: 1, f: s => bShare(s, 2, 4), src: 'Zensus 2022' },
+    { g: 'bestand', n: 'Gebäude ab 2011', u: '%', d: 1, f: s => bShare(s, 6, 8), src: 'Zensus 2022' },
+    { g: 'arbeit', n: 'Sozialversicherungspflichtig Beschäftigte am Arbeitsort', ext: 'Gemeindeebene · folgt' },
+    { g: 'verkehr', n: 'Verkehrsstärken in der Umgebung', ext: 'auf Knopfdruck · folgt' },
+    { g: 'err', n: 'Erreichbarkeit', txt: () => P.kpi || '', src: 'Lagekennzahlen (01 Projekt)' }
+  ];
+  const KZG = { miete: 'Mieten', bev: 'Bevölkerung', kk: 'Kaufkraft', pend: 'Pendler', boden: 'Boden', hh: 'Haushalte', alter: 'Altersstruktur', bestand: 'Wohnungs- und Gebäudebestand', arbeit: 'Arbeitsmarkt', verkehr: 'Verkehr', err: 'Erreichbarkeit' };
+  const KZORDER = {
+    wohnen: ['miete', 'bev', 'kk', 'pend', 'boden', 'hh', 'alter', 'bestand', 'err'],
+    buero: ['bev', 'pend', 'arbeit', 'err', 'kk', 'miete', 'boden', 'alter'],
+    light: ['boden', 'err', 'verkehr', 'bev', 'pend', 'arbeit', 'kk'],
+    logistik: ['err', 'verkehr', 'boden', 'bev', 'arbeit', 'pend']
+  };
+  const ANAME = { wohnen: 'Wohnen', buero: 'Büro', light: 'Light Industrial', logistik: 'Logistik' };
+  const kzSet = () => { S.kz = S.kz || { asset: 'wohnen', r: 1000 }; return S.kz; };
+  function syncKzUI() {
+    const K = kzSet();
+    $('kzAsset').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === K.asset));
+    $('kzR').value = String(K.r);
+    $('kzHint').textContent = P.kz ? 'Berechnet am ' + new Date(P.kz.at).toLocaleDateString('de-DE') + ' für ' + (P.kz.r >= 1000 ? P.kz.r / 1000 + ' km' : P.kz.r + ' m') + '. Nach Änderungen neu berechnen.' : 'Noch nicht berechnet.';
+  }
+  $('kzAsset').querySelectorAll('button').forEach(b => b.onclick = () => { kzSet().asset = b.dataset.a; if (b.dataset.a === 'logistik' && kzSet().r < 5000) kzSet().r = 10000; saveS(); syncKzUI(); renderKz(); });
+  $('kzR').onchange = () => { kzSet().r = +$('kzR').value; saveS(); syncKzUI(); };
+  $('kzGo').onclick = async () => {
+    const K = kzSet(), [cx, cy] = laea(P.lon, P.lat);
+    $('kzGo').disabled = true; $('kzHint').textContent = 'Zensusdaten werden geladen …';
+    try {
+      const big = K.asset !== 'wohnen';
+      const [r, u, r25] = await Promise.all([zAgg(cx, cy, K.r), K.r < 15000 ? zAgg(cx, cy, 15000) : null, big ? zAgg(cx, cy, 25000) : null]);
+      if (!ZC.de) ZC.de = await zjson('de.json');
+      P.kz = { r: K.r, asset: K.asset, at: Date.now(), res: r, umland: u, r25 }; snap();
+      if (!r.cells) $('kzHint').textContent = 'Im Radius liegen keine bewohnten Rasterzellen (z. B. Gewerbegebiet) – Radius vergrößern.';
+      else syncKzUI();
+      renderKz();
+    } catch (e) { $('kzHint').textContent = 'Zensusdaten gerade nicht erreichbar (' + e.message + ').'; }
+    $('kzGo').disabled = false;
+  };
+  const fmtN = (v, d, u, sign) => v == null || !isFinite(v) ? '–' : (sign && v > 0 ? '+' : '') + v.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d }) + (u ? ' ' + u : '');
+  const deS = () => ZC.de ? Object.assign({}, ZC.de, { km2: 357600, b: ZC.de.b }) : null;
+  function kzRows() {
+    const Z = P.kz; if (!Z) return [];
+    const order = KZORDER[kzSet().asset] || KZORDER.wohnen, out = [];
+    for (const g of order) for (const k of KZK.filter(k => k.g === g && (!k.assets || k.assets.includes(kzSet().asset)))) {
+      if (k.txt) { const t = k.txt(); out.push({ g, k, txt: t }); continue; }
+      if (k.ext) { out.push({ g, k, ext: true }); continue; }
+      const v = k.f(Z.res, Z), um = !k.sum && Z.umland ? k.f(Z.umland, Z) : null, de = !k.sum && deS() ? k.f(deS(), Z) : null;
+      out.push({ g, k, v, um, de });
+    }
+    return out;
+  }
+  function renderKz() {
+    const box = $('kzRep'); if (!box) return;
+    const Z = P.kz, K = kzSet();
+    const head = `<h1>${esc((P.name || 'Projekt').replace(/\n/g, ' '))}</h1><div class="sub">Standortkennzahlen · ${ANAME[K.asset]}${Z ? ' · Radius ' + (Z.r >= 1000 ? Z.r / 1000 + ' km' : Z.r + ' m') + ' um den Projektpunkt' : ''}</div>`;
+    if (!Z) { box.innerHTML = head + '<p class="empty">Links Assetklasse und Radius wählen, dann „Kennzahlen berechnen“. Die Auswertung nutzt die Zensus-Rasterdaten 2022 rund um den Projektpunkt und vergleicht sie mit dem Umland und Deutschland.</p>'; return; }
+    let html = head, cur = '';
+    const rows = kzRows();
+    for (const r of rows) {
+      if (r.g !== cur) { if (cur) html += '</table>'; cur = r.g; const num = rows.some(x => x.g === cur && !x.ext && x.txt == null);
+        html += `<h3>${KZG[r.g]}</h3><table>` + (num ? '<tr><th></th><th>im Radius</th><th>Umland 15 km</th><th>Deutschland</th><th></th></tr>' : ''); }
+      if (r.txt != null) html += `<tr><td colspan="4" style="white-space:pre-line">${r.txt ? esc(r.txt) : '<span style="color:#9AA0A6">unter 01 Projekt → Lagekennzahlen berechnen</span>'}</td><td class="s">${r.k.src}</td></tr>`;
+      else if (r.ext) html += `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">${r.k.ext}</td><td class="s"></td></tr>`;
+      else html += `<tr><td>${r.k.n}</td><td class="v">${fmtN(r.v, r.k.d, r.k.u, r.k.sign)}</td><td class="c">${r.k.sum ? '' : fmtN(r.um, r.k.d, r.k.u, r.k.sign)}</td><td class="c">${r.k.sum ? '' : fmtN(r.de, r.k.d, r.k.u, r.k.sign)}</td><td class="s">${r.k.src || ''}</td></tr>`;
+    }
+    html += '</table><div class="foot">Quelle: Statistische Ämter des Bundes und der Länder, Zensus 2022 und 2011, Ergebnisse im 100-m-Gitter (Datenlizenz Deutschland – Namensnennung 2.0). Mittelwerte gewichtet (Miete nach Wohnungen, Altersangaben nach Einwohnern, Haushaltsgröße und Eigentümerquote nach Haushalten). Einzelne Rasterzellen sind aus Datenschutzgründen ohne Wert. Bestandsmieten, Stichtag 15.05.2022.</div>';
+    box.innerHTML = html;
+  }
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  $('kzCopy').onclick = () => {
+    const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst berechnen.'; return; }
+    const rad = Z.r >= 1000 ? Z.r / 1000 + ' km' : Z.r + ' m';
+    const lines = [`${(P.name || 'Projekt').replace(/\n/g, ' ')} – Standortkennzahlen ${ANAME[kzSet().asset]} (Radius ${rad})`];
+    for (const r of kzRows()) {
+      if (r.ext || r.txt != null) continue;
+      lines.push(`${r.k.n}: ${fmtN(r.v, r.k.d, r.k.u, r.k.sign)}` + (r.k.sum ? '' : ` (Umland 15 km ${fmtN(r.um, r.k.d, r.k.u, r.k.sign)} · DE ${fmtN(r.de, r.k.d, r.k.u, r.k.sign)})`));
+    }
+    lines.push('Quelle: Zensus 2022/2011, 100-m-Gitter');
+    navigator.clipboard.writeText(lines.join('\n')).then(() => status('Kennzahlen kopiert.'), () => status('Kopieren nicht möglich.'));
+  };
+  // Kennzahlen-Kachel für die Folie: sechs Werte groß, GIEAG-Blau
+  $('kzPng').onclick = async () => {
+    const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst berechnen.'; return; }
+    await loadFonts();
+    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.v != null).slice(0, 6);
+    const W = 1800, H = 1000, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d'), F = famOf(ST(active).font, 400), FB = famOf(ST(active).font, 700);
+    g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#0A0A0A'; g.font = `700 52px ${FB}`; g.textBaseline = 'alphabetic'; g.fillText((P.name || 'Projekt').replace(/\n/g, ' ').toUpperCase(), 90, 130);
+    g.fillStyle = '#5A5F64'; g.font = `400 30px ${F}`; g.fillText(`Standortkennzahlen ${ANAME[kzSet().asset]} · Radius ${Z.r >= 1000 ? Z.r / 1000 + ' km' : Z.r + ' m'}`, 90, 180);
+    g.fillStyle = S.accent || '#255AA8'; g.fillRect(90, 210, 120, 6);
+    rows.forEach((r, i) => {
+      const x = 90 + (i % 3) * 560, y = 330 + Math.floor(i / 3) * 290;
+      g.fillStyle = S.accent || '#255AA8'; g.font = `700 84px ${FB}`; g.fillText(fmtN(r.v, r.k.d, '', r.k.sign), x, y + 70);
+      const vw = g.measureText(fmtN(r.v, r.k.d, '', r.k.sign)).width;
+      g.fillStyle = '#0A0A0A'; g.font = `400 34px ${F}`; if (r.k.u) g.fillText(r.k.u, x + vw + 12, y + 70);
+      g.font = `400 28px ${F}`; g.fillStyle = '#1E1E1E'; g.fillText(r.k.n, x, y + 120);
+      if (!r.k.sum && r.um != null) { g.fillStyle = '#5A5F64'; g.font = `400 24px ${F}`; g.fillText(`Umland ${fmtN(r.um, r.k.d, r.k.u, r.k.sign)} · DE ${fmtN(r.de, r.k.d, r.k.u, r.k.sign)}`, x, y + 160); }
+    });
+    g.fillStyle = '#8A9096'; g.font = `400 20px ${F}`; g.fillText('Quelle: Zensus 2022/2011, 100-m-Gitter, Datenlizenz Deutschland 2.0 · eigene Auswertung', 90, H - 60);
+    const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `${(P.name || 'Projekt').replace(/\s+/g, '_').replace(/[^\wÄÖÜäöüß_-]/g, '')}_Kennzahlen_${kzSet().asset}_${Z.r}m.png`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  };
+
   // ---------- Elemente je Karte: Liste zeigt nur die aktive Karte, andere lassen sich übernehmen ----------
   const inK = (o, k) => k === 'mk' && o.mk == null ? o.mi !== false : !!o[k];
   const hidK = (o, k) => !!(o.hid && o.hid[k]);
@@ -3704,7 +3901,17 @@ return maplibregl$1;
     return { gh, body, set, tabs: (gh.dataset.tab || '').split(' ').filter(Boolean) };
   });
   const HINT = { ov: 'Ziehen verschiebt den Ausschnitt · Klick setzt den Projektpunkt', mi: 'Ziehen verschiebt den Ausschnitt', mk: 'Ziehen verschiebt den Ausschnitt' };
+  // Reiter „Kennzahlen“: eigene Bühne, die zuletzt aktive Karte bleibt im Hintergrund aktiv
+  let kzOn = false;
+  function showKz() {
+    kzOn = true; document.body.classList.add('kzmode'); store.set('tab', 'kz');
+    document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === 'kz')));
+    document.querySelectorAll('.stage .panel').forEach(p => { p.hidden = p.dataset.kind !== 'kz'; });
+    for (const g of groups) if (g.tabs.length) { const on = g.tabs.includes('kz'); g.gh.hidden = !on; if (on) g.set(!!groupState['map']); else g.body.hidden = true; g.gh.classList.toggle('act', on); }
+    syncKzUI(); renderKz();
+  }
   function setTab(kind) {
+    kzOn = false; document.body.classList.remove('kzmode');
     active = kind; store.set('tab', kind);
     document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === kind)));
     document.querySelectorAll('.stage .panel').forEach(p => { p.hidden = p.dataset.kind !== kind; });
@@ -3721,7 +3928,7 @@ return maplibregl$1;
     relayout(true);
     if (kind !== 'ov') { geoDirty = true; setTimeout(() => views[kind].map.once('idle', () => loadMapping()), 50); }
   }
-  document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => { if (b.dataset.tab !== active) setTab(b.dataset.tab); });
+  document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => { if (b.dataset.tab === 'kz') { if (!kzOn) showKz(); } else if (b.dataset.tab !== active || kzOn) setTab(b.dataset.tab); });
 
   // ---------- Ansichts-Zoom zur Bearbeitung: Mausrad, − / 100 % / +, Leertaste + Ziehen ----------
   const ZSTEPS = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8];
@@ -3796,7 +4003,8 @@ return maplibregl$1;
     if (e.key === 'Escape' && !$('expDlg').hidden) { $('expDlg').hidden = true; return; }
     if (e.key === 'Escape' && hlPick) { setHlPick(false); return; }
     if (!$('expDlg').hidden) return;
-    if (['1', '2', '3'].includes(e.key)) { const kk = KINDS[+e.key - 1]; if (kk !== active) setTab(kk); }
+    if (['1', '2', '3'].includes(e.key)) { const kk = KINDS[+e.key - 1]; if (kk !== active || kzOn) setTab(kk); }
+    else if (e.key === '4') { if (!kzOn) showKz(); }
     else if (e.key === '0') setZoom(0);
     else if (e.key === '+' || e.key === '=') setZoom(1);
     else if (e.key === '-') setZoom(-1);
@@ -3816,7 +4024,8 @@ return maplibregl$1;
     });
     rz.addEventListener('dblclick', () => { store.set('sidebarW', setW(320)); relayout(); });
   }
-  setTab(active);
+  const wasKz = store.get('tab') === 'kz';
+  setTab(active); if (wasKz) showKz();
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => relayout(), 200); });
   loadCities().then(src => { if (src === 'osm') status('Städteliste aktualisiert: ' + CITIES.length + ' Städte aus OpenStreetMap.'); repaint(); })
     .catch(() => { status('OSM-Städteabfrage gerade nicht erreichbar – es wird die eingebaute Städteliste verwendet (' + CITIES.length + ' Städte).'); repaint(); });
@@ -3835,7 +4044,7 @@ return maplibregl$1;
         h.appendChild(ib);
       }
       const set = c => { sec.classList.toggle('closed', c); h.setAttribute('aria-expanded', String(!c)); };
-      set(closed[id] !== false);
+      set(closed[id] !== false && !(closed[id] == null && sec.dataset.open != null));
       const tog = () => {
         const c = !sec.classList.contains('closed');
         if (!c) {                                   // öffnen: die anderen Abschnitte desselben Bereichs schließen
