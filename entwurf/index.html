@@ -162,6 +162,12 @@ return maplibregl$1;
   .pdet { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--linie); margin-bottom: 4px; }
   .pdet .row label.f { font-size: 10px; }
   .pdet input, .pdet select { padding: 5px 6px; }
+  .srctest { display: flex; flex-direction: column; gap: 6px; }
+  .srctest .srow { display: grid; grid-template-columns: 64px 1fr; gap: 8px; align-items: center; padding: 6px; border: 1px solid var(--linie); border-radius: 7px; }
+  .srctest .srow img, .srctest .srow .ph { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; background: #EEF0F2; }
+  .srctest .srow b { display: block; font-size: 11px; }
+  .srctest .srow small { display: block; font-size: 10px; color: var(--grau); line-height: 1.35; }
+  .srctest .ok { color: #2E7D32; font-weight: 700; } .srctest .no { color: #C62828; font-weight: 700; } .srctest .wait { color: var(--grau); }
   .hlchoice { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--linie); border-radius: 7px; background: #F4F5F7; }
   .hlchoice b { width: 100%; font-size: 10px; font-weight: 600; color: var(--grau); }
   .hlchoice button { width: auto; padding: 5px 10px; border-radius: 6px; }
@@ -311,6 +317,13 @@ return maplibregl$1;
       <textarea id="kpiOut" rows="6" readonly placeholder="Bahnhof, Hauptbahnhof, Autobahn, Flughafen und Zentrum – als Text für Steckbrief und Folie"></textarea>
       <button id="kpiCopy">Kopieren</button>
       <p class="hint" id="kpiHint">Ziele aus OpenStreetMap, Zeiten über das Straßennetz. Wird mit dem Projekt gespeichert.</p>
+    </section>
+
+    <section id="sec_srcTest">
+      <h2>Luftbild &amp; Satellit · Test</h2>
+      <button id="srcTestGo">Datenquellen am Projektort prüfen</button>
+      <div id="srcTestOut" class="srctest"></div>
+      <p class="hint">Prüft, welche freien Luftbild- und Satellitendienste in diesem Browser laden und sich in die Karte übernehmen lassen. Gezeigt wird je ein Ausschnitt von ca. 400 × 400 m um den Projektpunkt. Grün = nutzbar, Rot = gesperrt oder kein Bild.</p>
     </section>
 
     <div class="sub">Stil</div>
@@ -2963,6 +2976,69 @@ return maplibregl$1;
       box.appendChild(r);
     }
   }
+  // ---------- Test: freie Luftbild- und Satellitendienste (lädt der Dienst? lässt sich das Bild in den Export übernehmen?) ----------
+  const SRC_TESTS = [
+    { name: 'Bayern · Luftbild DOP20 (Farbe)', wms: 'https://geoservices.bayern.de/od/wms/dop/v1/dop20', pick: /rgb|farb|dop20c|^by_dop20$/i, area: 'Bayern', lic: 'CC BY 4.0 · © Bayerische Vermessungsverwaltung' },
+    { name: 'Bayern · Luftbild DOP20 (Infrarot, für echtes Grün)', wms: 'https://geoservices.bayern.de/od/wms/dop/v1/dop20', pick: /cir|infrarot/i, area: 'Bayern', lic: 'CC BY 4.0 · © Bayerische Vermessungsverwaltung' },
+    { name: 'Baden-Württemberg · Luftbild DOP20', wms: 'https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DOP_20_C', pick: /dop|rgb|farb/i, area: 'BW', lic: 'Datenlizenz Deutschland · © LGL BW' },
+    { name: 'Baden-Württemberg · Luftbild DOP20 (INSPIRE)', wms: 'https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_INSP_BW_Orthofoto_DOP20', pick: /oi\.|ortho|dop/i, area: 'BW', lic: 'Datenlizenz Deutschland · © LGL BW' },
+    { name: 'Europa · ESA WorldCover (Landbedeckung 10 m)', wms: 'https://services.terrascope.be/wms/v2', layer: 'WORLDCOVER_2021_MAP', area: 'überall', lic: 'CC BY 4.0 · © ESA WorldCover' },
+    { name: 'Welt · Sentinel-2 cloudless 2016 (Satellit 10 m)', xyz: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg', area: 'überall', lic: 'CC BY 4.0 · EOX (Copernicus-Daten 2016)' }
+  ];
+  const capsCache = {};
+  async function wmsCaps(url) {
+    if (capsCache[url]) return capsCache[url];
+    const r = await fetch(url + '?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0'); if (!r.ok) throw new Error('Dienst antwortet mit ' + r.status);
+    const x = new DOMParser().parseFromString(await r.text(), 'text/xml');
+    const layers = [...x.getElementsByTagName('Layer')].map(l => {
+      const kid = n => [...l.children].find(c => c.localName === n);
+      return { name: kid('Name') && kid('Name').textContent.trim(), title: kid('Title') ? kid('Title').textContent.trim() : '' };
+    }).filter(l => l.name);
+    const crs = [...x.getElementsByTagName('CRS')].map(c => c.textContent.trim());
+    return capsCache[url] = { layers, c3857: crs.includes('EPSG:3857') };
+  }
+  // Bild laden wie später in der Karte: mit Freigabe für den Export (sonst bleibt der Export leer)
+  const loadImg = src => new Promise((ok, no) => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    const t = setTimeout(() => no(new Error('keine Antwort nach 20 s')), 20000);
+    im.onload = () => { clearTimeout(t); try { const c = document.createElement('canvas'); c.width = c.height = 8; const g = c.getContext('2d'); g.drawImage(im, 0, 0, 8, 8); const d = g.getImageData(0, 0, 8, 8).data; let v = 0; for (let i = 0; i < d.length; i += 4) v += d[i] + d[i + 1] + d[i + 2]; ok({ im, empty: v === 0 || v === 8 * 8 * 3 * 255 }); } catch (e) { no(new Error('Bild lädt, darf aber nicht in den Export übernommen werden')); } };
+    im.onerror = () => { clearTimeout(t); no(new Error('Bild lädt nicht (gesperrt oder Fehler)')); };
+    im.src = src;
+  });
+  async function testSource(t, lon, lat) {
+    const R = 6378137, x = lon * Math.PI / 180 * R, y = Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) * R, h = 200 / Math.cos(lat * Math.PI / 180);
+    if (t.xyz) {
+      const z = 15, n = 2 ** z, tx = Math.floor((lon + 180) / 360 * n), ty = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n);
+      return { src: t.xyz.replace('{z}', z).replace('{x}', tx).replace('{y}', ty), layer: 'Kachel z' + z };
+    }
+    const caps = await wmsCaps(t.wms);
+    const L = t.layer ? caps.layers.find(l => l.name === t.layer) || { name: t.layer, title: '' } : caps.layers.find(l => t.pick.test(l.name) || t.pick.test(l.title));
+    if (!L) throw new Error('passende Ebene nicht gefunden (' + caps.layers.slice(0, 4).map(l => l.name).join(', ') + ' …)');
+    const bb = caps.c3857 ? [x - h, y - h, x + h, y + h] : [lat - 0.0018, lon - 0.0027, lat + 0.0018, lon + 0.0027];
+    const q = `SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${encodeURIComponent(L.name)}&STYLES=&CRS=${caps.c3857 ? 'EPSG:3857' : 'EPSG:4326'}&BBOX=${bb.join(',')}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=FALSE`;
+    return { src: t.wms + '?' + q, layer: L.title || L.name };
+  }
+  $('srcTestGo').onclick = async () => {
+    const box = $('srcTestOut'); box.innerHTML = ''; $('srcTestGo').disabled = true;
+    const rows = SRC_TESTS.map(t => {
+      const r = document.createElement('div'); r.className = 'srow';
+      r.innerHTML = `<div class="ph"></div><div><b>${t.name}</b><small class="wait">wird geprüft …</small><small>${t.area} · ${t.lic}</small></div>`;
+      box.appendChild(r); return r;
+    });
+    await Promise.all(SRC_TESTS.map(async (t, i) => {
+      const r = rows[i], msg = r.querySelector('small');
+      try {
+        const q = await testSource(t, P.lon, P.lat), res = await loadImg(q.src);
+        r.firstElementChild.replaceWith(res.im);
+        msg.className = res.empty ? 'no' : 'ok';
+        msg.textContent = res.empty ? '✗ lädt, aber an dieser Stelle leer (außerhalb des Gebiets?)' : '✓ nutzbar · ' + q.layer;
+      } catch (e) {
+        msg.className = 'no'; msg.textContent = '✗ ' + (e.message === 'Failed to fetch' ? 'Dienst nicht erreichbar oder gesperrt' : e.message);
+      }
+    }));
+    $('srcTestGo').disabled = false;
+  };
+
   // ---------- Hervorheben ----------
   const HL_HINT = 'Element anklicken oder eine Bahnlinie nach Namen laden.';
   const hlMsg = t => { $('hlHint').textContent = t || HL_HINT; };

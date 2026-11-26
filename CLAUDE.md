@@ -55,6 +55,7 @@ Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), fu
   `syncAllUI()` setzt danach alle Bedienelemente neu. `snap` speichert das Projekt zugleich automatisch (`autosave`).
 - Export-Dialog (`#expDlg`): Karten wählen, dpi, transparent, Dateinamen-Vorschau; PDF/SVG vorgesehen, noch nicht gebaut.
 - Reiterleiste: Format/Maßstab der aktiven Karte (`syncBar`), Rückgängig/Wiederholen, Zoom; Tasten 1/2/3, 0, +/−, Strg+Z/Y.
+- Projekt-Sektion „Luftbild & Satellit · Test“ (`SRC_TESTS`, `testSource`): prüft im Browser Bayern DOP20 (RGB/CIR), BW DOP20, ESA WorldCover, Sentinel-2 cloudless 2016 auf Erreichbarkeit und Export-Freigabe (CORS). Vorstufe für eine Ebene „Luftbild“ und „Grün aus Infrarot“.
 - Projekt-Sektion: „Sichern (Export)“ / „Einlesen (Import)“ – alle Projekte, Presets, Einstellungen als JSON
 - Letztes `<script>`: die eigentliche App-Logik (ca. 1.700 Zeilen)
 
