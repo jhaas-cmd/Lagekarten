@@ -1,4 +1,4 @@
-# GIEAG Lagekarten – Projektnotiz für Claude Code
+# ATLAS (vormals GIEAG Lagekarten) – Projektnotiz für Claude Code
 
 ## Was das ist
 Ein eigenes Browser-Tool von Julius (Projektentwickler/Architekt, GIEAG München) zum Erzeugen von
@@ -117,3 +117,13 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
   Stadt = Gemeindegrenze aus Overpass (`cityArea`: admin_level 8, sonst 6; gerade/ungerade-Regel je 100-m-Rasterzeile), Auswertung `zSum(bb, test, km2)` (allgemeine Form von `zAgg`), Ergebnis `P.kz.city = {name, kind, s, at}` bzw. `{err}`; `loadCity`.
   Bewertung: `KZPOL` (Richtung und Gewicht je Assetklasse), `devOf`, `evCell`, Lageindex `kzScore` (Stadt = 100; Regionalatlaswerte gegen Land), Kernwerte `KZKEY`. Nicht verfügbare Kennzahlen eingeklappt (`S.kz.showExt`).
   Radius in Makro-/Mikrolage per `S.kz.showR` (in `drawOverlay`, auch im Export).
+
+## ATLAS (Nov. 2026)
+- Name ATLAS, Untertitel „axperon site information“, Globus-Logo (SVG inline in `.brand`, Farbe #14284B), Schrift Jost (Google Fonts). Backup-Kennung `app: 'gieag-lagekarten'` bleibt (Kompatibilität).
+- Zentrieren-Knopf `#centerBtn` nur Fadenkreuz; `.zoom button` einheitlich 34 px hoch.
+- Ladezeiten: `overpassQ` = Zwischenspeicher (20 min) + Zusammenlegen gleicher Anfragen + `overpassRace` (Server gestaffelt parallel, 2,5 s Versatz, schnellster zuerst, `ovBest`);
+  `relayout` setzt den Stil nur neu, wenn sich `JSON.stringify(styleFor(...))` geändert hat (`v.sig`); Preconnect zu Kacheln/Overpass/Valhalla.
+- `computeKpi`: Flughäfen nur aus Liste `AIRPORTS` (Verkehrsflughäfen, Drehkreuze markiert → Ziel `fhx`), Messen aus `MESSEN`; strukturiert in `P.kpiList` ({key,label,km,min,mode,luft}), Ort in `P.kpiAt`.
+- Infrastruktur im Umgriff (`INFRA`, `loadInfra`, Ergebnis `P.kz.infra.items[id] = {n, d, nm}`): Lebensmittelmärkte, Einzelhandel gesamt (nur Anzahl), Ärzte, Apotheken, Kitas, Schulen, U-/Stadtbahn (nur städtisch, `urban`), S-Bahn/Bahnhalte. Eine Overpass-Abfrage mit `out count` als Trenner, zweite Abfrage im weiten Umkreis für fehlende.
+- Kennzahlen-Gruppen `infra` und `anb` (Verkehrsanbindung aus `P.kpiList`), Bewertung nach Entfernung (`distEv`, Schwellen in `INFRA`/`ANB`, Gewichte je Assetklasse, ÖPNV über `ADW`), fließt in `kzScore`.
+- Dossier: Kopf mit Logo (`.dhead`), Kartenausschnitt Mikrolage mit Radius (`mapShot`, `SHOT`, `shotPlan`: Maßstab so, dass der Radius passt), „Dossier drucken / als PDF“ (`#kzPrint`, `#printArea`, Druck-CSS A4).
