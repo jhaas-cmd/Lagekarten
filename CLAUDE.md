@@ -21,17 +21,20 @@ Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), fu
 - Zeile ~8–10: MapLibre-GL-CSS (Version 4.7.1, eingebettet)
 - Zeile ~11–72: MapLibre GL JS 4.7.1, minifiziert eingebettet – **nicht anfassen**
 - danach: eigenes CSS der App
-- `<body>`: Seitenleiste (`<aside>`, feste Breite 320 px) in einklappbaren Gruppen; rechts Reiterleiste + Bühne mit je einer Karte
-  1. Projekt: Projekte, Sichern/Einlesen, Ort finden, Markierung, Lagekennzahlen, Stilvorlagen
-  2. Landkarte (Kürzel `ov`): 1:500.000–1:10 Mio. in 500.000er-Schritten, Städte, Siedlungsflächen, Autobahnen, Fahrzeit-Radien
-  3. Makrolage (Kürzel `mi`, früher „Lageplan“): 1:25.000–1:100.000 in 25.000er-Schritten, Bebauung Fläche/Gebäude
-  4. Mikrolage (Kürzel `mk`, neu): 1:5.000–1:25.000 in 5.000er-Schritten, immer Einzelgebäude (Schwarzplan)
-  5. Umfeld: Mapping und Erreichbarkeit zu Fuß/Rad, je Karte (Makro/Mikro) ein- und ausschaltbar (`S.mapIn`, `S.walkIn`)
-  6. Gestaltung: eigene POIs, Projektpunkt, Beschriftungen, Geländeschattierung, gemeinsame Gestaltung
-- Reiter (`setTab`): nur die aktive Karte ist sichtbar und wird aufgebaut (`relayout` arbeitet nur auf `active`);
-  Gruppen mit `data-tab` klappen passend zum Reiter auf/zu.
-- Ansichts-Zoom (`vzoom`, `setZoom`): Mausrad/−/100 %/+ vergrößert das Blatt zur Bearbeitung, Maßstab bleibt fix;
-  Leertaste + Ziehen verschiebt das Blatt in der Bühne.
+- `<body>`: Seitenleiste (`<aside>`, feste Breite 320 px); rechts Reiterleiste (Registerlaschen) + Bühne mit je einer Karte
+  - 01 Projekt: *Übersicht* (Projekt verwalten, Ort finden, Lagekennzahlen) · *Stil* (Stilvorlagen, Gestaltung für alle Karten)
+  - 02 Landkarte (`ov`), 03 Makrolage (`mi`), 04 Mikrolage (`mk`): je Karte aus der Vorlage `mapUI(kind)` erzeugt,
+    gegliedert in *Übersicht* (Ausgabegröße, Maßstab, Markierung, Projektpunkt/-titel) · *Stil* (Gestaltung übernehmen,
+    Schrift, Städte, Straßen/Bahn/Grenzen, Gewässer, Topographie, Landschaft) · *Mapping* (Fahrzeiten, Funktionen, POIs, freie Texte)
+  - Nur die Gruppe der aktiven Karte ist sichtbar. Gemeinsame Abschnitte (`#sec_mark`, `#sec_funk`, `#sec_poi`, `#sec_note`)
+    liegen in `#shared` und werden von `setTab` in die Platzhalter (`.slot[data-slot]`) der aktiven Karte gehängt.
+  - Maßstäbe: Landkarte 1:500.000–1:10 Mio. (500.000er), Makrolage 1:25.000–1:100.000 (25.000er), Mikrolage 1:5.000–1:25.000 (5.000er)
+- Einstellungen je Karte: `S.st[kind]` (Stil; wirksam über `ST(kind)`, das „Gestaltung übernehmen“ auflöst), `S.ppk[kind]` (Projektpunkt),
+  `S.zone[kind]` (Fahrzeiten: mode drive/bike/walk), `S.mapIn[kind]` (Nutzungsmapping). Alte Schlüssel (S.walk, S.drive, S.hill …)
+  dienen nur noch der einmaligen Übernahme.
+- Ansichts-Zoom (`vzoom`): Mausrad vergrößert sofort per CSS (`previewZoom`), scharf neu gezeichnet nach 260 ms Ruhe (`commitZoom`);
+  Knöpfe −/100 %/+ (`setZoom`); Leertaste + Ziehen verschiebt das Blatt. Maßstab bleibt fix.
+- `relayout` arbeitet nur auf der aktiven Karte und setzt `v.relayouting`, damit Größenänderungen den gespeicherten Ausschnitt nicht überschreiben.
 - Projekt-Sektion: „Sichern (Export)“ / „Einlesen (Import)“ – alle Projekte, Stilvorlagen, Einstellungen als JSON
 - Letztes `<script>`: die eigentliche App-Logik (ca. 1.700 Zeilen)
 
