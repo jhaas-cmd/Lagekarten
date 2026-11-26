@@ -29,7 +29,7 @@ Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), fu
     *Stil* (Preset + kompakte Ebenenliste `LAYERS` + Attribut-Board `.inspector` mit `boardOf()`: je Ebene immer Farbe/Deckkraft · Strich · Darstellung · Beschriftung;
     gegliedert nach `GRP`: Kartendarstellung – Schrift, Fokus, Nordpfeil (Typen kreis/pfeil/nadel/kompass), Maßstabsleiste, Raster, Grenzen ·
     Verkehr – Autobahnen, Straßen (Darstellung Linie/Fläche/Kontur/beides, Straßennamen mit eigener Schrift), Bahn ·
-    Stadt und Landschaft – Orte, Siedlung, Gebäude (Schatten), Gewässer (Flussnamen), Wald, Wiesen & Felder · Topographie – Schummerung, Höhenlinien, Höhenstufen)
+    Stadt und Landschaft – Orte, Siedlung, Gebäude (Schatten), Gewässer (Flussnamen), Wald, Wiesen & Felder, Grün aus Luftbild, Luftbild · Topographie – Schummerung, Höhenlinien, Höhenstufen)
     · *Mapping* (Fahrzeiten, Funktionen, Hervorheben, POIs, freie Texte).
     Hervorheben (`#sec_hl`, `P.hl`, `drawHl`, `pickHl`, `loadLine`): Klick wählt Straße (ganze Straße gleichen Namens, zusammenhängend, per Overpass),
     Gleis (Auswahl der dort fahrenden Linien → Linienverlauf aus Route-Relationen) oder Gebäude (Kachelgeometrie); Bahnlinie auch per Name (z. B. S7) im Ausschnitt.
@@ -55,6 +55,9 @@ Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), fu
   `syncAllUI()` setzt danach alle Bedienelemente neu. `snap` speichert das Projekt zugleich automatisch (`autosave`).
 - Export-Dialog (`#expDlg`): Karten wählen, dpi, transparent, Dateinamen-Vorschau; PDF/SVG vorgesehen, noch nicht gebaut.
 - Reiterleiste: Format/Maßstab der aktiven Karte (`syncBar`), Rückgängig/Wiederholen, Zoom; Tasten 1/2/3, 0, +/−, Strg+Z/Y.
+- Luftbild (`st.photo`, `photoLayers` in `styleFor`): Rasterebene unter allem; Quelle auto = amtliches DOP20 des Bundeslands (`DOP.BY`/`DOP.BW`, WMS mit {bbox-epsg-3857}),
+  sonst Sentinel-2 cloudless 2016 (`SAT`); Bundesland per Nominatim-Reverse in `P.region`/`P.regionAt`; Ebenennamen aus GetCapabilities in `store 'photoL'`.
+  Grün aus Luftbild (`st.green`, `ensureGreen`, `greenMask`, `drawGreen` in `drawBase`): Vegetationsindex aus Bayern-CIR, Maske unter der Karte; Export lädt Maske in Druckauflösung (`GREEN_EXP`). Quellenvermerk über `photoLic`.
 - Projekt-Sektion „Luftbild & Satellit · Test“ (`SRC_TESTS`, `testSource`): prüft im Browser Bayern DOP20 (RGB/CIR), BW DOP20, ESA WorldCover, Sentinel-2 cloudless 2016 auf Erreichbarkeit und Export-Freigabe (CORS). Vorstufe für eine Ebene „Luftbild“ und „Grün aus Infrarot“.
 - Projekt-Sektion: „Sichern (Export)“ / „Einlesen (Import)“ – alle Projekte, Presets, Einstellungen als JSON
 - Letztes `<script>`: die eigentliche App-Logik (ca. 1.700 Zeilen)
