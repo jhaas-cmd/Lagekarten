@@ -190,7 +190,31 @@ return maplibregl$1;
   .kzrep td.v { text-align: right; font-weight: 700; white-space: nowrap; } .kzrep td.c { text-align: right; color: var(--grau); white-space: nowrap; }
   .kzrep td.s { color: var(--grau); font-size: 10.5px; width: 22%; } .kzrep th { font-size: 10px; color: var(--grau); font-weight: 600; text-align: right; padding: 2px 6px; }
   .kzrep th:first-child { text-align: left; } .kzrep .ext td { color: #9AA0A6; font-style: italic; }
-  .kzrep .empty { color: var(--grau); font-size: 13px; line-height: 1.6; } .kzrep .foot { margin-top: 22px; font-size: 10px; color: var(--grau); line-height: 1.5; }
+  .kzrep .empty { color: var(--grau); font-size: 13px; line-height: 1.6; }
+  .kzrep th.hc { color: var(--ink); } .kzrep th.hs { color: var(--blau); } .kzrep td.vs { text-align: right; white-space: nowrap; color: var(--text); }
+  .kzrep td.e { width: 128px; white-space: nowrap; font-size: 11px; } .kzrep td.nm { width: 34%; }
+  .kzrep .gsrc { float: right; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--grau); font-size: 10px; }
+  .ev { display: inline-flex; align-items: center; gap: 5px; } .ev i { width: 8px; height: 8px; border-radius: 50%; background: #B9BEC3; flex: 0 0 auto; }
+  .ev.pos i { background: #2E7D4F; } .ev.neg i { background: #B03A2E; } .ev.pos { color: #2E7D4F; } .ev.neg { color: #B03A2E; } .ev.neu { color: var(--grau); }
+  .kzsum { display: grid; grid-template-columns: 1.05fr 1fr; gap: 26px; margin: 4px 0 8px; padding: 18px 20px; background: #F5F7FA; border-radius: 6px; }
+  .kzsum .lbl { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--grau); margin-bottom: 6px; }
+  .kzsum .idx { font-size: 40px; font-weight: 700; color: var(--blau); line-height: 1; } .kzsum .idx small { font-size: 14px; font-weight: 600; color: var(--ink); margin-left: 8px; }
+  .kzscale { position: relative; height: 8px; margin: 14px 0 4px; border-radius: 4px; background: linear-gradient(90deg, #E6B8B2, #E8EAED 40%, #E8EAED 60%, #B4D3C0); }
+  .kzscale b { position: absolute; top: -5px; width: 4px; height: 18px; margin-left: -2px; background: var(--ink); border-radius: 2px; }
+  .kzscale + .ticks { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--grau); }
+  .kzsum ul { margin: 0; padding: 0; list-style: none; font-size: 11.5px; line-height: 1.55; } .kzsum li { display: flex; gap: 6px; } .kzsum li .ev { flex: 0 0 auto; }
+  .kzsum .note { grid-column: 1 / -1; font-size: 10px; color: var(--grau); margin-top: -8px; }
+  .kztiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 18px 0 4px; border-top: 1px solid var(--ink); }
+  .kztiles > div { padding: 12px 14px 10px 0; } .kztiles .tv { font-size: 24px; font-weight: 700; color: var(--blau); white-space: nowrap; } .kztiles .tv small { font-size: 12px; color: var(--ink); font-weight: 500; margin-left: 3px; }
+  .kztiles .tn { font-size: 11px; color: var(--text); margin: 2px 0 6px; min-height: 28px; } .kztiles .tc { font-size: 10.5px; color: var(--grau); }
+  .kzrep .more { margin-top: 10px; font-size: 11px; color: var(--grau); } .kzrep .more button { font-size: 11px; padding: 2px 8px; margin-left: 6px; }
+  .calclist { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .calclist .ci { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--linie); border-radius: 7px; }
+  .calclist .ci > i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #B9BEC3; box-sizing: border-box; justify-self: center; }
+  .calclist .ci.ok > i { background: #2E7D4F; border-color: #2E7D4F; } .calclist .ci.old > i { background: #E3A33B; border-color: #E3A33B; }
+  .calclist .ci.run > i { border-color: var(--blau); border-top-color: transparent; animation: spin .8s linear infinite; }
+  .calclist .ci b { display: block; font-size: 11.5px; font-weight: 600; } .calclist .ci span { display: block; font-size: 10.5px; color: var(--grau); }
+  .calclist .ci button { font-size: 11px; padding: 3px 9px; } .kzrep .foot { margin-top: 22px; font-size: 10px; color: var(--grau); line-height: 1.5; }
   .hlchoice.take { margin-top: 6px; background: #FAFBFC; } .hlchoice.take button { font-size: 10.5px; padding: 4px 8px; }
   .hlchoice { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--linie); border-radius: 7px; background: #F4F5F7; }
   .hlchoice b { width: 100%; font-size: 10px; font-weight: 600; color: var(--grau); }
@@ -367,11 +391,18 @@ return maplibregl$1;
     </section>
 
     <section>
-      <h2>Lagekennzahlen</h2>
-      <button id="kpiGo">Entfernungen und Fahrzeiten berechnen</button>
-      <textarea id="kpiOut" rows="6" readonly placeholder="Bahnhof, Hauptbahnhof, Autobahn, Flughafen und Zentrum – als Text für Steckbrief und Folie"></textarea>
-      <button id="kpiCopy">Kopieren</button>
-      <p class="hint" id="kpiHint">Ziele aus OpenStreetMap, Zeiten über das Straßennetz. Wird mit dem Projekt gespeichert.</p>
+      <h2>Lagekennzahlen · Berechnungen</h2>
+      <div class="calclist" id="calcList">
+        <div class="ci" id="ci_kpi"><i></i><div><b>Entfernungen und Fahrzeiten</b><span>Bahnhof, Autobahn, Flughafen, Zentrum</span></div><button id="kpiGo">Berechnen</button></div>
+        <div class="ci" id="ci_zen"><i></i><div><b>Standortkennzahlen im Radius</b><span>Zensus 2022 · Miete, Bevölkerung, Bestand</span></div><button id="calcZen">Berechnen</button></div>
+        <div class="ci" id="ci_city"><i></i><div><b>Vergleich mit der Stadt</b><span>Gemeindegebiet als Maßstab für die Lage</span></div><button id="calcCity">Berechnen</button></div>
+        <div class="ci" id="ci_ra"><i></i><div><b>Gemeinde- und Kreiswerte</b><span>Einkommen, Arbeitsmarkt, Bautätigkeit</span></div><button id="calcRa">Berechnen</button></div>
+        <div class="ci" id="ci_trf"><i></i><div><b>Verkehrsstärken · optional</b><span>Zählstellen im Umkreis, derzeit Bayern</span></div><button id="calcTrf">Laden</button></div>
+      </div>
+      <button id="calcAll" class="primary">Alles berechnen</button>
+      <textarea id="kpiOut" rows="5" readonly placeholder="Entfernungen und Fahrzeiten – als Text für Steckbrief und Folie"></textarea>
+      <button id="kpiCopy">Text kopieren</button>
+      <p class="hint" id="kpiHint">Alles läuft im Hintergrund – oben rechts steht, was gerade rechnet. Ergebnisse werden mit dem Projekt gespeichert; die Auswertung steht im Reiter 05 Kennzahlen.</p>
     </section>
 
     <section id="sec_srcTest">
@@ -412,11 +443,12 @@ return maplibregl$1;
         <label class="f">Assetklasse</label>
         <div class="seg" id="kzAsset"><button data-a="wohnen">Wohnen</button><button data-a="buero">Büro</button><button data-a="light">Light Industrial</button><button data-a="logistik">Logistik</button></div>
         <label class="f">Radius um den Projektpunkt<select id="kzR"><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option><option value="3000">3 km</option><option value="5000">5 km</option><option value="10000">10 km</option><option value="20000">20 km</option></select></label>
-        <button id="kzGo" class="primary">Kennzahlen berechnen</button>
+        <label class="cb"><input type="checkbox" id="kzShowR"> Radius in Makro- und Mikrolage einzeichnen</label>
+        <button id="kzGo" class="primary">Neu berechnen</button>
         <div class="row"><button id="kzCopy">Text kopieren</button><button id="kzPng">Kachel als PNG</button></div>
         <button id="kzTraffic">Verkehrsstärken in der Umgebung laden</button>
         <p class="hint" id="kzHint"></p>
-        <p class="hint">Kleinräumige Werte aus dem Zensus 2022 im 100-m-Raster – ausgewertet für alle Rasterzellen, deren Mittelpunkt im Radius liegt. Zum Vergleich: das Umland im 15-km-Radius und Deutschland. Gemeinde-, Kreis- und Landeswerte (Einkommen, Bautätigkeit, Arbeitsmarkt) kommen aus dem Regionalatlas der Statistischen Ämter. Verkehrsstärken werden nur auf Knopfdruck geladen (derzeit Bayern, Quelle BAYSIS). Bestandsmieten Stand Mai 2022, keine Angebotsmieten.</p>
+        <p class="hint">Kleinräumige Werte aus dem Zensus 2022 im 100-m-Raster – ausgewertet für alle Rasterzellen, deren Mittelpunkt im Radius liegt. Zum Vergleich: das Gebiet der Stadt bzw. Gemeinde (Grenze aus OpenStreetMap) und Deutschland. Die Einschätzung zeigt, ob der Radius besser oder schlechter als die Stadt abschneidet – eine Indikation aus amtlichen Strukturdaten, keine Marktanalyse. Gemeinde-, Kreis- und Landeswerte (Einkommen, Bautätigkeit, Arbeitsmarkt) kommen aus dem Regionalatlas der Statistischen Ämter. Verkehrsstärken werden nur auf Knopfdruck geladen (derzeit Bayern, Quelle BAYSIS). Bestandsmieten Stand Mai 2022, keine Angebotsmieten.</p>
       </section>
     </div>
 
@@ -683,6 +715,7 @@ return maplibregl$1;
     clearTimeout(busyT);
     busyT = setTimeout(() => {
       const labels = [...new Set([...BUSY.values()].filter(x => x.n > 0).map(x => x.label))];
+      if (typeof renderCalc === 'function') try { renderCalc(); } catch (e) {}
       const box = document.getElementById('actBox'); if (!box) return;
       box.hidden = !labels.length; document.getElementById('actTxt').textContent = labels.slice(0, 3).join(' · ') + (labels.length > 3 ? ' …' : '');
     }, labels0() ? 350 : 150);
@@ -1218,6 +1251,15 @@ return maplibregl$1;
     const off = document.createElement('canvas').getContext('2d');
     const box0 = titleOn ? projectLabel(off, kind, k, proj, fsT, plate) : null;
     const zoneBoxes = drawZ(g, map, k, proj, W, H, kind);
+    if (kind !== 'ov' && S.kz && S.kz.showR && S.kz.r) {      // Auswertungsradius der Kennzahlen
+      const rr = S.kz.r / mppOf(map);
+      g.save(); g.strokeStyle = A; g.lineWidth = mm(0.35); g.setLineDash([mm(1.6), mm(1.1)]);
+      g.beginPath(); g.arc(proj.x, proj.y, rr, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+      const t = 'Radius ' + (S.kz.r >= 1000 ? (S.kz.r / 1000).toLocaleString('de-DE') + ' km' : S.kz.r + ' m');
+      g.font = `600 ${pt(6)}px ${FONT}`; const tw = g.measureText(t).width, ty = proj.y - rr;
+      g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(proj.x - tw / 2 - mm(0.8), ty - pt(4), tw + mm(1.6), pt(8));
+      g.fillStyle = A; g.textAlign = 'center'; g.fillText(t, proj.x, ty); g.textAlign = 'left'; g.restore();
+    }
     if (kind !== 'ov' && S.mapIn[kind]) drawMapping(g, map, k, W, H, inF);
     drawCrowns(g, map, kind, k, W, H, inF);
     const hlB = drawHl(g, map, kind, k); if (view) view.hlBoxes = hlB;
@@ -1919,7 +1961,7 @@ return maplibregl$1;
         if (r && r.time != null) return `${g.label} · ${fmtKm(r.distance)} · ${fmtMin(r.time * f)} Pkw`;
         const d = crow(here, g.at); return `${g.label} · ${fmtKm(d)} Luftlinie · ca. ${fmtMin(d / spd * 3600)} Pkw`;
       });
-      P.kpi = lines.join('\n'); $('kpiOut').value = P.kpi; snap();
+      P.kpi = lines.join('\n'); P.kpiAt = { lon: P.lon, lat: P.lat, at: Date.now() }; $('kpiOut').value = P.kpi; snap();
       $('kpiHint').textContent = luft ? 'Routing nicht erreichbar – Entfernungen nach Luftlinie, Fahrzeiten geschätzt.'
         : 'Entfernungen über das Straßennetz; Pkw-Zeiten mit Verkehrslage „' + ({ 30: 'Innenstadt / Stoßzeit', 40: 'normaler Verkehr', 55: 'Umland mit Autobahn' })[spd] + '“ (Einstellung bei Fahrzeiten der Landkarte).';
     } catch (e) {
@@ -2877,7 +2919,7 @@ return maplibregl$1;
     P.lon = lon; P.lat = lat;
     if (recenter) { P.miCenter = [lon, lat]; P.mkCenter = [lon, lat]; if (!keepOv) P.ov.center = [lon, lat]; }
     if (recenter) relayout(false); else repaint();
-    isoHint();
+    isoHint(); try { renderCalc(); if (kzOn) { syncKzUI(); runKz(); } } catch (e) {}
   }
   function onClick(v, e) {
     const { lng, lat } = e.lngLat;
@@ -2952,7 +2994,7 @@ return maplibregl$1;
   }
   $('projSel').onchange = () => {
     const p = projects.find(x => x.id === $('projSel').value); if (!p) return;
-    P = JSON.parse(JSON.stringify(p)); drawRing = []; store.set('current', P.id); if (kzOn) { syncKzUI(); renderKz(); }
+    P = JSON.parse(JSON.stringify(p)); drawRing = []; store.set('current', P.id); renderCalc(); if (kzOn) { syncKzUI(); renderKz(); if (kzStale()) runKz(); }
     $('projName').value = P.name || ''; $('kpiOut').value = P.kpi || ''; renderNotes(); renderPois(); renderHl(); relayout(false); refreshData();
   };
   $('projName').addEventListener('input', () => { P.name = $('projName').value; repaint(); if (typeof syncProjLine === 'function') syncProjLine(); });
@@ -3473,7 +3515,7 @@ return maplibregl$1;
   // Hintergrund-Rechner mit Aktivitätsanzeige versehen (vor der ersten Verwendung)
   overpassQ = track('OpenStreetMap-Daten', overpassQ); fetchIso = track('Erreichbarkeit', fetchIso); computeKpi = track('Entfernungen und Fahrzeiten', computeKpi);
   ensureDem = track('Höhendaten', ensureDem); ensureGreen = track('Grün aus Luftbild', ensureGreen); loadTrees = track('Bäume', loadTrees);
-  ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic);
+  ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
   const FAM_VER = 3;
@@ -3677,30 +3719,72 @@ return maplibregl$1;
     if (!ZC.idx[key]) return null;
     return ZC.tiles[key] || (ZC.tiles[key] = await zjson(key + '.json'));
   }
-  // Summen und gewichtete Mittel aller Zellen im Radius
+  // Summen und gewichtete Mittel aller Zellen im Radius (bzw. in einer Fläche: test(x, y) entscheidet je Zellmitte)
   async function zAgg(cx, cy, R) {
+    const R2 = R * R;
+    return zSum([cx - R, cy - R, cx + R, cy + R], (x, y) => (x - cx) * (x - cx) + (y - cy) * (y - cy) <= R2, Math.PI * R2 / 1e6);
+  }
+  async function zSum(bb, test, km2) {
     const A = { p: 0, q: 0, n: 0, d: 0, cells: 0, w: {}, b: [0, 0, 0, 0, 0, 0, 0, 0] };
     const W = { r: 'd', u: 'p', o: 'p', a: 'p', h: 'n', e: 'n', v: 'd', s: 'p' };
     for (const k in W) A.w[k] = [0, 0];
     const keys = [];
-    for (let tx = Math.floor((cx - R) / 1e4); tx <= Math.floor((cx + R) / 1e4); tx++) for (let ty = Math.floor((cy - R) / 1e4); ty <= Math.floor((cy + R) / 1e4); ty++) keys.push([tx, ty]);
+    for (let tx = Math.floor(bb[0] / 1e4); tx <= Math.floor(bb[2] / 1e4); tx++) for (let ty = Math.floor(bb[1] / 1e4); ty <= Math.floor(bb[3] / 1e4); ty++) keys.push([tx, ty]);
+    if (keys.length > 160) throw new Error('Gebiet zu groß');
     const tiles = await Promise.all(keys.map(([tx, ty]) => zTile(tx + '_' + ty).then(t => [tx, ty, t])));
-    const R2 = R * R;
     for (const [tx, ty, t] of tiles) {
       if (!t) continue;
       const L = t.i.length, col = k => t[k];
       for (let j = 0; j < L; j++) {
-        const i = t.i[j], x = tx * 1e4 + (i % 100) * 100 + 50 - cx, y = ty * 1e4 + Math.floor(i / 100) * 100 + 50 - cy;
-        if (x * x + y * y > R2) continue;
+        const i = t.i[j], x = tx * 1e4 + (i % 100) * 100 + 50, y = ty * 1e4 + Math.floor(i / 100) * 100 + 50;
+        if (!test(x, y)) continue;
         A.cells++;
         for (const k of ['p', 'q', 'n', 'd']) { const c = col(k); if (c && c[j] > 0) A[k] += c[j]; }
         for (const k in W) { const c = col(k), wc = col(W[k]); if (c && c[j] >= 0 && wc && wc[j] > 0) { A.w[k][0] += c[j] * wc[j]; A.w[k][1] += wc[j]; } }
         for (let b = 0; b < 8; b++) { const c = col('b' + (b + 1)); if (c && c[j] > 0) A.b[b] += c[j]; }
       }
     }
-    const out = { p: A.p, q: A.q, n: A.n, d: A.d, cells: A.cells, km2: Math.PI * R2 / 1e6, b: A.b };
+    const out = { p: A.p, q: A.q, n: A.n, d: A.d, cells: A.cells, km2, b: A.b };
     for (const k in W) out[k] = A.w[k][1] ? A.w[k][0] / A.w[k][1] : null;
     return out;
+  }
+  // Stadt- bzw. Gemeindegebiet am Projektpunkt: Grenze aus OpenStreetMap, als Zeilen-Intervalle im 100-m-Raster
+  async function cityArea(lon, lat) {
+    const els = await overpassQ(`[out:json][timeout:60];is_in(${lat.toFixed(5)},${lon.toFixed(5)})->.a;rel(pivot.a)["boundary"="administrative"]["admin_level"~"^(6|8)$"];out tags geom;`);
+    const rels = els.filter(e => e.type === 'relation' && e.members);
+    const rel = rels.find(e => e.tags.admin_level === '8') || rels.find(e => e.tags.admin_level === '6');
+    if (!rel) throw new Error('keine Gemeindegrenze gefunden');
+    const segs = []; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const m of rel.members) {
+      if (m.type !== 'way' || !m.geometry || (m.role && !/^(outer|inner)$/.test(m.role))) continue;
+      let prev = null;
+      for (const p of m.geometry) {
+        const q = laea(p.lon, p.lat);
+        if (prev) segs.push([prev[0], prev[1], q[0], q[1]]);
+        prev = q; x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]);
+      }
+    }
+    if (segs.length < 3) throw new Error('Gemeindegrenze unvollständig');
+    // Kreuzungen je Rasterzeile (Zellmitte …50) – gerade/ungerade-Regel braucht keine geordneten Ringe
+    const r0 = Math.floor((y0 - 50) / 100), r1 = Math.ceil((y1 - 50) / 100), rows = new Map();
+    for (const [ax, ay, bx, by] of segs) {
+      if (ay === by) continue;
+      const lo = Math.ceil((Math.min(ay, by) - 50) / 100), hi = Math.floor((Math.max(ay, by) - 50) / 100);
+      for (let r = lo; r <= hi; r++) {
+        const yc = r * 100 + 50; if (yc === Math.max(ay, by)) continue;
+        const x = ax + (yc - ay) / (by - ay) * (bx - ax);
+        (rows.get(r) || rows.set(r, []).get(r)).push(x);
+      }
+    }
+    let km2 = 0;
+    for (const xs of rows.values()) { xs.sort((a, b) => a - b); for (let i = 0; i + 1 < xs.length; i += 2) km2 += (xs[i + 1] - xs[i]) * 100 / 1e6; }
+    const test = (x, y) => {
+      const xs = rows.get(Math.round((y - 50) / 100)); if (!xs) return false;
+      let n = 0; for (const v of xs) { if (v > x) break; n++; } return n % 2 === 1;
+    };
+    const t = rel.tags, lvl = t.admin_level;
+    const name = t['name:de'] || t.name || 'Gemeinde';
+    return { name, lvl, kind: lvl === '8' ? (/stadt/i.test(t['de:place'] || '') || /city|town/.test(t.place || '') ? 'Stadt' : 'Gemeinde') : (/kreis/i.test(name) ? 'Landkreis' : 'Stadt'), bb: [x0, y0, x1, y1], test, km2 };
   }
   const bShare = (s, from, to) => { const t = s.b.reduce((a, v) => a + v, 0); return t ? s.b.slice(from, to).reduce((a, v) => a + v, 0) / t * 100 : null; };
   // Kennzahlen: Gruppe, Rechenregel, ob Summe (dann kein Vergleich), Assetklassen-Reihenfolge
@@ -3735,6 +3819,32 @@ return maplibregl$1;
     { g: 'verkehr', n: 'Verkehrsstärken in der Umgebung', traffic: true },
     { g: 'err', n: 'Erreichbarkeit', txt: () => P.kpi || '', src: 'Lagekennzahlen (01 Projekt)' }
   ];
+  // Bewertungsrichtung je Kennzahl (+1 höher ist besser, −1 niedriger ist besser, 0 neutral), Gewicht, je Assetklasse
+  const KZPOL = {
+    'Ø Nettokaltmiete (Bestand)': { wohnen: 1.5, buero: 0.5, light: 0, logistik: 0 },
+    'Einwohnerdichte': { wohnen: 0.5, buero: 1, light: 0, logistik: 0 },
+    'Entwicklung 2011–2022': { wohnen: 2, buero: 1, light: 1, logistik: 0.5 },
+    'Anteil unter 18 Jahre': { wohnen: 0.5 }, 'Anteil ab 65 Jahre': { wohnen: -0.5, buero: -0.5 },
+    'Leerstand marktaktiv': { wohnen: -1.5, buero: -0.5 }, 'Gebäude ab 2011': { wohnen: 0.5, buero: 0.5 },
+    'Verfügbares Einkommen je Einwohner': { wohnen: 1, buero: 1, light: 0.5, logistik: 0.5 }, 'Einkünfte je Steuerpflichtigen': { wohnen: 1, buero: 0.5 },
+    'Fertiggestellte Wohnungen je 1.000 Einwohner': { wohnen: 0.5 }, 'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)': { wohnen: 1.5, buero: 1, light: 0.5, logistik: 0.5 },
+    'Arbeitslosenquote': { wohnen: -1, buero: -1, light: -0.5, logistik: -0.5 }, 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)': { wohnen: 0.5, buero: 1.5, light: 1, logistik: 1 }
+  };
+  const polOf = k => (KZPOL[k.n] || {})[kzSet().asset] || 0;
+  // Abweichung zum Vergleichswert: relativ, bei Prozent-Entwicklungen in Prozentpunkten
+  const devOf = (k, v, c) => v == null || c == null || !isFinite(v) || !isFinite(c) ? null : k.sign ? (v - c) / (k.u === '%' ? 40 : 200) : c ? v / c - 1 : null;
+  function evCell(k, v, c, ref) {
+    const dv = devOf(k, v, c); if (dv == null) return '';
+    const p = polOf(k), a = Math.abs(dv), w = a < 0.05 ? 'etwa gleich' : (a < 0.15 ? 'etwas ' : 'deutlich ') + (dv > 0 ? 'höher' : 'niedriger');
+    const cls = a < 0.05 || !p ? 'neu' : p * dv > 0 ? 'pos' : 'neg';
+    return `<span class="ev ${cls}" title="${k.sign ? '' : 'Index ' + Math.round((1 + dv) * 100) + ' (' + esc(ref) + ' = 100)'}"><i></i>${w}</span>`;
+  }
+  const KZKEY = {
+    wohnen: ['Ø Nettokaltmiete (Bestand)', 'Entwicklung 2011–2022', 'Einwohnerdichte', 'Leerstand marktaktiv'],
+    buero: ['Einwohner im Umkreis 25 km', 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)', 'Einwohnerdichte', 'Verfügbares Einkommen je Einwohner'],
+    light: ['Einwohner im Umkreis 25 km', 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)', 'Arbeitslosenquote', 'Entwicklung 2011–2022'],
+    logistik: ['Einwohner im Umkreis 25 km', 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)', 'Arbeitslosenquote', 'Entwicklung 2011–2022']
+  };
   const KZG = { bau: 'Bautätigkeit und Entwicklung (Gemeinde)', miete: 'Mieten', bev: 'Bevölkerung', kk: 'Einkommen und Kaufkraft', pend: 'Pendler', boden: 'Boden', hh: 'Haushalte', alter: 'Altersstruktur', bestand: 'Wohnungs- und Gebäudebestand', arbeit: 'Arbeitsmarkt', verkehr: 'Verkehr', err: 'Erreichbarkeit' };
   const KZORDER = {
     wohnen: ['miete', 'bev', 'bau', 'kk', 'pend', 'boden', 'hh', 'alter', 'bestand', 'err'],
@@ -3744,30 +3854,55 @@ return maplibregl$1;
   };
   const ANAME = { wohnen: 'Wohnen', buero: 'Büro', light: 'Light Industrial', logistik: 'Logistik' };
   const kzSet = () => { S.kz = S.kz || { asset: 'wohnen', r: 1000 }; return S.kz; };
+  const radTxt = r => r >= 1000 ? (r / 1000).toLocaleString('de-DE') + ' km' : r + ' m';
+  const samePt = o => o && o.lon === P.lon && o.lat === P.lat;
+  const kzStale = () => { const Z = P.kz, K = kzSet(); return !Z || !samePt(Z) || Z.r !== K.r || (K.asset !== 'wohnen' && !Z.r25); };
   function syncKzUI() {
     const K = kzSet();
     $('kzAsset').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === K.asset));
-    $('kzR').value = String(K.r);
-    $('kzHint').textContent = P.kz ? 'Berechnet am ' + new Date(P.kz.at).toLocaleDateString('de-DE') + ' für ' + (P.kz.r >= 1000 ? P.kz.r / 1000 + ' km' : P.kz.r + ' m') + '. Nach Änderungen neu berechnen.' : 'Noch nicht berechnet.';
+    $('kzR').value = String(K.r); $('kzShowR').checked = !!K.showR;
+    $('kzHint').textContent = !P.kz ? 'Wird beim Öffnen automatisch berechnet.' : kzStale() ? 'Projektpunkt oder Radius geändert – wird neu berechnet.'
+      : 'Berechnet am ' + new Date(P.kz.at).toLocaleDateString('de-DE') + ' für ' + radTxt(P.kz.r) + (P.kz.city && P.kz.city.name ? ' · Vergleich: ' + P.kz.city.name : '') + '.';
+    renderCalc();
   }
-  $('kzAsset').querySelectorAll('button').forEach(b => b.onclick = () => { kzSet().asset = b.dataset.a; if (b.dataset.a === 'logistik' && kzSet().r < 5000) kzSet().r = 10000; saveS(); syncKzUI(); renderKz(); });
-  $('kzR').onchange = () => { kzSet().r = +$('kzR').value; saveS(); syncKzUI(); };
-  $('kzGo').onclick = async () => {
-    const K = kzSet(), [cx, cy] = laea(P.lon, P.lat);
-    $('kzGo').disabled = true; $('kzHint').textContent = 'Zensusdaten werden geladen …';
+  $('kzAsset').querySelectorAll('button').forEach(b => b.onclick = () => { kzSet().asset = b.dataset.a; if (b.dataset.a === 'logistik' && kzSet().r < 5000) kzSet().r = 10000; saveS(); syncKzUI(); renderKz(); if (kzOn && kzStale()) runKz(); });
+  $('kzR').onchange = () => { kzSet().r = +$('kzR').value; saveS(); syncKzUI(); repaint(); if (kzOn) runKz(); };
+  $('kzShowR').onchange = () => { kzSet().showR = $('kzShowR').checked; saveS(); repaint(); };
+  let kzBusy = null;
+  // Zensus im Radius (+ 25 km für Gewerbe), danach im Hintergrund Stadtvergleich und Regionalatlas
+  async function runKz(opt = {}) {
+    if (kzBusy) return kzBusy;
+    return kzBusy = (async () => {
+      const K = kzSet(), [cx, cy] = laea(P.lon, P.lat);
+      $('kzGo').disabled = true; $('kzHint').textContent = 'Zensusdaten werden geladen …';
+      try {
+        const big = K.asset !== 'wohnen';
+        const [r, r25] = await Promise.all([zAgg(cx, cy, K.r), big ? zAgg(cx, cy, 25000) : null]);
+        if (!ZC.de) ZC.de = await zjson('de.json');
+        const old = samePt(P.kz) ? P.kz : null;
+        P.kz = { r: K.r, asset: K.asset, at: Date.now(), res: r, r25, lon: P.lon, lat: P.lat, traffic: old ? old.traffic : null, ra: old ? old.ra : null, city: old ? old.city : null }; snap();
+        if (!r.cells) $('kzHint').textContent = 'Im Radius liegen keine bewohnten Rasterzellen (z. B. Gewerbegebiet) – Radius vergrößern.';
+        else syncKzUI();
+        renderKz();
+        const later = [];
+        if (!P.kz.city || P.kz.city.err) later.push(loadCity());
+        if (!P.kz.ra || opt.ra) later.push(loadRA().then(() => { renderKz(); snap(); }));
+        await Promise.all(later);
+      } catch (e) { $('kzHint').textContent = 'Zensusdaten gerade nicht erreichbar (' + e.message + ').'; }
+      $('kzGo').disabled = false; renderCalc();
+    })().finally(() => { kzBusy = null; renderCalc(); });
+  }
+  async function loadCity() {
+    const Z = P.kz; if (!Z) return;
     try {
-      const big = K.asset !== 'wohnen';
-      const [r, u, r25] = await Promise.all([zAgg(cx, cy, K.r), K.r < 15000 ? zAgg(cx, cy, 15000) : null, big ? zAgg(cx, cy, 25000) : null]);
-      if (!ZC.de) ZC.de = await zjson('de.json');
-      const old = P.kz && P.kz.lon === P.lon && P.kz.lat === P.lat ? P.kz : null;
-      P.kz = { r: K.r, asset: K.asset, at: Date.now(), res: r, umland: u, r25, lon: P.lon, lat: P.lat, traffic: old ? old.traffic : null, ra: old ? old.ra : null }; snap();
-      if (!P.kz.ra) loadRA().then(() => { renderKz(); snap(); });
-      if (!r.cells) $('kzHint').textContent = 'Im Radius liegen keine bewohnten Rasterzellen (z. B. Gewerbegebiet) – Radius vergrößern.';
-      else syncKzUI();
-      renderKz();
-    } catch (e) { $('kzHint').textContent = 'Zensusdaten gerade nicht erreichbar (' + e.message + ').'; }
-    $('kzGo').disabled = false;
-  };
+      const A = await cityArea(P.lon, P.lat);
+      const s = await zSum(A.bb, A.test, A.km2);
+      if (P.kz !== Z) return;
+      Z.city = { name: A.name, kind: A.kind, s, at: Date.now() };
+    } catch (e) { console.warn('Stadtvergleich', e.message); if (P.kz === Z) Z.city = { err: e.message }; }
+    renderKz(); syncKzUI(); snap();
+  }
+  $('kzGo').onclick = () => { if (P.kz) { P.kz.city = null; } runKz({ ra: true }); };
   const fmtN = (v, d, u, sign) => v == null || !isFinite(v) ? '–' : (sign && v > 0 ? '+' : '') + v.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d }) + (u ? ' ' + u : '');
   const deS = () => ZC.de ? Object.assign({}, ZC.de, { km2: 357600, b: ZC.de.b }) : null;
   function kzRows() {
@@ -3778,41 +3913,100 @@ return maplibregl$1;
       if (k.ra) { const R = (Z.ra || {})[k.ra]; out.push({ g, k, raw: R || null }); continue; }
       if (k.traffic) { out.push({ g, k, traffic: Z.traffic || null }); continue; }
       if (k.ext) { out.push({ g, k, ext: true }); continue; }
-      const v = k.f(Z.res, Z), um = !k.sum && Z.umland ? k.f(Z.umland, Z) : null, de = !k.sum && deS() ? k.f(deS(), Z) : null;
+      const cs = Z.city && Z.city.s ? Z.city.s : null;
+      const v = k.f(Z.res, Z), um = cs && !k.big ? k.f(cs, Z) : null, de = !k.sum && deS() ? k.f(deS(), Z) : null;
       out.push({ g, k, v, um, de });
     }
     return out;
   }
+  // Lageeinschätzung: gewichtete Abweichungen Radius ↔ Stadt (Zensus) bzw. Gemeinde/Kreis ↔ Land (Regionalatlas)
+  function kzScore(rows) {
+    let sw = 0, sv = 0; const items = [];
+    for (const r of rows) {
+      const p = polOf(r.k); if (!p) continue;
+      let dv = null;
+      if (r.raw !== undefined) { if (r.raw && r.raw.v != null && r.raw.land != null) dv = devOf(r.k, r.raw.v, r.raw.land); }
+      else if (!r.ext && r.txt == null && r.traffic === undefined && !r.k.sum) dv = devOf(r.k, r.v, r.um);
+      if (dv == null) continue;
+      const c = Math.max(-0.5, Math.min(0.5, dv)) * Math.sign(p);
+      sw += Math.abs(p); sv += c * Math.abs(p); items.push({ n: r.k.n, c, raw: r.raw !== undefined });
+    }
+    if (sw < 2) return null;
+    return { idx: Math.round(100 + sv / sw * 100), items: items.sort((a, b) => b.c - a.c) };
+  }
   function renderKz() {
     const box = $('kzRep'); if (!box) return;
     const Z = P.kz, K = kzSet();
-    const head = `<h1>${esc((P.name || 'Projekt').replace(/\n/g, ' '))}</h1><div class="sub">Standortkennzahlen · ${ANAME[K.asset]}${Z ? ' · Radius ' + (Z.r >= 1000 ? Z.r / 1000 + ' km' : Z.r + ' m') + ' um den Projektpunkt' : ''}</div>`;
-    if (!Z) { box.innerHTML = head + '<p class="empty">Links Assetklasse und Radius wählen, dann „Kennzahlen berechnen“. Die Auswertung nutzt die Zensus-Rasterdaten 2022 rund um den Projektpunkt und vergleicht sie mit dem Umland und Deutschland.</p>'; return; }
-    let html = head, cur = '';
-    const rows = kzRows();
+    const head = `<h1>${esc((P.name || 'Projekt').replace(/\n/g, ' '))}</h1><div class="sub">Standortkennzahlen · ${ANAME[K.asset]}${Z ? ' · Radius ' + radTxt(Z.r) + ' um den Projektpunkt' : ''}${P.place ? ' · ' + esc(P.place.split(',').slice(0, 2).join(',')) : ''}</div>`;
+    if (!Z) { box.innerHTML = head + '<p class="empty">Die Kennzahlen werden automatisch berechnet, sobald ein Projektpunkt gesetzt ist. Ausgewertet werden die Zensus-Rasterdaten 2022 im Radius um den Projektpunkt – im Vergleich mit der Stadt bzw. Gemeinde und mit Deutschland.</p>'; return; }
+    const C = Z.city || null, cName = C && C.name ? C.name : null;
+    const ref = cName ? (C.kind || 'Stadt') : 'Stadt';
+    const cHead = cName ? esc(cName) : C && C.err ? 'Stadt –' : 'Stadt …';
+    const rows = kzRows(), sc = kzScore(rows);
+    let html = head;
+    // Auf einen Blick: Lageeinschätzung und Kernwerte
+    if (sc) {
+      const lab = sc.idx >= 115 ? 'deutlich überdurchschnittlich' : sc.idx >= 105 ? 'überdurchschnittlich' : sc.idx > 95 ? 'durchschnittlich' : sc.idx > 85 ? 'unterdurchschnittlich' : 'deutlich unterdurchschnittlich';
+      const pos = Math.max(0, Math.min(100, (sc.idx - 50)));
+      const li = (it, cls) => `<li><span class="ev ${cls}"><i></i></span>${esc(it.n)}${it.raw ? ' <span style="color:#8A9096">(ggü. Land)</span>' : ''}</li>`;
+      const plus = sc.items.filter(x => x.c > 0.04).slice(0, 3), minus = sc.items.filter(x => x.c < -0.04).reverse().slice(0, 3);
+      html += `<div class="kzsum"><div><div class="lbl">Lageeinschätzung ${ANAME[K.asset]}</div><div class="idx">${sc.idx}<small>${lab}</small></div>
+        <div class="kzscale"><b style="left:${pos}%"></b></div><div class="ticks"><span>50</span><span>${esc(cName || 'Vergleich')} = 100</span><span>150</span></div></div>
+        <div><div class="lbl">Stärken</div><ul>${plus.map(x => li(x, 'pos')).join('') || '<li style="color:#8A9096">keine deutlichen</li>'}</ul>
+        <div class="lbl" style="margin-top:10px">Schwächen</div><ul>${minus.map(x => li(x, 'neg')).join('') || '<li style="color:#8A9096">keine deutlichen</li>'}</ul></div>
+        <div class="note">Indikation aus amtlichen Strukturdaten, gewichtet nach Bedeutung für ${ANAME[K.asset]} – ersetzt keine Markt- und Standortanalyse.</div></div>`;
+    }
+    const tiles = (KZKEY[K.asset] || []).map(n => rows.find(r => r.k.n === n)).filter(Boolean).map(r => {
+      if (r.raw !== undefined) { const R = r.raw; if (!R || R.v == null) return null;
+        return `<div><div class="tv">${fmtN(R.v, r.k.d, '', r.k.sign)}<small>${r.k.u || ''}</small></div><div class="tn">${esc(r.k.n)}</div><div class="tc">${esc(R.where || '')} · Land ${fmtN(R.land, r.k.d, r.k.u, r.k.sign)}</div></div>`; }
+      if (r.v == null) return null;
+      return `<div><div class="tv">${fmtN(r.v, r.k.d, '', r.k.sign)}<small>${r.k.u || ''}</small></div><div class="tn">${esc(r.k.n)}${r.k.big ? '' : ' · Radius'}</div><div class="tc">${r.um != null ? esc(cName || 'Stadt') + ' ' + fmtN(r.um, r.k.d, r.k.u, r.k.sign) : r.de != null ? 'Deutschland ' + fmtN(r.de, r.k.d, r.k.u, r.k.sign) : ''}</div></div>`;
+    }).filter(Boolean);
+    if (tiles.length) html += `<div class="kztiles">${tiles.join('')}</div>`;
+    // Tabellen je Gruppe
+    const showExt = !!K.showExt, extN = rows.filter(r => r.ext).length;
+    let cur = '';
+    const th = `<tr><th></th><th class="hs">Radius ${radTxt(Z.r)}</th><th class="hc">${cHead}</th><th>Deutschland</th><th>Einschätzung</th></tr>`;
     for (const r of rows) {
-      if (r.g !== cur) { if (cur) html += '</table>'; cur = r.g; const num = rows.some(x => x.g === cur && !x.ext && x.txt == null && x.raw === undefined && x.traffic === undefined);
-        html += `<h3>${KZG[r.g]}</h3><table>` + (num ? '<tr><th></th><th>im Radius</th><th>Umland 15 km</th><th>Deutschland</th><th></th></tr>' : ''); }
+      if (r.ext && !showExt) continue;
+      if (r.g !== cur) {
+        if (cur) html += '</table>';
+        cur = r.g;
+        const grp = rows.filter(x => x.g === cur), num = grp.some(x => !x.ext && x.txt == null && x.raw === undefined && x.traffic === undefined);
+        const src = [...new Set(grp.map(x => x.raw !== undefined ? 'Regionalatlas' : (x.k.src || '').replace(/\s*\(.*\)$/, '').replace('Zensus 2011/2022', 'Zensus 2022')).filter(Boolean))].join(' · ');
+        html += `<h3>${KZG[r.g]}<span class="gsrc">${esc(src)}</span></h3><table>` + (num ? th : '');
+      }
       if (r.raw !== undefined) {
         const R = r.raw;
-        html += R && R.v != null ? `<tr><td>${r.k.n}</td><td class="v">${fmtN(R.v, r.k.d, r.k.u, r.k.sign)}</td><td class="c"></td><td class="c">${R.land != null ? 'Land ' + fmtN(R.land, r.k.d, r.k.u, r.k.sign) : ''}</td><td class="s">${esc(R.where || '')}${R.jahr ? ', ' + R.jahr : ''} · Regionalatlas</td></tr>`
-          : `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">${Z.raErr ? 'Regionalatlas gerade nicht erreichbar' : 'kein Wert'}</td><td class="s"></td></tr>`;
+        html += R && R.v != null ? `<tr><td class="nm">${r.k.n}</td><td class="c">–</td><td class="v" title="${esc(R.where || '')}">${fmtN(R.v, r.k.d, r.k.u, r.k.sign)}<br><span style="font-weight:400;color:#8A9096;font-size:10.5px">${esc(R.where || '')}${R.jahr ? ', ' + R.jahr : ''}</span></td><td class="c">${R.land != null ? 'Land ' + fmtN(R.land, r.k.d, r.k.u, r.k.sign) : ''}</td><td class="e">${evCell(r.k, R.v, R.land, 'Land')}</td></tr>`
+          : `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="3" class="c">${Z.raErr ? 'Regionalatlas gerade nicht erreichbar' : Z.ra ? 'kein Wert' : 'wird geladen …'}</td><td></td></tr>`;
         continue;
       }
       if (r.traffic !== undefined) {
         const T = r.traffic;
-        if (!T) html += `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">links „Verkehrsstärken … laden“</td><td class="s"></td></tr>`;
-        else if (T.err) html += `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">${esc(T.err)}</td><td class="s"></td></tr>`;
-        else html += T.list.map(t => `<tr><td>${esc(t.name)}</td><td class="v">${fmtN(t.dtv, 0, 'Kfz/24 h')}</td><td class="c">${t.sv != null ? 'SV ' + fmtN(t.sv, 0, '') : ''}</td><td class="c">${fmtN(t.dist / 1000, 1, 'km')}</td><td class="s">${esc(t.src)}${t.jahr ? ', ' + t.jahr : ''}</td></tr>`).join('') || `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">keine Zählstelle im Umkreis</td><td class="s"></td></tr>`;
+        if (!T) html += `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="3" class="c">links „Verkehrsstärken … laden“</td><td></td></tr>`;
+        else if (T.err) html += `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="3" class="c">${esc(T.err)}</td><td></td></tr>`;
+        else html += T.list.map(t => `<tr><td class="nm">${esc(t.name)}</td><td class="v">${fmtN(t.dtv, 0, 'Kfz/24 h')}</td><td class="c">${t.sv != null ? 'SV ' + fmtN(t.sv, 0, '') : ''}</td><td class="c">${fmtN(t.dist / 1000, 1, 'km')}</td><td class="s">${esc(t.src)}${t.jahr ? ', ' + t.jahr : ''}</td></tr>`).join('') || `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="3" class="c">keine Zählstelle im Umkreis</td><td></td></tr>`;
         continue;
       }
-      if (r.txt != null) html += `<tr><td colspan="4" style="white-space:pre-line">${r.txt ? esc(r.txt) : '<span style="color:#9AA0A6">unter 01 Projekt → Lagekennzahlen berechnen</span>'}</td><td class="s">${r.k.src}</td></tr>`;
-      else if (r.ext) html += `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">${r.k.ext}</td><td class="s"></td></tr>`;
-      else html += `<tr><td>${r.k.n}</td><td class="v">${fmtN(r.v, r.k.d, r.k.u, r.k.sign)}</td><td class="c">${r.k.sum ? '' : fmtN(r.um, r.k.d, r.k.u, r.k.sign)}</td><td class="c">${r.k.sum ? '' : fmtN(r.de, r.k.d, r.k.u, r.k.sign)}</td><td class="s">${r.k.src || ''}</td></tr>`;
+      if (r.txt != null) html += `<tr><td colspan="5" style="white-space:pre-line">${r.txt ? esc(r.txt) : '<span style="color:#9AA0A6">unter 01 Projekt → Lagekennzahlen berechnen</span>'}</td></tr>`;
+      else if (r.ext) html += `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="4" class="c" style="text-align:left">${r.k.ext}</td></tr>`;
+      else {
+        const cTxt = r.k.big ? '' : r.um != null ? fmtN(r.um, r.k.d, r.k.u, r.k.sign) + (r.k.sum ? ' <span style="font-size:10px">gesamt</span>' : '') : C && !C.err && !C.s ? '…' : '–';
+        html += `<tr><td class="nm">${r.k.n}</td><td class="v">${fmtN(r.v, r.k.d, r.k.u, r.k.sign)}</td><td class="vs">${cTxt}</td><td class="c">${r.k.sum ? '' : fmtN(r.de, r.k.d, r.k.u, r.k.sign)}</td><td class="e">${r.k.sum ? '' : evCell(r.k, r.v, r.um, ref)}</td></tr>`;
+      }
     }
-    html += '</table><div class="foot">Quelle: Statistische Ämter des Bundes und der Länder, Zensus 2022 und 2011, Ergebnisse im 100-m-Gitter (Datenlizenz Deutschland – Namensnennung 2.0). Mittelwerte gewichtet (Miete nach Wohnungen, Altersangaben nach Einwohnern, Haushaltsgröße und Eigentümerquote nach Haushalten). Einzelne Rasterzellen sind aus Datenschutzgründen ohne Wert. Bestandsmieten, Stichtag 15.05.2022.</div>';
+    html += '</table>';
+    if (extN) html += `<div class="more">${showExt ? '' : extN + ' weitere Kennzahlen (Kaufkraft, Pendler, Bodenrichtwert …) sind nicht frei abrufbar.'}<button data-act="ext">${showExt ? 'nicht verfügbare ausblenden' : 'anzeigen'}</button></div>`;
+    if (C && C.err) html += `<div class="more">Stadtvergleich gerade nicht möglich (${esc(C.err)}). <button data-act="city">erneut versuchen</button></div>`;
+    html += `<div class="foot">Einschätzung: Radius im Vergleich zu ${esc(cName || 'der Stadt bzw. Gemeinde')} (Gemeinde- und Kreiswerte im Vergleich zum Land); grün = für ${ANAME[K.asset]} günstig, rot = ungünstig, grau = neutral oder etwa gleich. Quelle: Statistische Ämter des Bundes und der Länder, Zensus 2022 und 2011, Ergebnisse im 100-m-Gitter (Datenlizenz Deutschland – Namensnennung 2.0); Regionalatlas Deutschland; Gemeindegrenze © OpenStreetMap-Mitwirkende. Mittelwerte gewichtet (Miete nach Wohnungen, Altersangaben nach Einwohnern, Haushaltsgröße und Eigentümerquote nach Haushalten). Einzelne Rasterzellen sind aus Datenschutzgründen ohne Wert. Bestandsmieten, Stichtag 15.05.2022.</div>`;
     box.innerHTML = html;
   }
+  $('kzRep').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    if (b.dataset.act === 'ext') { kzSet().showExt = !kzSet().showExt; saveS(); renderKz(); }
+    if (b.dataset.act === 'city' && P.kz) { P.kz.city = null; renderKz(); loadCity(); }
+  });
   // Regionalatlas Deutschland (Statistische Ämter): Werte für Gemeinde/Kreis am Projektpunkt und für das Land
   const RA_URL = 'https://www.gis-idmz.nrw.de/arcgis/rest/services/stba/regionalatlas/MapServer/dynamicLayer/query';
   const RA_IND = {
@@ -3885,6 +4079,33 @@ return maplibregl$1;
     $('kzTraffic').disabled = false; renderKz(); snap();
   }
   $('kzTraffic').onclick = loadTraffic;
+  // Berechnungsliste unter 01 Projekt: Stand je Berechnung, einzeln oder alles auf einmal
+  function renderCalc() {
+    const Z = P.kz, busy = l => (BUSY.get(l) || {}).n > 0, d = t => t ? ' · ' + new Date(t).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) : '';
+    const set = (id, st, txt) => { const el = $('ci_' + id); if (!el) return; el.className = 'ci ' + st; const sp = el.querySelector('span'); if (txt) sp.textContent = txt; };
+    const kOk = P.kpi && (!P.kpiAt || samePt(P.kpiAt));
+    set('kpi', busy('Entfernungen und Fahrzeiten') ? 'run' : kOk ? 'ok' : P.kpi ? 'old' : '', busy('Entfernungen und Fahrzeiten') ? 'wird berechnet …' : kOk ? 'berechnet' + d(P.kpiAt && P.kpiAt.at) : P.kpi ? 'Projektpunkt verschoben – neu berechnen' : 'Bahnhof, Autobahn, Flughafen, Zentrum');
+    const zOk = Z && samePt(Z);
+    set('zen', busy('Zensus-Auswertung') ? 'run' : zOk && Z.r === kzSet().r ? 'ok' : Z ? 'old' : '', busy('Zensus-Auswertung') ? 'wird berechnet …' : zOk ? 'Radius ' + radTxt(Z.r) + d(Z.at) + (Z.r !== kzSet().r ? ' – Radius geändert' : '') : Z ? 'Projektpunkt verschoben – neu berechnen' : 'Zensus 2022 · Miete, Bevölkerung, Bestand');
+    const cOk = zOk && Z.city && Z.city.name;
+    set('city', busy('Stadtvergleich') ? 'run' : cOk ? 'ok' : zOk && Z.city && Z.city.err ? 'old' : '', busy('Stadtvergleich') ? 'Gemeindegrenze wird geladen …' : cOk ? Z.city.name + d(Z.city.at) : zOk && Z.city && Z.city.err ? 'gerade nicht möglich – erneut versuchen' : 'Gemeindegebiet als Maßstab für die Lage');
+    const rOk = zOk && Z.ra && Object.keys(Z.ra).length;
+    set('ra', busy('Regionalatlas') ? 'run' : rOk ? 'ok' : zOk && Z.raErr ? 'old' : '', busy('Regionalatlas') ? 'wird geladen …' : rOk ? Object.keys(Z.ra).length + ' Werte' + (Z.ra[Object.keys(Z.ra)[0]].where ? ' · ' + Z.ra[Object.keys(Z.ra)[0]].where : '') : zOk && Z.raErr ? 'Regionalatlas gerade nicht erreichbar' : 'Einkommen, Arbeitsmarkt, Bautätigkeit');
+    const T = zOk && Z.traffic;
+    set('trf', busy('Verkehrsstärken') ? 'run' : T && T.list ? 'ok' : T && T.err ? 'old' : '', busy('Verkehrsstärken') ? 'wird geladen …' : T && T.list ? T.list.length + ' Zählstellen' + d(T.at) : T && T.err ? (P.region === 'BY' ? 'gerade nicht erreichbar' : 'für dieses Bundesland nicht verfügbar') : 'Zählstellen im Umkreis, derzeit Bayern');
+  }
+  $('calcZen').onclick = () => runKz();
+  $('calcCity').onclick = async () => { if (!P.kz || !samePt(P.kz)) await runKz(); else { P.kz.city = null; renderCalc(); await loadCity(); } };
+  $('calcRa').onclick = async () => { if (!P.kz || !samePt(P.kz)) await runKz(); else { await loadRA(); renderKz(); snap(); renderCalc(); } };
+  $('calcTrf').onclick = async () => { if (!P.kz || !samePt(P.kz)) await runKz(); await loadTraffic(); renderCalc(); };
+  $('calcAll').onclick = async () => {
+    status('Alle Lagekennzahlen werden im Hintergrund berechnet – oben rechts steht, was gerade läuft.');
+    const jobs = [computeKpi()];
+    if (!P.kz || kzStale()) jobs.push(runKz());
+    else { if (!P.kz.city || P.kz.city.err) jobs.push(loadCity()); if (!P.kz.ra || P.kz.raErr) jobs.push(loadRA().then(() => { renderKz(); snap(); })); }
+    await Promise.all(jobs.map(j => j.catch(() => {}))); renderCalc();
+    status('Lagekennzahlen berechnet – Auswertung im Reiter 05 Kennzahlen.');
+  };
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   $('kzCopy').onclick = () => {
     const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst berechnen.'; return; }
@@ -3894,9 +4115,11 @@ return maplibregl$1;
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null) lines.push(`${r.k.n}: ${fmtN(r.raw.v, r.k.d, r.k.u, r.k.sign)} (${r.raw.where || ''}${r.raw.land != null ? ', Land ' + fmtN(r.raw.land, r.k.d, r.k.u, r.k.sign) : ''})`); continue; }
       if (r.traffic !== undefined) { if (r.traffic && r.traffic.list) r.traffic.list.forEach(t => lines.push(`Verkehr ${t.name}: ${fmtN(t.dtv, 0, 'Kfz/24 h')} (${fmtN(t.dist / 1000, 1, 'km')} entfernt)`)); continue; }
       if (r.ext || r.txt != null) continue;
-      lines.push(`${r.k.n}: ${fmtN(r.v, r.k.d, r.k.u, r.k.sign)}` + (r.k.sum ? '' : ` (Umland 15 km ${fmtN(r.um, r.k.d, r.k.u, r.k.sign)} · DE ${fmtN(r.de, r.k.d, r.k.u, r.k.sign)})`));
+      const cn = Z.city && Z.city.name ? Z.city.name : 'Stadt';
+      lines.push(`${r.k.n}: ${fmtN(r.v, r.k.d, r.k.u, r.k.sign)}` + (r.k.sum || r.k.big ? '' : ` (${cn} ${fmtN(r.um, r.k.d, r.k.u, r.k.sign)} · DE ${fmtN(r.de, r.k.d, r.k.u, r.k.sign)})`));
     }
-    lines.push('Quelle: Zensus 2022/2011, 100-m-Gitter');
+    { const sc = kzScore(kzRows()); if (sc) lines.splice(1, 0, `Lageeinschätzung ${ANAME[kzSet().asset]}: ${sc.idx} (${Z.city && Z.city.name ? Z.city.name : 'Vergleich'} = 100, Indikation)`); }
+    lines.push('Quelle: Zensus 2022/2011, 100-m-Gitter; Regionalatlas');
     navigator.clipboard.writeText(lines.join('\n')).then(() => status('Kennzahlen kopiert.'), () => status('Kopieren nicht möglich.'));
   };
   // Kennzahlen-Kachel für die Folie: sechs Werte groß, GIEAG-Blau
@@ -3916,7 +4139,7 @@ return maplibregl$1;
       const vw = g.measureText(fmtN(r.v, r.k.d, '', r.k.sign)).width;
       g.fillStyle = '#0A0A0A'; g.font = `400 34px ${F}`; if (r.k.u) g.fillText(r.k.u, x + vw + 12, y + 70);
       g.font = `400 28px ${F}`; g.fillStyle = '#1E1E1E'; g.fillText(r.k.n, x, y + 120);
-      if (!r.k.sum && r.um != null) { g.fillStyle = '#5A5F64'; g.font = `400 24px ${F}`; g.fillText(`Umland ${fmtN(r.um, r.k.d, r.k.u, r.k.sign)} · DE ${fmtN(r.de, r.k.d, r.k.u, r.k.sign)}`, x, y + 160); }
+      if (!r.k.sum && r.um != null) { g.fillStyle = '#5A5F64'; g.font = `400 24px ${F}`; g.fillText(`${Z.city && Z.city.name ? Z.city.name : 'Stadt'} ${fmtN(r.um, r.k.d, r.k.u, r.k.sign)} · DE ${fmtN(r.de, r.k.d, r.k.u, r.k.sign)}`, x, y + 160); }
     });
     g.fillStyle = '#8A9096'; g.font = `400 20px ${F}`; g.fillText('Quelle: Zensus 2022/2011, 100-m-Gitter, Datenlizenz Deutschland 2.0 · eigene Auswertung', 90, H - 60);
     const blob = await new Promise(res => c.toBlob(res, 'image/png'));
@@ -4459,6 +4682,8 @@ return maplibregl$1;
     document.querySelectorAll('.stage .panel').forEach(p => { p.hidden = p.dataset.kind !== 'kz'; });
     for (const g of groups) if (g.tabs.length) { const on = g.tabs.includes('kz'); g.gh.hidden = !on; if (on) g.set(!!groupState['map']); else g.body.hidden = true; g.gh.classList.toggle('act', on); }
     syncKzUI(); renderKz();
+    if (kzStale()) runKz();
+    else if (P.kz && (!P.kz.city || (P.kz.city.err && Date.now() - (P.kz.city.tried || 0) > 60000))) { if (P.kz.city) P.kz.city.tried = Date.now(); loadCity(); }
   }
   const projGroup = () => groups.find(g => !g.tabs.length);
   function foldProject() { const g = projGroup(); if (g && $('startCard').hidden) g.set(true); syncProjLine(); }
