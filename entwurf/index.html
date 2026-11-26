@@ -179,7 +179,12 @@ return maplibregl$1;
   .savestate { flex: 1; align-self: center; font-size: 11px; color: #2E7D4F; }
   .savestate.dirty { color: var(--grau); }
   .quick { display: flex; gap: 6px; padding-bottom: 8px; }
-  .quick select { width: auto; max-width: 170px; padding: 5px 6px; font-size: 11px; }
+  .quick select { width: auto; max-width: 180px; padding: 6px 10px; font-size: 11px; border: 1px solid #C9CDD2; border-radius: 7px; background: #F4F5F7;
+    box-shadow: 2px -1px 4px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.08); }
+  .quick select:hover { background: #fff; }
+  .zoom button { border-color: #C9CDD2; background: #F4F5F7; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .zoom button:first-child { border-radius: 7px 0 0 7px; } .zoom button:last-child { border-radius: 0 7px 7px 0; }
+  .zoom button:hover { background: #fff; }
   .subtabs { display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid #C9CDD2; padding: 0 2px; margin-bottom: -12px; }
   .subtabs button { flex: 1; border: 1px solid #C9CDD2; border-bottom: 0; border-radius: 7px 7px 0 0; background: #D7DADF; color: var(--grau);
     font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 7px 6px 8px; box-shadow: 2px -1px 4px rgba(0,0,0,.10); position: relative; margin-bottom: -1px; }
@@ -198,9 +203,10 @@ return maplibregl$1;
   .layer .lname::before { content: none; }
   .chip { width: 20px; height: 14px; border: 1px solid rgba(0,0,0,.15); border-radius: 2px; }
   .chip.ghost { background: repeating-linear-gradient(45deg, #fff 0 3px, #D5D8DC 3px 6px); }
-  .inspector { position: sticky; bottom: 62px; z-index: 4; background: #fff; border: 1px solid var(--ink); box-shadow: 0 -6px 18px rgba(0,0,0,.10);
-    max-height: 46vh; overflow-y: auto; margin-top: -8px; }
-  .ihead { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: #fff; background: var(--ink); padding: 5px 10px; position: sticky; top: 0; z-index: 1; }
+  .inspector { position: sticky; bottom: 62px; z-index: 4; background: #fff; border: 1px solid #BFC4CA; border-radius: 9px 9px 0 0;
+    box-shadow: 0 -4px 14px rgba(0,0,0,.14), 2px -1px 4px rgba(0,0,0,.08); max-height: 34vh; overflow-y: auto; margin-top: -8px; }
+  .ihead { font-size: 11px; letter-spacing: .04em; font-weight: 700; color: var(--ink); background: linear-gradient(#EEF0F2, #DCDFE3);
+    border-bottom: 1px solid #C9CDD2; border-radius: 9px 9px 0 0; padding: 7px 12px; position: sticky; top: 0; z-index: 1; }
   .board { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
   .bhead { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; }
   .bhead b { font-size: 14px; }
@@ -613,7 +619,7 @@ return maplibregl$1;
     ts: kind === 'ov' ? { big: 7, mid: 5.5, small: 5 } : { big: 8, mid: 6.5, small: 5.5 },
     halo: { title: kind !== 'ov', cities: kind !== 'ov', notes: true, pois: false, legend: true },
     focus: { on: false, r: kind === 'ov' ? 60000 : kind === 'mi' ? 1500 : 300, fade: 20 },
-    north: { on: kind !== 'ov' && S.legend !== false, pos: 'br', size: 3.4, color: '#0A0A0A' },
+    north: { on: kind !== 'ov' && S.legend !== false, type: 'kreis', pos: 'br', size: 3.4, color: '#0A0A0A' },
     scalebar: { on: S.legend !== false },
     cities: { on: kind === 'ov' ? +S.cityMin > 0 : false, min: kind === 'ov' ? (+S.cityMin || 50000) : 2000, abroad: !!S.abroad },
     settle: { on: S.settle !== 'off', color: kind === 'ov' ? '#E3E5E8' : '#CFD2D6', mode: S.settle === 'big' ? 'big' : 'shown', alpha: 100 },
@@ -883,7 +889,7 @@ return maplibregl$1;
   function builtMode(kind = 'mi') {
     if (kind === 'mk') return 'gebaeude';             // Mikrolage: immer Schwarzplan mit Einzelgebäuden
     if (S.built && S.built !== 'auto') return S.built;
-    return +S.scale >= 50000 ? 'flaeche' : 'gebaeude';
+    return +S.scale > 50000 ? 'flaeche' : 'gebaeude';     // Einzelgebäude bis einschließlich 1:50.000
   }
   function dotsImage(k, pr) {
     const step = 0.9 * k * pr, r = 0.13 * k * pr, n = Math.max(4, Math.round(step));
@@ -973,7 +979,7 @@ return maplibregl$1;
     const box0 = titleOn ? projectLabel(off, kind, k, proj, fsT, plate) : null;
     const zoneBoxes = drawZ(g, map, k, proj, W, H, kind);
     if (kind !== 'ov' && S.mapIn[kind]) drawMapping(g, map, k, W, H, inF);
-    if (kind !== 'ov' && T.rail.on && T.rail.st) drawStations(g, map, k, W, H, T);
+    if (kind !== 'ov' && T.rail.on && T.rail.st) drawStations(g, map, k, W, H, T, inF);
     const poiHits = drawPois(g, map, kind, k); if (view) view.poiHits = poiHits;
     const pr0 = (+pp.r || 1.2) + 0.7, dotBox = { x: proj.x - mm(pr0), y: proj.y - mm(pr0), w: mm(2 * pr0), h: mm(2 * pr0) };
     const obst = [dotBox].concat(box0 ? [box0] : [], zoneBoxes, poiHits.flatMap(h => [h.dotB, h.lab].filter(Boolean)));
@@ -1016,15 +1022,32 @@ return maplibregl$1;
     return T.scalebar.on ? { x: W - mm(31) - r, y: H - mm(7.2), r } : { x: W - mm(4) - r, y: H - mm(5) - r, r };
   }
   function northBox(k, W, H, T) { const q = northPos(k, W, H, T), m = k * 0.8; return { x: q.x - q.r - m, y: q.y - q.r * 2.4 - m, w: 2 * (q.r + m), h: q.r * 3.4 + 2 * m }; }
+  // Nordpfeil-Typen: Kreis mit Pfeil · schlanker Pfeil · klassischer Halbpfeil · Kompassrose
   function drawNorth(g, k, W, H, T) {
-    const q = northPos(k, W, H, T), r = q.r, cx = q.x, cy = q.y, col = T.north.color || '#0A0A0A';
+    const q = northPos(k, W, H, T), r = q.r, cx = q.x, cy = q.y, col = T.north.color || '#0A0A0A', type = T.north.type || 'kreis';
     if (T.halo.legend) { g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(cx, cy - r * 0.4, r * 1.9, 0, 7); g.fill(); }
-    g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = Math.max(k * 0.2, r * 0.12); g.setLineDash([]);
-    g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke();
-    g.beginPath(); g.moveTo(cx, cy - r * 0.8); g.lineTo(cx + r * 0.35, cy + r * 0.5); g.lineTo(cx, cy + r * 0.25); g.lineTo(cx - r * 0.35, cy + r * 0.5); g.closePath(); g.fill();
-    g.font = `400 ${r * 1.15}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('N', cx, cy - r - k * 0.5);
+    g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = Math.max(k * 0.2, r * 0.12); g.setLineDash([]); g.lineJoin = 'miter';
+    if (type === 'pfeil') {
+      g.beginPath(); g.moveTo(cx, cy + r); g.lineTo(cx, cy - r * 0.55); g.stroke();
+      g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r * 0.38, cy - r * 0.35); g.lineTo(cx - r * 0.38, cy - r * 0.35); g.closePath(); g.fill();
+    } else if (type === 'nadel') {
+      g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx - r * 0.42, cy + r * 0.8); g.lineTo(cx, cy + r * 0.45); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r * 0.42, cy + r * 0.8); g.lineTo(cx, cy + r * 0.45); g.closePath(); g.lineWidth = Math.max(k * 0.15, r * 0.08); g.stroke();
+    } else if (type === 'kompass') {
+      const pt = (a, l) => [cx + Math.sin(a) * l, cy - Math.cos(a) * l];
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2, tip = pt(a, r), l = pt(a - Math.PI / 4, r * 0.28), rr = pt(a + Math.PI / 4, r * 0.28);
+        g.beginPath(); g.moveTo(cx, cy); g.lineTo(...l); g.lineTo(...tip); g.lineTo(...rr); g.closePath();
+        if (i === 0) g.fill(); else { g.lineWidth = Math.max(k * 0.12, r * 0.07); g.stroke(); }
+      }
+    } else {
+      g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke();
+      g.beginPath(); g.moveTo(cx, cy - r * 0.8); g.lineTo(cx + r * 0.35, cy + r * 0.5); g.lineTo(cx, cy + r * 0.25); g.lineTo(cx - r * 0.35, cy + r * 0.5); g.closePath(); g.fill();
+    }
+    g.font = `${type === 'kreis' ? 400 : 700} ${r * 1.15}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('N', cx, cy - r - k * 0.5);
     g.restore(); g.textAlign = 'left';
   }
+
   // Städte (Landkarte, mit Punkt) bzw. Ortsnamen (Makrolage, mittig auf dem Ort); Größen in pt je Klasse,
   // Großstädte auf Wunsch in Versalien mit leichter Sperrung; Namen weichen einander aus
   function drawCities(g, map, k, W, H, proj, T, obst, titleBox, kind, inF) {
@@ -1140,13 +1163,13 @@ return maplibregl$1;
     drawLineLabels(g, map, k, W, H, items, obst, lblOpts(k, T, T.road, 45, inF, lblScale(kind, T.road)));
   }
   // Bahnhöfe als Symbol: weißer Kreis mit Rand in Bahnfarbe
-  function drawStations(g, map, k, W, H, T) {
+  function drawStations(g, map, k, W, H, T, inF) {
     const mm = v => v * k; let fs = []; try { fs = map.querySourceFeatures('omt', { sourceLayer: 'poi' }); } catch (e) {}
     const seen = [];
     for (const f of fs) {
       const pr = f.properties || {};
       if (f.geometry.type !== 'Point' || pr.class !== 'railway' || !/^(station|halt)$/.test(pr.subclass || '')) continue;
-      const p = map.project(f.geometry.coordinates); if (p.x < 0 || p.y < 0 || p.x > W || p.y > H) continue;
+      const p = map.project(f.geometry.coordinates); if (p.x < 0 || p.y < 0 || p.x > W || p.y > H || (inF && !inF(p))) continue;
       if (seen.some(q => Math.hypot(q.x - p.x, q.y - p.y) < mm(3))) continue; seen.push(p);
       g.fillStyle = '#FFFFFF'; g.strokeStyle = T.rail.color; g.lineWidth = mm(0.3);
       g.beginPath(); g.arc(p.x, p.y, mm(0.8), 0, 7); g.fill(); g.stroke();
@@ -2468,7 +2491,8 @@ return maplibregl$1;
         <label class="f">Außen aufhellen (%)<input type="number" data-s="focus.fade" min="0" max="80" step="5"></label></div>
         <p class="hint">Innerhalb des Radius farbig und beschriftet; außerhalb grau, Orts-, Straßen- und Flussnamen entfallen.</p>` },
     { grp: 'darst', id: 'north', name: () => 'Nordpfeil', eye: 'north.on', col: 'north.color', keys: ['north'],
-      opt: () => `<div class="row"><label class="f">Position<select data-s="north.pos"><option value="br">unten rechts</option><option value="tr">oben rechts</option><option value="tl">oben links</option><option value="bl">unten links</option></select></label>
+      opt: () => `<label class="f">Typ<select data-s="north.type"><option value="kreis">Kreis mit Pfeil</option><option value="pfeil">Schlanker Pfeil</option><option value="nadel">Klassischer Halbpfeil</option><option value="kompass">Kompassrose</option></select></label>
+        <div class="row"><label class="f">Position<select data-s="north.pos"><option value="br">unten rechts</option><option value="tr">oben rechts</option><option value="tl">oben links</option><option value="bl">unten links</option></select></label>
         <label class="f">Größe (mm)<input type="number" data-s="north.size" min="2" max="12" step="0.5"></label></div>` },
     { grp: 'darst', id: 'scalebar', name: () => 'Maßstabsleiste', eye: 'scalebar.on', keys: ['scalebar'], opt: () => '<p class="hint">Unten rechts, mit Kartentitel und Maßstab.</p>' },
     { grp: 'darst', id: 'grid', name: () => 'Kartenraster', eye: 'grid.on', col: 'grid.color', alpha: 'grid.alpha', w: 'grid.w', dash: 'grid.dash', keys: ['grid'],
