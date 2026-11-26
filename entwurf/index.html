@@ -378,8 +378,9 @@ return maplibregl$1;
         <label class="f">Radius um den Projektpunkt<select id="kzR"><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option><option value="3000">3 km</option><option value="5000">5 km</option><option value="10000">10 km</option><option value="20000">20 km</option></select></label>
         <button id="kzGo" class="primary">Kennzahlen berechnen</button>
         <div class="row"><button id="kzCopy">Text kopieren</button><button id="kzPng">Kachel als PNG</button></div>
+        <button id="kzTraffic">Verkehrsstärken in der Umgebung laden</button>
         <p class="hint" id="kzHint"></p>
-        <p class="hint">Kleinräumige Werte aus dem Zensus 2022 im 100-m-Raster – ausgewertet für alle Rasterzellen, deren Mittelpunkt im Radius liegt. Zum Vergleich: das Umland im 15-km-Radius und Deutschland. Gemeinde- und Kreiswerte (Kaufkraft, Pendler, Bauland, Bodenrichtwerte) folgen. Bestandsmieten Stand Mai 2022, keine Angebotsmieten.</p>
+        <p class="hint">Kleinräumige Werte aus dem Zensus 2022 im 100-m-Raster – ausgewertet für alle Rasterzellen, deren Mittelpunkt im Radius liegt. Zum Vergleich: das Umland im 15-km-Radius und Deutschland. Gemeinde-, Kreis- und Landeswerte (Einkommen, Bautätigkeit, Arbeitsmarkt) kommen aus dem Regionalatlas der Statistischen Ämter. Verkehrsstärken werden nur auf Knopfdruck geladen (derzeit Bayern, Quelle BAYSIS). Bestandsmieten Stand Mai 2022, keine Angebotsmieten.</p>
       </section>
     </div>
 
@@ -3392,10 +3393,14 @@ return maplibregl$1;
     { g: 'bev', n: 'Einwohnerdichte', u: 'EW/km²', d: 0, f: s => s.p / s.km2, src: 'Zensus 2022' },
     { g: 'bev', n: 'Entwicklung 2011–2022', u: '%', d: 1, sign: true, f: s => s.q > 0 ? (s.p / s.q - 1) * 100 : null, src: 'Zensus 2011/2022' },
     { g: 'bev', n: 'Einwohner im Umkreis 25 km', u: '', d: 0, sum: true, big: true, f: (s, x) => x.r25 ? x.r25.p : null, assets: ['buero', 'light', 'logistik'], src: 'Zensus 2022' },
-    { g: 'kk', n: 'Kaufkraft / verfügbares Einkommen je Einwohner', ext: 'Kreisebene · folgt' },
-    { g: 'pend', n: 'Ein- und Auspendler, Pendlersaldo', ext: 'Gemeindeebene · folgt' },
-    { g: 'boden', n: 'Bodenrichtwert', ext: 'BORIS-BW · folgt (Bayern kostenpflichtig)' },
-    { g: 'boden', n: 'Kaufpreise für Bauland', ext: 'Kreisebene · folgt' },
+    { g: 'kk', n: 'Verfügbares Einkommen je Einwohner', ra: 'ek', u: '€', d: 0 },
+    { g: 'kk', n: 'Einkünfte je Steuerpflichtigen', ra: 'est', u: '€', d: 0 },
+    { g: 'kk', n: 'Kaufkraftindex (GfK/Nexiga)', ext: 'kostenpflichtig – nicht frei verfügbar' },
+    { g: 'pend', n: 'Ein- und Auspendler, Pendlersaldo', ext: 'Bundesagentur für Arbeit · keine frei abrufbare Schnittstelle, Abruf manuell im Pendleratlas' },
+    { g: 'boden', n: 'Bodenrichtwert', ext: 'BW: kostenfrei im Portal BORIS-BW abrufbar · Bayern: Gutachterausschuss (kostenpflichtig)' },
+    { g: 'boden', n: 'Kaufpreise für Bauland', ext: 'Kreisebene · noch keine frei abrufbare Schnittstelle gefunden' },
+    { g: 'bau', n: 'Fertiggestellte Wohnungen je 1.000 Einwohner', ra: 'fert', u: '', d: 1 },
+    { g: 'bau', n: 'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)', ra: 'bevd', u: '', d: 0, sign: true },
     { g: 'hh', n: 'Ø Haushaltsgröße', u: 'Pers.', d: 2, f: s => s.h == null ? null : s.h / 100, src: 'Zensus 2022' },
     { g: 'hh', n: 'Haushalte im Radius', u: '', d: 0, sum: true, f: s => s.n, src: 'Zensus 2022' },
     { g: 'alter', n: 'Anteil unter 18 Jahre', u: '%', d: 1, f: s => s.u == null ? null : s.u / 10, src: 'Zensus 2022' },
@@ -3407,15 +3412,16 @@ return maplibregl$1;
     { g: 'bestand', n: 'Gebäude vor 1949', u: '%', d: 1, f: s => bShare(s, 0, 2), src: 'Zensus 2022' },
     { g: 'bestand', n: 'Gebäude 1949–1990', u: '%', d: 1, f: s => bShare(s, 2, 4), src: 'Zensus 2022' },
     { g: 'bestand', n: 'Gebäude ab 2011', u: '%', d: 1, f: s => bShare(s, 6, 8), src: 'Zensus 2022' },
-    { g: 'arbeit', n: 'Sozialversicherungspflichtig Beschäftigte am Arbeitsort', ext: 'Gemeindeebene · folgt' },
-    { g: 'verkehr', n: 'Verkehrsstärken in der Umgebung', ext: 'auf Knopfdruck · folgt' },
+    { g: 'arbeit', n: 'Arbeitslosenquote', ra: 'alq', u: '%', d: 1 },
+    { g: 'arbeit', n: 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)', ra: 'apd', u: '', d: 0 },
+    { g: 'verkehr', n: 'Verkehrsstärken in der Umgebung', traffic: true },
     { g: 'err', n: 'Erreichbarkeit', txt: () => P.kpi || '', src: 'Lagekennzahlen (01 Projekt)' }
   ];
-  const KZG = { miete: 'Mieten', bev: 'Bevölkerung', kk: 'Kaufkraft', pend: 'Pendler', boden: 'Boden', hh: 'Haushalte', alter: 'Altersstruktur', bestand: 'Wohnungs- und Gebäudebestand', arbeit: 'Arbeitsmarkt', verkehr: 'Verkehr', err: 'Erreichbarkeit' };
+  const KZG = { bau: 'Bautätigkeit und Entwicklung (Gemeinde)', miete: 'Mieten', bev: 'Bevölkerung', kk: 'Einkommen und Kaufkraft', pend: 'Pendler', boden: 'Boden', hh: 'Haushalte', alter: 'Altersstruktur', bestand: 'Wohnungs- und Gebäudebestand', arbeit: 'Arbeitsmarkt', verkehr: 'Verkehr', err: 'Erreichbarkeit' };
   const KZORDER = {
-    wohnen: ['miete', 'bev', 'kk', 'pend', 'boden', 'hh', 'alter', 'bestand', 'err'],
-    buero: ['bev', 'pend', 'arbeit', 'err', 'kk', 'miete', 'boden', 'alter'],
-    light: ['boden', 'err', 'verkehr', 'bev', 'pend', 'arbeit', 'kk'],
+    wohnen: ['miete', 'bev', 'bau', 'kk', 'pend', 'boden', 'hh', 'alter', 'bestand', 'err'],
+    buero: ['bev', 'arbeit', 'pend', 'err', 'kk', 'bau', 'miete', 'boden', 'alter'],
+    light: ['boden', 'err', 'verkehr', 'bev', 'arbeit', 'pend', 'kk'],
     logistik: ['err', 'verkehr', 'boden', 'bev', 'arbeit', 'pend']
   };
   const ANAME = { wohnen: 'Wohnen', buero: 'Büro', light: 'Light Industrial', logistik: 'Logistik' };
@@ -3435,7 +3441,9 @@ return maplibregl$1;
       const big = K.asset !== 'wohnen';
       const [r, u, r25] = await Promise.all([zAgg(cx, cy, K.r), K.r < 15000 ? zAgg(cx, cy, 15000) : null, big ? zAgg(cx, cy, 25000) : null]);
       if (!ZC.de) ZC.de = await zjson('de.json');
-      P.kz = { r: K.r, asset: K.asset, at: Date.now(), res: r, umland: u, r25 }; snap();
+      const old = P.kz && P.kz.lon === P.lon && P.kz.lat === P.lat ? P.kz : null;
+      P.kz = { r: K.r, asset: K.asset, at: Date.now(), res: r, umland: u, r25, lon: P.lon, lat: P.lat, traffic: old ? old.traffic : null, ra: old ? old.ra : null }; snap();
+      if (!P.kz.ra) loadRA().then(() => { renderKz(); snap(); });
       if (!r.cells) $('kzHint').textContent = 'Im Radius liegen keine bewohnten Rasterzellen (z. B. Gewerbegebiet) – Radius vergrößern.';
       else syncKzUI();
       renderKz();
@@ -3449,6 +3457,8 @@ return maplibregl$1;
     const order = KZORDER[kzSet().asset] || KZORDER.wohnen, out = [];
     for (const g of order) for (const k of KZK.filter(k => k.g === g && (!k.assets || k.assets.includes(kzSet().asset)))) {
       if (k.txt) { const t = k.txt(); out.push({ g, k, txt: t }); continue; }
+      if (k.ra) { const R = (Z.ra || {})[k.ra]; out.push({ g, k, raw: R || null }); continue; }
+      if (k.traffic) { out.push({ g, k, traffic: Z.traffic || null }); continue; }
       if (k.ext) { out.push({ g, k, ext: true }); continue; }
       const v = k.f(Z.res, Z), um = !k.sum && Z.umland ? k.f(Z.umland, Z) : null, de = !k.sum && deS() ? k.f(deS(), Z) : null;
       out.push({ g, k, v, um, de });
@@ -3463,8 +3473,21 @@ return maplibregl$1;
     let html = head, cur = '';
     const rows = kzRows();
     for (const r of rows) {
-      if (r.g !== cur) { if (cur) html += '</table>'; cur = r.g; const num = rows.some(x => x.g === cur && !x.ext && x.txt == null);
+      if (r.g !== cur) { if (cur) html += '</table>'; cur = r.g; const num = rows.some(x => x.g === cur && !x.ext && x.txt == null && x.raw === undefined && x.traffic === undefined);
         html += `<h3>${KZG[r.g]}</h3><table>` + (num ? '<tr><th></th><th>im Radius</th><th>Umland 15 km</th><th>Deutschland</th><th></th></tr>' : ''); }
+      if (r.raw !== undefined) {
+        const R = r.raw;
+        html += R && R.v != null ? `<tr><td>${r.k.n}</td><td class="v">${fmtN(R.v, r.k.d, r.k.u, r.k.sign)}</td><td class="c"></td><td class="c">${R.land != null ? 'Land ' + fmtN(R.land, r.k.d, r.k.u, r.k.sign) : ''}</td><td class="s">${esc(R.where || '')}${R.jahr ? ', ' + R.jahr : ''} · Regionalatlas</td></tr>`
+          : `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">${Z.raErr ? 'Regionalatlas gerade nicht erreichbar' : 'kein Wert'}</td><td class="s"></td></tr>`;
+        continue;
+      }
+      if (r.traffic !== undefined) {
+        const T = r.traffic;
+        if (!T) html += `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">links „Verkehrsstärken … laden“</td><td class="s"></td></tr>`;
+        else if (T.err) html += `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">${esc(T.err)}</td><td class="s"></td></tr>`;
+        else html += T.list.map(t => `<tr><td>${esc(t.name)}</td><td class="v">${fmtN(t.dtv, 0, 'Kfz/24 h')}</td><td class="c">${t.sv != null ? 'SV ' + fmtN(t.sv, 0, '') : ''}</td><td class="c">${fmtN(t.dist / 1000, 1, 'km')}</td><td class="s">${esc(t.src)}${t.jahr ? ', ' + t.jahr : ''}</td></tr>`).join('') || `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">keine Zählstelle im Umkreis</td><td class="s"></td></tr>`;
+        continue;
+      }
       if (r.txt != null) html += `<tr><td colspan="4" style="white-space:pre-line">${r.txt ? esc(r.txt) : '<span style="color:#9AA0A6">unter 01 Projekt → Lagekennzahlen berechnen</span>'}</td><td class="s">${r.k.src}</td></tr>`;
       else if (r.ext) html += `<tr class="ext"><td>${r.k.n}</td><td colspan="3" class="c">${r.k.ext}</td><td class="s"></td></tr>`;
       else html += `<tr><td>${r.k.n}</td><td class="v">${fmtN(r.v, r.k.d, r.k.u, r.k.sign)}</td><td class="c">${r.k.sum ? '' : fmtN(r.um, r.k.d, r.k.u, r.k.sign)}</td><td class="c">${r.k.sum ? '' : fmtN(r.de, r.k.d, r.k.u, r.k.sign)}</td><td class="s">${r.k.src || ''}</td></tr>`;
@@ -3472,12 +3495,86 @@ return maplibregl$1;
     html += '</table><div class="foot">Quelle: Statistische Ämter des Bundes und der Länder, Zensus 2022 und 2011, Ergebnisse im 100-m-Gitter (Datenlizenz Deutschland – Namensnennung 2.0). Mittelwerte gewichtet (Miete nach Wohnungen, Altersangaben nach Einwohnern, Haushaltsgröße und Eigentümerquote nach Haushalten). Einzelne Rasterzellen sind aus Datenschutzgründen ohne Wert. Bestandsmieten, Stichtag 15.05.2022.</div>';
     box.innerHTML = html;
   }
+  // Regionalatlas Deutschland (Statistische Ämter): Werte für Gemeinde/Kreis am Projektpunkt und für das Land
+  const RA_URL = 'https://www.gis-idmz.nrw.de/arcgis/rest/services/stba/regionalatlas/MapServer/dynamicLayer/query';
+  const RA_IND = {
+    ek: { t: 'ai016_1', a: 'AI1601', typ: 3 },        // verfügbares Einkommen je EW, Kreis
+    est: { t: 'ai016_2_5', a: 'AI1602', typ: 5, f: 1000 },   // Einkünfte je Steuerpflichtigen (Tsd. €), Gemeinde
+    fert: { t: 'ai011_5', a: 'AI1102', typ: 5 },      // fertiggestellte Wohnungen je 1.000 EW, Gemeinde
+    bevd: { t: 'ai002_1_5', a: 'AI0202', typ: 5 },    // Bevölkerungsentwicklung je 10.000 EW, Gemeinde
+    alq: { t: 'ai008_1_5', a: 'AI0801', typ: 3 },     // Arbeitslosenquote, Kreis
+    apd: { t: 'ai007_1', a: 'AI0701', typ: 3 }        // Arbeitsplatzdichte, Kreis
+  };
+  async function raQuery(I, typ, lon, lat) {
+    const layer = { source: { dataSource: { geometryType: 'esriGeometryPolygon', workspaceId: 'gdb', oidFields: 'id', spatialReference: { wkid: 25832 }, type: 'queryTable',
+      query: `SELECT * FROM verwaltungsgrenzen_gesamt LEFT OUTER JOIN ${I.t} ON ags = ags2 and jahr = jahr2 WHERE typ = ${typ}` }, type: 'dataLayer' } };
+    const q = new URLSearchParams({ layer: JSON.stringify(layer), geometry: JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } }), geometryType: 'esriGeometryPoint',
+      inSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: '*', returnGeometry: 'false', f: 'json' });
+    const r = await fetch(RA_URL + '?' + q.toString()); if (!r.ok) throw new Error('Regionalatlas ' + r.status);
+    const js = await r.json(); if (js.error) throw new Error(js.error.message || 'Regionalatlas');
+    const get = (a, key) => { const k = Object.keys(a).find(x => x.toLowerCase() === key.toLowerCase() || x.toLowerCase().endsWith('.' + key.toLowerCase())); return k ? a[k] : undefined; };
+    let best = null;
+    for (const f of js.features || []) {
+      const a = f.attributes || {}, v = get(a, I.a), j = +(get(a, 'jahr2') || get(a, 'jahr') || 0);
+      if (v == null || v === '' || isNaN(+v)) continue;
+      if (!best || j > best.jahr) best = { v: +v * (I.f || 1), jahr: j || null, where: get(a, 'gen') || get(a, 'name') || '' };
+    }
+    return best;
+  }
+  async function loadRA() {
+    const Z = P.kz; if (!Z) return;
+    Z.ra = {}; Z.raErr = false;
+    await Promise.all(Object.entries(RA_IND).map(async ([id, I]) => {
+      try {
+        const [loc, land] = await Promise.all([raQuery(I, I.typ, P.lon, P.lat), raQuery(I, 1, P.lon, P.lat).catch(() => null)]);
+        if (loc) Z.ra[id] = Object.assign(loc, { land: land ? land.v : null });
+      } catch (e) { Z.raErr = true; console.warn('Regionalatlas', id, e.message); }
+    }));
+  }
+  // Verkehrsstärken auf Knopfdruck: Bayern über BAYSIS (Zählstellen mit DTV), sonst Hinweis
+  const BAYSIS = 'https://www.baysis.bayern.de/gis/rest/services/webgis/Verkehrsmengen/MapServer';
+  async function loadTraffic() {
+    const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst „Kennzahlen berechnen“.'; return; }
+    if (P.regionAt !== regionKey()) await ensureRegion();
+    if (P.region !== 'BY') { Z.traffic = { err: P.region === 'BW' ? 'Baden-Württemberg veröffentlicht die Zählungen nur als PDF (Verkehrsmonitoring, MobiData BW) – noch nicht automatisch abrufbar' : 'Derzeit nur für Bayern verfügbar' }; renderKz(); snap(); return; }
+    $('kzTraffic').disabled = true; $('kzHint').textContent = 'Verkehrsstärken werden geladen …';
+    try {
+      const svc = await (await fetch(BAYSIS + '?f=json')).json();
+      const lyr = (svc.layers || []).filter(l => !l.subLayerIds && /dtv|zähl|zaehl|verkehrsmeng/i.test(l.name));
+      const R = Math.max(2000, Math.min(Z.r * 2, 10000)), dLat = R / 110540, dLon = R / (111320 * Math.cos(P.lat * Math.PI / 180));
+      const env = [P.lon - dLon, P.lat - dLat, P.lon + dLon, P.lat + dLat].join(',');
+      const seen = new Set(), list = [];
+      for (const l of lyr.slice(0, 12)) {
+        const q = new URLSearchParams({ geometry: env, geometryType: 'esriGeometryEnvelope', inSR: '4326', outSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: '*', returnGeometry: 'true', f: 'json' });
+        let js; try { js = await (await fetch(`${BAYSIS}/${l.id}/query?${q}`)).json(); } catch (e) { continue; }
+        for (const f of js.features || []) {
+          const a = f.attributes || {}, keys = Object.keys(a);
+          const kD = keys.find(k => /^dtv(_?kfz)?$/i.test(k)) || keys.find(k => /dtv/i.test(k) && !/sv|lkw|schwer|anteil|jahr/i.test(k));
+          if (!kD || !(+a[kD] > 0)) continue;
+          const kS = keys.find(k => /dtv.*sv|sv.*dtv|schwer/i.test(k) && !/anteil|proz/i.test(k)), kJ = keys.find(k => /jahr|year/i.test(k));
+          const kN = keys.find(k => /^(strasse|str|strasse_bez|strbez|bezeichnung)$/i.test(k)) || keys.find(k => /stra|str_|bez/i.test(k)), kZ = keys.find(k => /z(ae|ä)hlst|zst|nummer|nr/i.test(k));
+          const g = f.geometry || {}, pt = g.x != null ? [g.x, g.y] : g.paths ? g.paths[0][Math.floor(g.paths[0].length / 2)] : null; if (!pt) continue;
+          const dist = Math.hypot((pt[0] - P.lon) * 111320 * Math.cos(P.lat * Math.PI / 180), (pt[1] - P.lat) * 110540);
+          const name = [kN && a[kN], kZ && a[kZ] ? 'Zählstelle ' + a[kZ] : ''].filter(Boolean).join(' · ') || l.name;
+          const key = name + '|' + a[kD]; if (seen.has(key)) continue; seen.add(key);
+          list.push({ name, dtv: +a[kD], sv: kS && +a[kS] > 0 ? +a[kS] : null, jahr: kJ ? a[kJ] : null, dist, src: 'BAYSIS ' + l.name });
+        }
+      }
+      list.sort((a, b) => a.dist - b.dist);
+      Z.traffic = { list: list.slice(0, 10), at: Date.now() };
+      $('kzHint').textContent = list.length ? list.length + ' Zählstellen gefunden – die 10 nächsten stehen in der Auswertung.' : 'Keine Zählstelle im Umkreis gefunden.';
+    } catch (e) { Z.traffic = { err: 'BAYSIS gerade nicht erreichbar' }; $('kzHint').textContent = 'Verkehrsdaten gerade nicht erreichbar.'; }
+    $('kzTraffic').disabled = false; renderKz(); snap();
+  }
+  $('kzTraffic').onclick = loadTraffic;
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   $('kzCopy').onclick = () => {
     const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst berechnen.'; return; }
     const rad = Z.r >= 1000 ? Z.r / 1000 + ' km' : Z.r + ' m';
     const lines = [`${(P.name || 'Projekt').replace(/\n/g, ' ')} – Standortkennzahlen ${ANAME[kzSet().asset]} (Radius ${rad})`];
     for (const r of kzRows()) {
+      if (r.raw !== undefined) { if (r.raw && r.raw.v != null) lines.push(`${r.k.n}: ${fmtN(r.raw.v, r.k.d, r.k.u, r.k.sign)} (${r.raw.where || ''}${r.raw.land != null ? ', Land ' + fmtN(r.raw.land, r.k.d, r.k.u, r.k.sign) : ''})`); continue; }
+      if (r.traffic !== undefined) { if (r.traffic && r.traffic.list) r.traffic.list.forEach(t => lines.push(`Verkehr ${t.name}: ${fmtN(t.dtv, 0, 'Kfz/24 h')} (${fmtN(t.dist / 1000, 1, 'km')} entfernt)`)); continue; }
       if (r.ext || r.txt != null) continue;
       lines.push(`${r.k.n}: ${fmtN(r.v, r.k.d, r.k.u, r.k.sign)}` + (r.k.sum ? '' : ` (Umland 15 km ${fmtN(r.um, r.k.d, r.k.u, r.k.sign)} · DE ${fmtN(r.de, r.k.d, r.k.u, r.k.sign)})`));
     }
@@ -3488,7 +3585,7 @@ return maplibregl$1;
   $('kzPng').onclick = async () => {
     const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst berechnen.'; return; }
     await loadFonts();
-    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.v != null).slice(0, 6);
+    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.raw === undefined && r.traffic === undefined && r.v != null).slice(0, 6);
     const W = 1800, H = 1000, c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d'), F = famOf(ST(active).font, 400), FB = famOf(ST(active).font, 700);
     g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);

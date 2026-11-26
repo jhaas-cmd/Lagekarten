@@ -96,5 +96,12 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
   Halbtonmuster `half-s/m/l`; Baumkronen `drawCrowns` aus CIR (`findCrowns`, experimentell) oder OSM (`loadTrees`).
 - Hervorheben und POIs je Karte (`inK`, `hidK`, `takeOver`, `dropK`): Liste zeigt nur Elemente der aktiven Karte; „Aus anderen Karten übernehmen“.
 
-## Offen (Etappen 2–4)
-- 05 Kennzahlen (Zensus-Kacheln in `daten/zensus/`, Radius, Assetklassen), Zensus-Kartenebene, Gemeindekennzahlen, Bodenrichtwerte BW, Verkehrszählungen auf Knopfdruck.
+## Etappen 2–4 (umgesetzt)
+- Reiter **05 Kennzahlen** (`kzOn`, `showKz`, Gruppe `data-tab="kz"`, Panel `#kzRep`; nicht Teil von `KINDS`, die zuletzt aktive Karte bleibt `active`):
+  Zensus-Kacheln `daten/zensus/{tx}_{ty}.json` (EPSG:3035, 10-km-Kacheln, Spalten siehe LIESMICH), `index.json`, `de.json` (Bundeswerte);
+  `laea()` (ETRS89-LAEA), `zTile`, `zAgg` (Radius, gewichtete Mittel), Definitionen `KZK`/`KZG`/`KZORDER` je Assetklasse (wohnen/buero/light/logistik),
+  Ergebnis in `P.kz` (res, umland 15 km, r25, ra, traffic), Text kopieren, PNG-Kachel. Einstellungen `S.kz`.
+- Regionalatlas (`RA_URL`, `RA_IND`, `raQuery`, `loadRA`): Einkommen (Kreis), Einkünfte/Steuerpflichtige, Fertigstellungen, Bevölkerungsentwicklung (Gemeinde), Arbeitslosenquote, Arbeitsplatzdichte (Kreis); Landeswert zum Vergleich.
+- Verkehr auf Knopfdruck (`loadTraffic`): Bayern über BAYSIS ArcGIS REST (DTV-Zählstellen im Umkreis); BW nur Hinweis (Verkehrsmonitoring als PDF).
+- **Zensus-Raster als Kartenebene** (Mapping, `#sec_zg`, `S.zg[kind]`, `ensureZg`, `drawZg` in `drawBase`, `zgLegend`): 10 Merkmale (`ZATTR`), Halbtonraster/Farbstufen, 5 Quantilstufen, Legende oben links.
+- Nicht frei verfügbar / offen: Pendler (BA), Baulandpreise, Bodenrichtwerte als Dienst (BW nur Portal, Bayern kostenpflichtig), Kaufkraft (GfK). CORS der externen Dienste im Browser von Julius prüfen.
