@@ -3,7 +3,7 @@
 ## Was das ist
 Ein eigenes Browser-Tool von Julius (Projektentwickler/Architekt, GIEAG München) zum Erzeugen von
 Übersichtskarten und Lageplänen für Präsentationen (Expo Real, Projektsteckbriefe).
-Eine einzige HTML-Datei, wird lokal per Doppelklick im Browser geöffnet (file://), kein Build, kein Server.
+Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), funktioniert aber auch lokal per Doppelklick.
 
 ## Arbeitsweise (GitHub Pages, Live + Entwurf)
 - Live:    `index.html`          → https://jhaas-cmd.github.io/lagekarten/
@@ -21,16 +21,23 @@ Eine einzige HTML-Datei, wird lokal per Doppelklick im Browser geöffnet (file:/
 - Zeile ~8–10: MapLibre-GL-CSS (Version 4.7.1, eingebettet)
 - Zeile ~11–72: MapLibre GL JS 4.7.1, minifiziert eingebettet – **nicht anfassen**
 - danach: eigenes CSS der App
-- `<body>`: Seitenleiste (`<aside>`) in vier Gruppen, rechts zwei Kartenansichten
-  1. Projekt: Projekte speichern, Ort finden, Lagekennzahlen, Stilvorlagen
-  2. Übersicht: Format, Maßstab (1:500.000–1:10 Mio. oder frei), Städte, Siedlungsflächen, Autobahnen, Fahrzeit-/km-Radien
-  3. Lageplan: Maßstab (Standard 1:25.000), Mapping des Umfelds, Erreichbarkeit zu Fuß/Rad
-  4. Gestaltung: eigene POIs, Projektpunkt, Beschriftungen, Geländeschattierung, gemeinsame Gestaltung
+- `<body>`: Seitenleiste (`<aside>`, feste Breite 320 px) in einklappbaren Gruppen; rechts Reiterleiste + Bühne mit je einer Karte
+  1. Projekt: Projekte, Sichern/Einlesen, Ort finden, Markierung, Lagekennzahlen, Stilvorlagen
+  2. Landkarte (Kürzel `ov`): 1:500.000–1:10 Mio. in 500.000er-Schritten, Städte, Siedlungsflächen, Autobahnen, Fahrzeit-Radien
+  3. Makrolage (Kürzel `mi`, früher „Lageplan“): 1:25.000–1:100.000 in 25.000er-Schritten, Bebauung Fläche/Gebäude
+  4. Mikrolage (Kürzel `mk`, neu): 1:5.000–1:25.000 in 5.000er-Schritten, immer Einzelgebäude (Schwarzplan)
+  5. Umfeld: Mapping und Erreichbarkeit zu Fuß/Rad, je Karte (Makro/Mikro) ein- und ausschaltbar (`S.mapIn`, `S.walkIn`)
+  6. Gestaltung: eigene POIs, Projektpunkt, Beschriftungen, Geländeschattierung, gemeinsame Gestaltung
+- Reiter (`setTab`): nur die aktive Karte ist sichtbar und wird aufgebaut (`relayout` arbeitet nur auf `active`);
+  Gruppen mit `data-tab` klappen passend zum Reiter auf/zu.
+- Ansichts-Zoom (`vzoom`, `setZoom`): Mausrad/−/100 %/+ vergrößert das Blatt zur Bearbeitung, Maßstab bleibt fix;
+  Leertaste + Ziehen verschiebt das Blatt in der Bühne.
 - Projekt-Sektion: „Sichern (Export)“ / „Einlesen (Import)“ – alle Projekte, Stilvorlagen, Einstellungen als JSON
 - Letztes `<script>`: die eigentliche App-Logik (ca. 1.700 Zeilen)
 
 ## Wichtige Stellen im App-Script
-- `DPI = { ov: 192, mi: 384 }` – interne Render-dpi (Lageplan 384 → Zoom 14 mit Einzelgebäuden)
+- `DPI = { ov: 192, mi: 384, mk: 384 }` – interne Render-dpi (Makro/Mikro 384 → Zoom 14 mit Einzelgebäuden)
+- `scaleOf(kind)`, `centerOf(kind)`, `KNAME` – Maßstab, Ausschnittsmitte und Name je Karte
 - `PRESETS` – Ausgabeformate in cm, abgestimmt auf die GIEAG-Folienlayouts (A1, A2, B1–B3, K1 …)
 - `store` / `S` / `saveS()` – Einstellungen; gespeichert im localStorage mit Präfix `gieag-lk-`
 - `styleFor(kind, k)` / `styleBase` – Kartenstil (OpenFreeMap-Vektorkacheln)

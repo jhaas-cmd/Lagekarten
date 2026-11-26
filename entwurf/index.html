@@ -71,7 +71,7 @@ return maplibregl$1;
 
 </script>
 <style>
-  /* Layout: Werkzeugleiste links, zwei Kartenvorschauen rechts (Übersicht / Mikrolage) */
+  /* Layout: Werkzeugleiste links (feste Breite), rechts eine Karte je Reiter: Landkarte / Makrolage / Mikrolage */
   :root {
     --blau: #255AA8; --ink: #0A0A0A; --text: #1E1E1E; --grau: #5A5F64; --linie: #D5D8DC;
     --flaeche: #F4F5F7; --bg: #FFFFFF; --gelb: #FFB81C;
@@ -81,9 +81,9 @@ return maplibregl$1;
   [hidden] { display: none !important; }
   html, body { height: 100%; margin: 0; }
   body { font: 13px/1.4 var(--font); color: var(--text); background: var(--bg); }
-  .app { display: grid; grid-template-columns: 320px 1fr; height: 100%; }
+  .app { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100%; }
   aside { border-right: 1px solid var(--linie); overflow-y: auto; padding: 20px 20px 0; display: flex; flex-direction: column; gap: 22px; }
-  .brand { display: flex; align-items: baseline; justify-content: space-between; }
+  .brand { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; }
   .brand h1 { font-size: 18px; letter-spacing: .02em; margin: 0; font-weight: 700; text-transform: uppercase; color: var(--ink); }
   .brand span { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); }
   section { display: flex; flex-direction: column; gap: 8px; }
@@ -130,7 +130,12 @@ return maplibregl$1;
   .swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--linie); padding: 0; }
   .swatch.on { box-shadow: 0 0 0 2px var(--ink); }
   .check { display: flex; gap: 8px; align-items: center; font-size: 12px; }
-  .group { display: flex; gap: 10px; align-items: baseline; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); margin: 12px 0 -10px; }
+  .group { display: flex; gap: 10px; align-items: baseline; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); margin: 12px 0 -10px; cursor: pointer; user-select: none; }
+  .group::after { content: '▾'; margin-left: auto; font-size: 11px; color: var(--grau); transition: transform .15s; }
+  .group.closed::after { transform: rotate(-90deg); }
+  .group.act { color: var(--blau); }
+  .gbody { display: flex; flex-direction: column; gap: 22px; }
+  .gbody[hidden] + .group, .group.closed { margin-bottom: 0; }
   .group span { font-size: 10px; color: var(--blau); letter-spacing: .1em; }
   .group:first-of-type { margin-top: 0; }
   .expbar { position: sticky; bottom: 0; margin: auto -20px 0; padding: 12px 20px 14px; background: #fff; border-top: 1px solid var(--ink); display: flex; flex-direction: column; gap: 8px; z-index: 5; box-shadow: 0 -6px 12px rgba(255,255,255,.9); }
@@ -151,18 +156,29 @@ return maplibregl$1;
   .diag b { display: block; margin-bottom: 2px; }
   .hint { font-size: 11px; color: var(--grau); margin: 0; }
   .status { font-size: 11px; color: var(--blau); min-height: 1.4em; margin: 0; }
-  main { overflow-y: auto; padding: 24px 28px 40px; background: var(--flaeche); display: flex; flex-direction: column; gap: 28px; }
-  .panel { display: flex; flex-direction: column; gap: 10px; }
-  .panel header { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
-  .panel h3 { margin: 0; font-size: 22px; text-transform: uppercase; letter-spacing: .01em; color: var(--ink); line-height: 1; }
-  .panel h3 small { display: block; font-size: 10px; letter-spacing: .14em; color: var(--grau); font-weight: 400; margin-bottom: 6px; }
-  .frame { position: relative; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06); width: 100%; max-width: 1100px; }
+  main { overflow: hidden; background: var(--flaeche); display: flex; flex-direction: column; min-width: 0; }
+  .bar { display: flex; align-items: center; gap: 16px; padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--linie); flex-wrap: wrap; }
+  .tabs { display: flex; }
+  .tabs button { border-radius: 0; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 8px 14px; }
+  .tabs button + button { border-left: 0; }
+  .tabs button[aria-selected=true] { background: var(--ink); color: #fff; }
+  .bar .info { font-size: 11px; color: var(--grau); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar .info b { color: var(--ink); }
+  .zoom { display: flex; }
+  .zoom button { border-radius: 0; min-width: 36px; font-variant-numeric: tabular-nums; }
+  .zoom button + button { border-left: 0; }
+  #zFit { min-width: 64px; }
+  .stage { flex: 1; overflow: auto; padding: 28px; position: relative; }
+  .stage.grab, .stage.grab * { cursor: grab !important; }
+  .stage.grabbing, .stage.grabbing * { cursor: grabbing !important; }
+  .panel { display: flex; justify-content: center; min-width: min-content; }
+  .frame { position: relative; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06); flex: none; }
   .frame .map, .frame canvas.ov { position: absolute; inset: 0; }
   #ovSc { transition: opacity .15s; }
   .frame canvas.ov { pointer-events: none; }
   .maplibregl-ctrl-attrib { display: none; }
   .drawing .map canvas { cursor: crosshair !important; }
-  @media (max-width: 820px) { .app { grid-template-columns: 1fr; height: auto; } aside { border-right: 0; border-bottom: 1px solid var(--linie); } main { padding: 20px 16px; } }
+  @media (max-width: 820px) { .app { grid-template-columns: 1fr; height: auto; } aside { border-right: 0; border-bottom: 1px solid var(--linie); } main { height: 80vh; } }
 </style>
 </head>
 <body>
@@ -198,7 +214,22 @@ return maplibregl$1;
         <button id="qGo" style="flex:0 0 auto">Suchen</button>
       </div>
       <div class="results" id="results" hidden></div>
-      <p class="hint">Koordinaten oder ein Google-Maps-Link funktionieren auch. Ein Klick in die Übersicht versetzt den Projektpunkt.</p>
+      <p class="hint">Koordinaten oder ein Google-Maps-Link funktionieren auch. Ein Klick in die Landkarte versetzt den Projektpunkt.</p>
+    </section>
+
+    <section>
+      <h2>Markierung · Makro- und Mikrolage</h2>
+      <div class="modes">
+        <button data-mode="point" class="on">Punkt setzen</button>
+        <button data-mode="draw">Baufeld zeichnen</button>
+        <button data-mode="bld">Gebäude wählen</button>
+        <button data-mode="pan">Nur verschieben</button>
+      </div>
+      <div class="row">
+        <button id="drawDone" disabled>Baufeld schließen</button>
+        <button id="markClear">Markierung löschen</button>
+      </div>
+      <p class="hint" id="modeHint">Klick in Makro- oder Mikrolage setzt den Projektpunkt.</p>
     </section>
 
     <section>
@@ -217,28 +248,17 @@ return maplibregl$1;
       <p class="hint">Eine Vorlage enthält alle Gestaltungs- und Karteneinstellungen (Formate, Maßstäbe, Farben, Mapping, Zonen), nicht Ort und Titel.</p>
     </section>
 
-    <div class="group"><span>02</span>Übersicht</div>
+    <div class="group" data-tab="ov"><span>02</span>Landkarte</div>
 
     <section>
-      <h2>Übersicht</h2>
+      <h2>Landkarte</h2>
       <label class="f">Ausgabegröße<select id="ovPreset" class="preset"></select></label>
       <div class="row" id="ovCustom" hidden>
         <label class="f">Breite cm<input type="number" id="ovCw" step="0.01" min="3" max="60"></label>
         <label class="f">Höhe cm<input type="number" id="ovCh" step="0.01" min="3" max="60"></label>
       </div>
       <label class="f">Maßstab
-        <select id="ovScale">
-          <option value="500000">1:500.000</option>
-          <option value="750000">1:750.000</option>
-          <option value="1000000">1:1.000.000</option>
-          <option value="2000000">1:2.000.000</option>
-          <option value="3000000">1:3.000.000</option>
-          <option value="4000000">1:4.000.000</option>
-          <option value="5000000">1:5.000.000</option>
-          <option value="7500000">1:7.500.000</option>
-          <option value="10000000">1:10.000.000</option>
-          <option value="frei">Frei (Zoom mit der Maus)</option>
-        </select>
+        <select id="ovScale"></select>
       </label>
       <p class="hint" id="genHint"></p>
       <label class="check"><input type="checkbox" id="ovTitle"> Projekttitel anzeigen</label>
@@ -268,11 +288,11 @@ return maplibregl$1;
         </select>
       </label>
       <label class="check"><input type="checkbox" id="optMotorway"> Autobahnen</label>
-      <label class="check"><input type="checkbox" id="optFrame"> Ausschnitt des Lageplans als Rahmen zeigen</label>
+      <label class="check"><input type="checkbox" id="optFrame"> Ausschnitt der Makrolage als Rahmen zeigen</label>
     </section>
 
     <section>
-      <h2>Fahrzeit · Radien in der Übersicht</h2>
+      <h2>Fahrzeit · Radien in der Landkarte</h2>
       <label class="f">Einheit
         <select id="driveUnit"><option value="min">Fahrzeit (Minuten)</option><option value="km">Entfernung (Kilometer)</option></select>
       </label>
@@ -301,10 +321,10 @@ return maplibregl$1;
       <p class="hint" id="driveHint"></p>
     </section>
 
-    <div class="group"><span>03</span>Lageplan</div>
+    <div class="group" data-tab="mi"><span>03</span>Makrolage</div>
 
     <section>
-      <h2>Lageplan</h2>
+      <h2>Makrolage</h2>
       <label class="f">Ausgabegröße<select id="miPreset" class="preset"></select></label>
       <div class="row" id="miCustom" hidden>
         <label class="f">Breite cm<input type="number" id="miCw" step="0.01" min="3" max="60"></label>
@@ -313,13 +333,10 @@ return maplibregl$1;
       <div class="row">
         <label class="f">Maßstab
           <select id="scale">
-            <option value="5000">1:5.000</option>
-            <option value="10000">1:10.000</option>
             <option value="25000">1:25.000</option>
-            <option value="30000">1:30.000</option>
-            <option value="35000">1:35.000</option>
-            <option value="40000">1:40.000</option>
             <option value="50000">1:50.000</option>
+            <option value="75000">1:75.000</option>
+            <option value="100000">1:100.000</option>
           </select>
         </label>
         <label class="f">Bebauung
@@ -331,29 +348,52 @@ return maplibregl$1;
         </label>
       </div>
       <label class="check"><input type="checkbox" id="miTitle"> Projekttitel anzeigen</label>
-      <label class="check"><input type="checkbox" id="optAirport"> Flughäfen: Start- und Landebahnen als Umriss</label>
+      <label class="check"><input type="checkbox" id="optMkFrame"> Ausschnitt der Mikrolage als Rahmen zeigen</label>
+      <label class="check"><input type="checkbox" id="optAirport"> Flughäfen: Start- und Landebahnen als Umriss (Makro und Mikro)</label>
       <div class="row">
         <label class="f">Schriftgröße (pt)<input type="number" id="fsMi" min="5" max="24" step="0.5"></label>
         <label class="f">Position<span class="modes" style="grid-template-columns:repeat(4,1fr)">
           <button data-lp="mi:right" title="rechts">→</button><button data-lp="mi:left" title="links">←</button><button data-lp="mi:top" title="oben">↑</button><button data-lp="mi:bottom" title="unten">↓</button>
         </span></label>
       </div>
-      <label class="f">Markierung</label>
-      <div class="modes">
-        <button data-mode="point" class="on">Punkt setzen</button>
-        <button data-mode="draw">Baufeld zeichnen</button>
-        <button data-mode="bld">Gebäude wählen</button>
-        <button data-mode="pan">Nur verschieben</button>
-      </div>
-      <div class="row">
-        <button id="drawDone" disabled>Baufeld schließen</button>
-        <button id="markClear">Markierung löschen</button>
-      </div>
-      <p class="hint" id="modeHint">Klick in den Lageplan setzt den Projektpunkt.</p>
     </section>
 
+    <div class="group" data-tab="mk"><span>04</span>Mikrolage</div>
+
     <section>
-      <h2>Mapping · Umfeld im Lageplan</h2>
+      <h2>Mikrolage</h2>
+      <label class="f">Ausgabegröße<select id="mkPreset" class="preset"></select></label>
+      <div class="row" id="mkCustom" hidden>
+        <label class="f">Breite cm<input type="number" id="mkCw" step="0.01" min="3" max="60"></label>
+        <label class="f">Höhe cm<input type="number" id="mkCh" step="0.01" min="3" max="60"></label>
+      </div>
+      <label class="f">Maßstab
+        <select id="mkScale">
+          <option value="5000">1:5.000</option>
+          <option value="10000">1:10.000</option>
+          <option value="15000">1:15.000</option>
+          <option value="20000">1:20.000</option>
+          <option value="25000">1:25.000</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="mkTitle"> Projekttitel anzeigen</label>
+      <div class="row">
+        <label class="f">Schriftgröße (pt)<input type="number" id="fsMk" min="5" max="24" step="0.5"></label>
+        <label class="f">Position<span class="modes" style="grid-template-columns:repeat(4,1fr)">
+          <button data-lp="mk:right" title="rechts">→</button><button data-lp="mk:left" title="links">←</button><button data-lp="mk:top" title="oben">↑</button><button data-lp="mk:bottom" title="unten">↓</button>
+        </span></label>
+      </div>
+      <p class="hint">Direkte Nachbarschaft mit allen Straßen und Gebäuden im Schwarzplan.</p>
+    </section>
+
+    <div class="group" data-tab="mi mk"><span>05</span>Umfeld</div>
+
+    <section>
+      <h2>Mapping · Standorte im Umfeld</h2>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="mapInMi"> in Makrolage</label>
+        <label class="check"><input type="checkbox" id="mapInMk"> in Mikrolage</label>
+      </div>
       <div class="mapcats" id="mapCats"></div>
       <div class="row">
         <label class="f">Punktgröße (mm)<input type="number" id="mapDot" min="0.4" max="3" step="0.1"></label>
@@ -367,13 +407,17 @@ return maplibregl$1;
         <label class="check" style="flex:1.4"><input type="checkbox" id="clusterOn"> Häufungen tönen (ab 3 Standorten)</label>
         <select id="clusterR" aria-label="Umkreis für Häufungen"><option value="eng">eng · 50 m</option><option value="mittel">mittel · 80 m</option><option value="weit">weit · 120 m</option></select>
       </div>
-      <label class="check"><input type="checkbox" id="mapLegend"> Legende im Lageplan</label>
+      <label class="check"><input type="checkbox" id="mapLegend"> Legende in der Karte</label>
       <p class="hint" id="mapSkip"></p>
       <p class="hint" id="mapHint">Standorte aus OpenStreetMap für den sichtbaren Ausschnitt. In Großstädten sehr vollständig, auf dem Land teils lückenhaft.</p>
     </section>
 
     <section>
       <h2>Erreichbarkeit · zu Fuß oder mit dem Rad</h2>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="walkInMi"> in Makrolage</label>
+        <label class="check"><input type="checkbox" id="walkInMk"> in Mikrolage</label>
+      </div>
       <div class="row">
         <label class="f">Fortbewegung
           <select id="walkMode"><option value="foot">zu Fuß</option><option value="bike">Fahrrad</option></select>
@@ -407,21 +451,22 @@ return maplibregl$1;
       <p class="hint" id="walkHint"></p>
     </section>
 
-    <div class="group"><span>04</span>Gestaltung</div>
+    <div class="group"><span>06</span>Gestaltung</div>
 
     <section>
       <h2>Eigene POIs</h2>
       <button id="poiAdd">+ POI hinzufügen</button>
       <div id="poiList" class="pois"></div>
-      <p class="hint" id="poiHint">Neue POIs erscheinen in der Mitte des Lageplans. Punkt mit der Maus an die richtige Stelle ziehen, den Namen ebenso. Häkchen blendet ein und aus, ▾ öffnet die Gestaltung. Mit „//“ beginnt eine neue Zeile.</p>
+      <p class="hint" id="poiHint">Neue POIs erscheinen in der Mitte der aktiven Karte. Punkt mit der Maus an die richtige Stelle ziehen, den Namen ebenso. Häkchen blendet ein und aus, ▾ öffnet die Gestaltung. Mit „//“ beginnt eine neue Zeile.</p>
     </section>
 
     <section>
       <h2>Projektpunkt</h2>
       <div class="row">
         <label class="f">Farbe<button class="sw" id="ppColor" aria-label="Farbe Projektpunkt"></button></label>
-        <label class="f">Radius Übersicht (mm)<input type="number" id="ppROv" min="0.4" max="5" step="0.1"></label>
-        <label class="f">Radius Lageplan (mm)<input type="number" id="ppRMi" min="0.4" max="5" step="0.1"></label>
+        <label class="f">Ø Landk. (mm)<input type="number" id="ppROv" min="0.4" max="5" step="0.1"></label>
+        <label class="f">Ø Makro (mm)<input type="number" id="ppRMi" min="0.4" max="5" step="0.1"></label>
+        <label class="f">Ø Mikro (mm)<input type="number" id="ppRMk" min="0.4" max="5" step="0.1"></label>
       </div>
       <div class="row">
         <label class="check"><input type="checkbox" id="ppRing"> Weißer Rand</label>
@@ -432,15 +477,16 @@ return maplibregl$1;
 
     <section>
       <h2>Beschriftungen</h2>
-      <div class="row"><button id="noteOv">+ Text in Übersicht</button><button id="noteMi">+ Text im Lageplan</button></div>
+      <div class="row"><button id="noteOv">+ Landkarte</button><button id="noteMi">+ Makrolage</button><button id="noteMk">+ Mikrolage</button></div>
       <div id="noteList" class="notes"></div>
       <p class="hint" id="noteHint">„+ Text …“ wählen, dann die Stelle in der Karte anklicken. Der Text lässt sich mit der Maus verschieben; ab 3 mm Abstand erscheint eine feine Hinweislinie.</p>
     </section>
 
     <section>
       <h2>Topographie · Geländeschattierung</h2>
-      <label class="check"><input type="checkbox" id="hillOv"> In der Übersicht</label>
-      <label class="check"><input type="checkbox" id="hillMi"> Im Lageplan</label>
+      <label class="check"><input type="checkbox" id="hillOv"> In der Landkarte</label>
+      <label class="check"><input type="checkbox" id="hillMi"> In der Makrolage</label>
+      <label class="check"><input type="checkbox" id="hillMk"> In der Mikrolage</label>
       <label class="f">Stärke
         <select id="hillStrength"><option value="leicht">Leicht</option><option value="mittel">Mittel</option><option value="kraeftig">Kräftig</option></select>
       </label>
@@ -448,7 +494,7 @@ return maplibregl$1;
     </section>
 
     <section>
-      <h2>Gestaltung · beide Karten</h2>
+      <h2>Gestaltung · alle Karten</h2>
       <div class="swatches" id="swatches" role="radiogroup" aria-label="Akzentfarbe">
         <button class="swatch on" data-c="#255AA8" style="background:#255AA8" title="GIEAG Blau" aria-label="GIEAG Blau"></button>
         <button class="swatch" data-c="#FFB81C" style="background:#FFB81C" title="Aicher-Gelb" aria-label="Aicher-Gelb"></button>
@@ -456,7 +502,7 @@ return maplibregl$1;
         <button class="swatch" data-c="#0A0A0A" style="background:#0A0A0A" title="Schwarz" aria-label="Schwarz"></button>
       </div>
       <label class="check"><input type="checkbox" id="optWaterBlack"> Gewässer schwarz</label>
-      <label class="check"><input type="checkbox" id="optLegend"> Maßstabsleiste und Kartentitel (Lageplan mit Nordpfeil)</label>
+      <label class="check"><input type="checkbox" id="optLegend"> Maßstabsleiste und Kartentitel (Makro und Mikro mit Nordpfeil)</label>
       <label class="check"><input type="checkbox" id="optAttrib"> Quellenangabe OpenStreetMap</label>
       <label class="check"><input type="checkbox" id="optTransp"> Hintergrund transparent (PNG für farbige Folien)</label>
       <p class="hint">Kartendaten © OpenStreetMap-Mitwirkende (ODbL), Kacheln OpenFreeMap. Die Quellenangabe sollte auf der Folie sichtbar bleiben.</p>
@@ -467,20 +513,26 @@ return maplibregl$1;
       <div class="row">
         <select id="dpi" aria-label="Auflösung"><option value="150">150 dpi · Bildschirm</option><option value="300">300 dpi · Druck</option></select>
       </div>
-      <div class="row"><button id="expOv" class="primary">Übersicht PNG</button><button id="expMi" class="primary">Lageplan PNG</button></div>
+      <div class="row"><button id="expGo" class="primary">Landkarte als PNG</button></div>
       <p class="status" id="status" aria-live="polite"></p>
     </div>
   </aside>
 
   <main>
     <div id="diag" class="diag" hidden></div>
-    <div class="panel">
-      <header><h3><small id="ovScaleLbl">Süddeutschland</small>Übersicht</h3><span class="hint">Verschieben mit der Maus · Klick setzt den Projektpunkt · <b id="ovSize"></b></span></header>
-      <div class="frame" id="ovFrame"><canvas class="ov" id="ovSc"></canvas><div class="map" id="ovMap"></div><canvas class="ov" id="ovCanvas"></canvas></div>
-    </div>
-    <div class="panel">
-      <header><h3><small id="miScaleLbl">M 1:25.000</small>Mikrolage</h3><span class="hint">Verschieben mit der Maus · <b id="miSize"></b></span></header>
-      <div class="frame" id="miFrame"><div class="map" id="miMap"></div><canvas class="ov" id="miCanvas"></canvas></div>
+    <nav class="bar">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="ov">Landkarte</button><button role="tab" data-tab="mi">Makrolage</button><button role="tab" data-tab="mk">Mikrolage</button>
+      </div>
+      <span class="info"><b id="actScale"></b> · <span id="actSize"></span> · <span id="actHint"></span></span>
+      <div class="zoom" aria-label="Ansicht vergrößern">
+        <button id="zOut" title="Ansicht verkleinern">−</button><button id="zFit" title="Einpassen">100 %</button><button id="zIn" title="Ansicht vergrößern">+</button>
+      </div>
+    </nav>
+    <div class="stage" id="stage">
+      <div class="panel" data-kind="ov"><div class="frame" id="ovFrame"><canvas class="ov" id="ovSc"></canvas><div class="map" id="ovMap"></div><canvas class="ov" id="ovCanvas"></canvas></div></div>
+      <div class="panel" data-kind="mi"><div class="frame" id="miFrame"><div class="map" id="miMap"></div><canvas class="ov" id="miCanvas"></canvas></div></div>
+      <div class="panel" data-kind="mk"><div class="frame" id="mkFrame"><div class="map" id="mkMap"></div><canvas class="ov" id="mkCanvas"></canvas></div></div>
     </div>
   </main>
 </div>
@@ -489,7 +541,7 @@ return maplibregl$1;
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const DPI = { ov: 192, mi: 384 };        // interne Render-dpi: Lageplan mit 384 -> Zoomstufe 14 mit allen Einzelgebäuden
+  const DPI = { ov: 192, mi: 384, mk: 384 };   // interne Render-dpi: Makro/Mikro mit 384 -> Zoomstufe 14 mit allen Einzelgebäuden
   const EARTH = 40075016.686;
   const TILES = 'https://tiles.openfreemap.org/planet';
   const FONT = 'Aptos, "Segoe UI", "Helvetica Neue", Arial, sans-serif';
@@ -574,7 +626,7 @@ return maplibregl$1;
     get(k, d) { try { const v = localStorage.getItem('gieag-lk-' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('gieag-lk-' + k, JSON.stringify(v)); } catch (e) {} }
   };
-  const sample = { id: 'beispiel', name: 'Untere Planie', lon: 9.0034, lat: 48.7137, site: [], bld: [], ov: { center: [10.4, 48.85], zE: 7.3 }, miCenter: [9.0034, 48.7137] };
+  const sample = { id: 'beispiel', name: 'Untere Planie', lon: 9.0034, lat: 48.7137, site: [], bld: [], ov: { center: [10.4, 48.85], zE: 7.3 }, miCenter: [9.0034, 48.7137], mkCenter: [9.0034, 48.7137] };
   let projects = store.get('projects', [sample]);
   if (!projects.length) projects = [sample];
   let P = JSON.parse(JSON.stringify(projects.find(p => p.id === store.get('current', 'beispiel')) || projects[0]));
@@ -584,7 +636,19 @@ return maplibregl$1;
   const S = Object.assign({ ovPreset: '15.19x11.10', ovCw: 15, ovCh: 10, miPreset: '15.19x11.10', miCw: 15, miCh: 10,
     dpi: 300, scale: 25000, ovScale: '3000000', accent: '#255AA8', built: 'auto',
     cityMin: 50000, abroad: false, motorway: true, ovTitle: true, miTitle: true, airport: true,
-    legend: true, waterBlack: true, attrib: true, fsOv: 8, fsMi: 7.5 }, store.get('settings-v3', {}));
+    legend: true, waterBlack: true, attrib: true, fsOv: 8, fsMi: 7.5,
+    mkPreset: '15.19x11.10', mkCw: 15, mkCh: 10, mkScale: 10000, mkTitle: true, fsMk: 7.5, mkFrame: true }, store.get('settings-v3', {}));
+  // Maßstabsreihen: Landkarte 1:500.000–1:10 Mio. (500.000er), Makrolage 1:25.000–1:100.000 (25.000er), Mikrolage 1:5.000–1:25.000 (5.000er)
+  const snapSc = (v, lo, hi, st) => Math.min(hi, Math.max(lo, Math.round((+v || lo) / st) * st));
+  S.ovScale = String(snapSc(S.ovScale === 'frei' ? 3e6 : S.ovScale, 5e5, 1e7, 5e5));
+  S.scale = snapSc(S.scale, 25000, 100000, 25000);
+  S.mkScale = snapSc(S.mkScale, 5000, 25000, 5000);
+  const KINDS = ['ov', 'mi', 'mk'];
+  const KNAME = { ov: 'Landkarte', mi: 'Makrolage', mk: 'Mikrolage' };
+  const scaleOf = kind => kind === 'ov' ? +S.ovScale : kind === 'mi' ? +S.scale : +S.mkScale;
+  const centerOf = kind => kind === 'ov' ? P.ov.center : kind === 'mi' ? (P.miCenter || [P.lon, P.lat]) : (P.mkCenter || P.miCenter || [P.lon, P.lat]);
+  let active = KINDS.includes(store.get('tab', 'ov')) ? store.get('tab', 'ov') : 'ov';
+  const vzoom = { ov: 1, mi: 1, mk: 1 };            // Ansichts-Zoom zur Bearbeitung (ändert den Maßstab nicht)
   // ---------- Mapping (OSM-Standorte im Lageplan) ----------
   // ---------- Farbwelt: GIEAG-Blau führt, Aicher-Töne als Akzente ----------
   const WORLD = [
@@ -627,7 +691,10 @@ return maplibregl$1;
   S.drive = Object.assign({ unit: 'min', kms: { 5: true, 10: true, 25: false, 50: false } }, S.drive);
   S.walk.calc = S.walk.calc || 'netz'; S.drive.calc = S.drive.calc || 'netz';
   if (S.zoneV !== 1) { S.walk.style = 'fill'; S.drive.style = 'fill'; S.zoneV = 1; }   // neu: Fläche mit Verlauf als Standard
-  S.hill = Object.assign({ ov: false, mi: false, strength: 'mittel' }, S.hill);
+  S.hill = Object.assign({ ov: false, mi: false, mk: false, strength: 'mittel' }, S.hill);
+  S.mapIn = Object.assign({ mi: true, mk: true }, S.mapIn);      // Mapping je Karte ein/aus
+  S.walkIn = Object.assign({ mi: true, mk: true }, S.walkIn);    // Erreichbarkeit je Karte ein/aus
+  if (S.pp.rMk == null) S.pp.rMk = 1.2;
   let mode = 'point', drawRing = [];
 
   const fmt = kind => {
@@ -639,7 +706,7 @@ return maplibregl$1;
     const mpp = scale * 0.0254 / DPI[kind];
     return Math.log2(EARTH * Math.cos(lat * Math.PI / 180) / (512 * mpp));
   };
-  const ovFixed = () => S.ovScale !== 'frei';
+  const ovFixed = () => true;                       // Landkarte immer mit festem Maßstab
   // Export-Zoom der Übersicht: fester Maßstab oder frei gezoomt
   const ovZoomE = () => ovFixed() ? zoomForScale('ov', +S.ovScale, P.ov.center[1]) : P.ov.zE;
 
@@ -704,8 +771,9 @@ return maplibregl$1;
       filter: ['all', ['in', ['get', 'class'], ['literal', classes]], notTunnel],
       paint: { 'line-color': c, 'line-width': mm(w) }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
     const A = S.accent;
-    const bau = builtMode();
-    const hillMi = !!(S.hill && S.hill.mi);
+    const bau = builtMode(kind);
+    const hillMi = !!(S.hill && S.hill[kind]);
+    const mapOn = !!S.mapIn[kind];
     return { version: 8, sources: src, layers: [
       { id: 'bg', type: 'background', paint: { 'background-color': '#FFFFFF' } },
       { id: 'settle', type: 'fill', source: 'omt', 'source-layer': 'landuse',
@@ -723,16 +791,16 @@ return maplibregl$1;
       road('r-sec', ['secondary', 'tertiary'], 0.26, '#B9BCC0'),
       road('r-pri', ['primary', 'trunk'], 0.38, '#A9ACB1'),
       road('r-mw', ['motorway'], 0.55, '#999DA2'),
-      ...(S.airport ? airportLayers(mm) : []),
+      ...(S.airport ? airportLayers(mm, kind) : []),
       { id: 'rail', type: 'line', source: 'omt', 'source-layer': 'transportation',
         filter: ['all', ['==', ['get', 'class'], 'rail'], notTunnel, ['!', ['has', 'service']]],
         paint: { 'line-color': '#8F9398', 'line-width': mm(0.22), 'line-dasharray': [4, 2] } },
       { id: 'poi-q', type: 'circle', source: 'omt', 'source-layer': 'poi', paint: { 'circle-radius': 0, 'circle-opacity': 0 } },
       { id: 'lu-q', type: 'fill', source: 'omt', 'source-layer': 'landuse', paint: { 'fill-opacity': 0 } },
       { id: 'aero-q', type: 'fill', source: 'omt', 'source-layer': 'aeroway', paint: { 'fill-opacity': 0 } },
-      { id: 'mapgeo-area', type: 'fill', source: 'mapgeo', filter: ['==', ['get', 'k'], 'a'], paint: { 'fill-color': ['get', 't'] } },
+      ...(mapOn ? [{ id: 'mapgeo-area', type: 'fill', source: 'mapgeo', filter: ['==', ['get', 'k'], 'a'], paint: { 'fill-color': ['get', 't'] } }] : []),
       ...(bau === 'gebaeude' ? [{ id: 'building', type: 'fill', source: 'omt', 'source-layer': 'building', paint: { 'fill-color': hillMi ? '#AEB2B7' : '#B9BDC2' } }] : []),
-      { id: 'mapgeo-bld', type: 'fill', source: 'mapgeo', filter: ['==', ['get', 'k'], 'b'], paint: { 'fill-color': ['get', 'c'] } },
+      ...(mapOn ? [{ id: 'mapgeo-bld', type: 'fill', source: 'mapgeo', filter: ['==', ['get', 'k'], 'b'], paint: { 'fill-color': ['get', 'c'] } }] : []),
       { id: 'bld', type: 'fill', source: 'bld', paint: { 'fill-color': A } },
       { id: 'site', type: 'fill', source: 'site', paint: { 'fill-color': A } },
       { id: 'site-line', type: 'line', source: 'site', paint: { 'line-color': A, 'line-width': mm(0.3) } },
@@ -740,8 +808,8 @@ return maplibregl$1;
     ] };
   }
   // Start-/Landebahnen und Rollwege: weiße Fläche mit grauer Kontur, Breite maßstabsgetreu (Bahn ~45 m, Rollweg ~23 m)
-  function airportLayers(mm) {
-    const m = v => mm(v * 1000 / +S.scale);          // Meter in der Natur -> mm auf dem Plan
+  function airportLayers(mm, kind) {
+    const m = v => mm(v * 1000 / scaleOf(kind));          // Meter in der Natur -> mm auf dem Plan
     const isLine = ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false];
     const isPoly = ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false];
     const cls = c => ['in', ['get', 'class'], ['literal', c]];
@@ -782,7 +850,8 @@ return maplibregl$1;
     return { lvl: 'minimal', states: false, rivers: 'main', riverW: 0.13, rail: 0, mw: 0, mwCol: '', countryW: 0.15,
       text: 'Nur Staatsgrenzen und Hauptflüsse' };
   }
-  function builtMode() {
+  function builtMode(kind = 'mi') {
+    if (kind === 'mk') return 'gebaeude';             // Mikrolage: immer Schwarzplan mit Einzelgebäuden
     if (S.built && S.built !== 'auto') return S.built;
     return +S.scale >= 50000 ? 'flaeche' : 'gebaeude';
   }
@@ -806,7 +875,7 @@ return maplibregl$1;
   const draftGeo = () => ({ type: 'FeatureCollection', features: drawRing.length > 1 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: drawRing } }] : [] });
 
   // ---------- Overlay: Punkte, Beschriftung, Nordpfeil, Maßstab ----------
-  const DEF_LBL = { ov: { dx: 2.8, dy: 0, al: 'left' }, mi: { dx: 3.2, dy: 0, al: 'left' } };
+  const DEF_LBL = { ov: { dx: 2.8, dy: 0, al: 'left' }, mi: { dx: 3.2, dy: 0, al: 'left' }, mk: { dx: 3.2, dy: 0, al: 'left' } };
   const lbl = kind => { P.lbl = P.lbl || {}; return P.lbl[kind] || (P.lbl[kind] = Object.assign({}, DEF_LBL[kind])); };
   const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   // Projektbeschriftung: frei verschiebbar (Versatz in mm), ab 6 mm Abstand mit feiner Hinweislinie
@@ -894,21 +963,22 @@ return maplibregl$1;
       }
       drawDot(g, proj.x, proj.y, k, { color: S.pp.color || A, r: +S.pp.rOv || 1.5, ring: S.pp.ring, shadow: S.pp.shadow });
       box = S.ovTitle ? projectLabel(g, 'ov', k, proj, +S.fsOv || 8, false) : null;
-      if (S.legend) scaleBar(g, map, k, W, H, false);
+      if (S.legend) scaleBar(g, map, k, W, H, 'ov');
     } else {
-      drawWalk(g, map, k, proj, W, H);
-      drawMapping(g, map, k, W, H);
-      { const ph = drawPois(g, map, 'mi', k); if (view) view.poiHits = ph; }
+      if (S.walkIn[kind]) drawWalk(g, map, k, proj, W, H);
+      if (S.mapIn[kind]) drawMapping(g, map, k, W, H);
+      if (kind === 'mi' && S.mkFrame && scaleOf('mk') < scaleOf('mi')) drawMiFrame(g, map, k, 'mk');
+      { const ph = drawPois(g, map, kind, k); if (view) view.poiHits = ph; }
       if (!P.site.length && !P.bld.length) {
-        drawDot(g, proj.x, proj.y, k, { color: S.pp.color || A, r: +S.pp.rMi || 1.2, ring: S.pp.ring, shadow: S.pp.shadow });
+        drawDot(g, proj.x, proj.y, k, { color: S.pp.color || A, r: +(kind === 'mk' ? S.pp.rMk : S.pp.rMi) || 1.2, ring: S.pp.ring, shadow: S.pp.shadow });
       }
-      if (S.miTitle) box = projectLabel(g, 'mi', k, proj, +S.fsMi || 7.5, true);
+      if (kind === 'mk' ? S.mkTitle : S.miTitle) box = projectLabel(g, kind, k, proj, +(kind === 'mk' ? S.fsMk : S.fsMi) || 7.5, true);
       if (drawRing.length) {
         g.fillStyle = A;
         for (const c of drawRing) { const p = map.project(c); g.fillRect(p.x - mm(0.5), p.y - mm(0.5), mm(1), mm(1)); }
       }
-      if (S.legend) scaleBar(g, map, k, W, H, true);
-      if (S.mapLegend) mapLegend(g, k, W, H);
+      if (S.legend) scaleBar(g, map, k, W, H, kind);
+      if (S.mapLegend) mapLegend(g, k, W, H, kind);
     }
     const nb = drawNotes(g, map, kind, k);
     if (view) { view.lblBox = box; view.noteBoxes = nb; }
@@ -931,11 +1001,12 @@ return maplibregl$1;
     g.restore();
   }
   // eigene POIs: Punkt (Farbe, Radius, Rand, Schatten) plus Name (Größe, Schnitt, Farbe), Punkt und Name einzeln verschiebbar
-  const POI_DEF = { on: true, name: '', color: '#1E1E1E', r: 0.9, ring: true, shadow: true, size: 7, weight: 300, tcol: '#0A0A0A', ov: true, mi: true, dx: null, dy: 0, v: 2 };   // Schrift wie Großstädte: Aptos Light 7 pt, Schwarz
+  const POI_DEF = { on: true, name: '', color: '#1E1E1E', r: 0.9, ring: true, shadow: true, size: 7, weight: 300, tcol: '#0A0A0A', ov: true, mi: true, mk: true, dx: null, dy: 0, v: 2 };   // Schrift wie Großstädte: Aptos Light 7 pt, Schwarz
   function drawPois(g, map, kind, k) {
     const mm = v => v * k, pt = v => v * 0.3528 * k, hits = [];
     for (const o of (P.pois || [])) {
       if (o.v !== 2) Object.assign(o, { size: 7, weight: 300, tcol: '#0A0A0A', v: 2 });   // bestehende POIs auf die Großstadt-Schrift umstellen
+      if (o.mk == null) o.mk = o.mi !== false;            // neue Mikrolage: bisherige Lageplan-Einstellung übernehmen
       if (!o.on || !o[kind]) continue;
       const p = map.project([o.lon, o.lat]);
       drawDot(g, p.x, p.y, k, o);
@@ -954,10 +1025,10 @@ return maplibregl$1;
     }
     return hits;
   }
-  // Lageplan-Ausschnitt als feiner Rahmen in der Übersicht (genau das exportierte Format im gewählten Maßstab)
-  function drawMiFrame(g, map, k) {
-    const mm = v => v * k, f = fmt('mi'), c = P.miCenter || [P.lon, P.lat];
-    const hw = f.w / 100 * +S.scale / 2, hh = f.h / 100 * +S.scale / 2;
+  // Ausschnitt der nächstgrößeren Karte als feiner Rahmen (genau das exportierte Format im gewählten Maßstab)
+  function drawMiFrame(g, map, k, fk = 'mi') {
+    const mm = v => v * k, f = fmt(fk), c = centerOf(fk);
+    const hw = f.w / 100 * scaleOf(fk) / 2, hh = f.h / 100 * scaleOf(fk) / 2;
     const dLon = hw / (111320 * Math.cos(c[1] * Math.PI / 180)), dLat = hh / 110540;
     const a = map.project([c[0] - dLon, c[1] + dLat]), b = map.project([c[0] + dLon, c[1] - dLat]);
     let x = a.x, y = a.y, w = b.x - a.x, h = b.y - a.y;
@@ -989,8 +1060,8 @@ return maplibregl$1;
     }
     return out;
   }
-  function scaleBar(g, map, k, W, H, withNorth) {
-    const mm = v => v * k, pt = v => v * 0.3528 * k;
+  function scaleBar(g, map, k, W, H, kind) {
+    const mm = v => v * k, pt = v => v * 0.3528 * k, withNorth = kind !== 'ov';
     const c = map.getCenter();
     const mppCss = EARTH * Math.cos(c.lat * Math.PI / 180) / (512 * Math.pow(2, map.getZoom()));
     const nice = [10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000, 20000, 25000, 50000, 100000, 200000];
@@ -1008,7 +1079,7 @@ return maplibregl$1;
     g.textAlign = 'center'; g.fillText('0', x0, base - mm(1.6));
     g.fillText(len >= 1000 ? (len / 1000) + ' km' : len + ' m', right, base - mm(1.6));
     g.textAlign = 'right';
-    const cap = withNorth ? `LAGEPLAN  M 1:${(+S.scale).toLocaleString('de-DE')}` : (ovFixed() ? `ÜBERSICHT  M 1:${(+S.ovScale).toLocaleString('de-DE')}` : 'ÜBERSICHT');
+    const cap = `${KNAME[kind].toUpperCase()}  M 1:${scaleOf(kind).toLocaleString('de-DE')}`;
     g.fillText(cap, right, base + mm(3));
     g.textAlign = 'left';
     if (withNorth) {
@@ -1141,6 +1212,7 @@ return maplibregl$1;
   function zonesFC(kind) {
     const z = kind === 'ov' ? 'drive' : 'walk', cfg = S[z], mins = z === 'walk' ? walkOn() : driveOn();
     const fc = { type: 'FeatureCollection', features: [] };
+    if (z === 'walk' && !S.walkIn[kind]) return fc;
     if (!cfg || cfg.style === 'line' || !mins.length) return fc;
     const o = Math.min(0.35, 0.6 / (mins.length + 0.8));         // je Stufe; innen überlagert ≈ 40 %, außen ≈ 13 %
     const iso = ISO[isoKey(z)];
@@ -1252,8 +1324,10 @@ return maplibregl$1;
   // zusammengefasst, und ein Treffer hätte den ganzen Block gefärbt.
   let probe = null;
   const PROBE_Z = 14.2;
+  // Karte, für die Standorte geladen werden: die aktive Makro- oder Mikrolage
+  const mapView = () => views[active === 'mk' ? 'mk' : 'mi'];
   async function probeMap() {
-    const mi = views.mi.map, b = mi.getBounds();
+    const mi = mapView().map, b = mi.getBounds();
     const Z = Math.max(PROBE_Z, mi.getZoom());
     const mx = lon => (lon + 180) / 360, my = lat => { const r = lat * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2; };
     const sc = 512 * Math.pow(2, Z);
@@ -1280,7 +1354,8 @@ return maplibregl$1;
   // Areale (Schule, Park, Klinik, Gewerbegebiet) werden höchstens leicht getönt
   let geoReq = 0;
   async function computeMapGeo() {
-    const m = views.mi && views.mi.map; if (!m || !m.getSource('mapgeo') || !m.getLayer('mapgeo-bld')) return;
+    if (active === 'ov') return;
+    const m = mapView() && mapView().map; if (!m || !m.getSource('mapgeo')) return;
     const my = ++geoReq;
     const asBld = S.mapMode !== 'dot' && !!m.getLayer('building');
     const anyOn = MAPCATS.some(c => S.map[c.id].on && mapData[c.id] && mapData[c.id].length);
@@ -1348,7 +1423,8 @@ return maplibregl$1;
     }
     mapSkipped = skipped;
     mapGeoFC = { type: 'FeatureCollection', features: feats }; mapDots = dots;
-    m.getSource('mapgeo').setData(mapGeoFC); repaint(); renderMapCats();
+    for (const kk of ['mi', 'mk']) { const sv = views[kk] && views[kk].map.getSource('mapgeo'); if (sv) sv.setData(mapGeoFC); }
+    repaint(); renderMapCats();
   }
   // Häufungen finden (Standorte, die über Abstände ≤ eps verbunden sind, mind. 3) und als weiche Fläche ausformen:
   // Kreise um die Standorte, „Kapseln“ entlang der Verbindungen und Dreiecke dazwischen – deckend gefüllt ergibt das eine runde Gesamtform
@@ -1394,10 +1470,10 @@ return maplibregl$1;
       }
     }
   }
-  function mapLegend(g, k, W, H) {
-    const act = MAPCATS.filter(c => S.map[c.id].on && mapData[c.id] && mapData[c.id].length);
+  function mapLegend(g, k, W, H, kind) {
+    const act = S.mapIn[kind] ? MAPCATS.filter(c => S.map[c.id].on && mapData[c.id] && mapData[c.id].length) : [];
     const sq = S.mapMode !== 'dot';
-    const mins = walkOn();
+    const mins = S.walkIn[kind] ? walkOn() : [];
     if (!act.length && !mins.length) return;
     const mm = v => v * k, pt = v => v * 0.3528 * k, rowH = pt(6) * 1.5;
     g.font = `400 ${pt(6)}px ${FONT}`;
@@ -1449,7 +1525,7 @@ return maplibregl$1;
 
   // 1) Sofort: Standorte direkt aus den Kartenkacheln des Lageplans
   function tileItems() {
-    const m = views.mi && views.mi.map; const out = {}; if (!m || !m.getSource('omt')) return out;
+    const m = mapView() && mapView().map; const out = {}; if (!m || !m.getSource('omt')) return out;
     const add = (cid, it) => (out[cid] = out[cid] || []).push(it);
     const q = sl => { try { return m.querySourceFeatures('omt', { sourceLayer: sl }); } catch (e) { return []; } };
     for (const f of q('poi')) {
@@ -1493,8 +1569,9 @@ return maplibregl$1;
   async function loadMapping(force = false) {
     const act = MAPCATS.filter(c => S.map[c.id].on);
     renderMapCats();
-    if (!act.length || !views.mi) { mapData = {}; computeMapGeo(); return; }
-    const b = views.mi.map.getBounds(), padX = (b.getEast() - b.getWest()) * 0.03, padY = (b.getNorth() - b.getSouth()) * 0.03;
+    if (!act.length || !mapView()) { mapData = {}; computeMapGeo(); return; }
+    if (active === 'ov') return;                          // Standorte nur für Makro- und Mikrolage
+    const b = mapView().map.getBounds(), padX = (b.getEast() - b.getWest()) * 0.03, padY = (b.getNorth() - b.getSouth()) * 0.03;
     const bb = [b.getSouth() - padY, b.getWest() - padX, b.getNorth() + padY, b.getEast() + padX].map(v => v.toFixed(4)).join(',');
     // Schritt 1 sofort
     const tiles = tileItems();
@@ -1638,19 +1715,26 @@ return maplibregl$1;
 
   // ---------- Vorschaukarten ----------
   const views = {};
-  function frameSize(frame, kind) {
-    const f = fmt(kind); const w = Math.min(frame.parentElement.clientWidth, 1100);
+  // Blattgröße in der Vorschau: eingepasst in die Bühne, mal Ansichts-Zoom
+  const fitW = kind => {
+    const f = fmt(kind), st = $('stage');
+    const aw = Math.max(240, st.clientWidth - 56), ah = Math.max(180, st.clientHeight - 56);
+    return Math.max(240, Math.min(aw, ah * f.w / f.h, 1600));
+  };
+  const maxZoom = kind => Math.max(1, Math.floor(8000 / (fitW(kind) * (kind === 'ov' ? (window.devicePixelRatio || 1) : 2)) * 4) / 4);
+  function frameSize(kind) {
+    const f = fmt(kind), w = Math.round(fitW(kind) * vzoom[kind]);
     return { w, h: Math.round(w * f.h / f.w) };
   }
   function makeView(kind) {
     const frame = $(kind + 'Frame'), canvas = $(kind + 'Canvas');
-    const f = kind === 'mi' ? 2 : 1;          // Lageplan-Vorschau intern doppelt so groß, per CSS verkleinert
-    const sz = frameSize(frame, kind); frame.style.height = sz.h + 'px';
+    const f = kind === 'ov' ? 1 : 2;          // Makro-/Mikrolage-Vorschau intern doppelt so groß, per CSS verkleinert
+    const sz = frameSize(kind); frame.style.width = sz.w + 'px'; frame.style.height = sz.h + 'px';
     const tmp = { f, sz, mapEl: $(kind + 'Map'), canvas }; applySize(tmp);
     const k = sz.w * f / (fmt(kind).w * 10);
     const map = new maplibregl.Map({ pixelRatio: f > 1 ? 1 : (window.devicePixelRatio || 1),
       container: kind + 'Map', style: styleFor(kind, k), attributionControl: false,
-      center: kind === 'ov' ? P.ov.center : (P.miCenter || [P.lon, P.lat]), zoom: 6, doubleClickZoom: false,
+      center: centerOf(kind), zoom: 6, doubleClickZoom: false, scrollZoom: false, boxZoom: false, keyboard: false,
       dragRotate: false, pitchWithRotate: false, touchPitch: false, maxCanvasSize: [8192, 8192]
     });
     map.touchZoomRotate.disableRotation();
@@ -1658,13 +1742,16 @@ return maplibregl$1;
     v.hook = hookPatterns(map, k, f > 1 ? 1 : (window.devicePixelRatio || 1));
     views[kind] = v;
     map.on('render', () => paint(v));
-    if (kind === 'ov') { map.on('movestart', () => { $('ovSc').style.opacity = 0.25; }); map.on('idle', paintSettle); }
+    if (kind === 'ov') { map.on('movestart', () => { $('ovSc').style.opacity = 0.25; }); map.on('idle', () => { if (active === 'ov') paintSettle(); }); }
     map.on('moveend', () => {
       if (kind === 'ov') {
         P.ov.center = map.getCenter().toArray();
         if (!ovFixed()) { P.ov.zE = map.getZoom() + Math.log2(exportCss('ov').w / v.sz.w); if (ovGen().lvl !== v.genLvl) restyleOv(); }
       }
-      else { P.miCenter = map.getCenter().toArray(); clearTimeout(window.__mapT); window.__mapT = setTimeout(() => map.once('idle', () => loadMapping()), 500); }
+      else if (active === kind && !v.relayouting) {
+        P[kind + 'Center'] = map.getCenter().toArray();
+        clearTimeout(window.__mapT); window.__mapT = setTimeout(() => map.once('idle', () => loadMapping()), 500);
+      }
     });
     // Beschriftung ziehen
     const inBox = (b, pt) => b && pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h;
@@ -1697,7 +1784,7 @@ return maplibregl$1;
       if (poiPlace) { const o = (P.pois || []).find(x => x.id === poiPlace); if (o) { o.lon = e.lngLat.lng; o.lat = e.lngLat.lat; o[kind] = true; } setPoiPlace(null); renderPois(); repaint(); return; }
       onClick(v, e);
     });
-    map.on('dblclick', e => { if (kind === 'mi' && mode === 'draw') { e.preventDefault(); finishDraw(); } });
+    map.on('dblclick', e => { if (kind !== 'ov' && mode === 'draw') { e.preventDefault(); finishDraw(); } });
     return v;
   }
   function applySize(v) {
@@ -1714,56 +1801,55 @@ return maplibregl$1;
     const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     drawOverlay(g, v.map, v.kind, v.k, W, H, v);
   }
+  // Vorschau der aktiven Karte neu aufbauen (Blattgröße, Linienstärken, Ausschnitt); die anderen Karten folgen beim Wechsel
+  const detailZoom = kind => zoomForScale(kind, scaleOf(kind), P.lat) - Math.log2(exportCss(kind).w / (views[kind].sz.w * views[kind].f));
+  const miPreviewZoom = () => detailZoom('mi');
   function relayout(restyle = true) {
-    for (const v of Object.values(views)) {
-      const f = fmt(v.kind);
-      v.sz = frameSize(v.frame, v.kind); v.frame.style.height = v.sz.h + 'px'; applySize(v);
-      v.k = v.sz.w * v.f / (f.w * 10);
-      v.map.resize();
-      v.map.off('styleimagemissing', v.hook); v.hook = hookPatterns(v.map, v.k, v.f > 1 ? 1 : (window.devicePixelRatio || 1));
-      if (restyle) { v.map.setStyle(styleFor(v.kind, v.k)); }
-      $(v.kind + 'Size').textContent = `${f.w.toFixed(2).replace('.', ',')} × ${f.h.toFixed(2).replace('.', ',')} cm`;
-    }
-    const ov = views.ov, mi = views.mi;
-    ov.map.jumpTo({ center: P.ov.center, zoom: ovZoomE() - Math.log2(exportCss('ov').w / ov.sz.w) });
-    for (const h of ['scrollZoom', 'boxZoom', 'touchZoomRotate', 'keyboard']) ov.map[h][ovFixed() ? 'disable' : 'enable']();
-    $('ovScaleLbl').textContent = ovFixed() ? 'M 1:' + (+S.ovScale).toLocaleString('de-DE') : 'Maßstab frei';
-    ov.genLvl = ovGen().lvl;
+    const v = views[active]; if (!v) return;
+    const f = fmt(v.kind);
+    vzoom[v.kind] = Math.min(vzoom[v.kind], maxZoom(v.kind));
+    v.sz = frameSize(v.kind); v.frame.style.width = v.sz.w + 'px'; v.frame.style.height = v.sz.h + 'px'; applySize(v);
+    v.k = v.sz.w * v.f / (f.w * 10);
+    v.map.resize();
+    v.map.off('styleimagemissing', v.hook); v.hook = hookPatterns(v.map, v.k, v.f > 1 ? 1 : (window.devicePixelRatio || 1));
+    if (restyle) { if (v.kind === 'ov') v.genLvl = ovGen().lvl; v.map.setStyle(styleFor(v.kind, v.k)); }
+    v.relayouting = true;
+    if (v.kind === 'ov') v.map.jumpTo({ center: P.ov.center, zoom: ovZoomE() - Math.log2(exportCss('ov').w / v.sz.w) });
+    else v.map.jumpTo({ center: centerOf(v.kind), zoom: detailZoom(v.kind) });
+    v.relayouting = false;
     $('genHint').textContent = 'Informationsdichte automatisch: ' + ovGen().text + '.';
-    mi.map.jumpTo({ center: P.miCenter || [P.lon, P.lat], zoom: miPreviewZoom() });
-    mi.map.scrollZoom.disable(); mi.map.boxZoom.disable(); mi.map.touchZoomRotate.disable();
-    $('miScaleLbl').textContent = 'M 1:' + (+S.scale).toLocaleString('de-DE');
+    $('actScale').textContent = KNAME[v.kind] + '  M 1:' + scaleOf(v.kind).toLocaleString('de-DE');
+    $('actSize').textContent = `${f.w.toFixed(2).replace('.', ',')} × ${f.h.toFixed(2).replace('.', ',')} cm`;
+    $('zFit').textContent = Math.round(vzoom[v.kind] * 100) + ' %';
+    $('zIn').disabled = vzoom[v.kind] >= maxZoom(v.kind); $('zOut').disabled = vzoom[v.kind] <= 1;
     repaint();
   }
-  const miPreviewZoom = () => zoomForScale('mi', S.scale, P.lat) - Math.log2(exportCss('mi').w / (views.mi.sz.w * views.mi.f));
   function restyleOv() {
-    const v = views.ov; if (!v) return;
-    v.genLvl = ovGen().lvl;
-    v.map.setStyle(styleFor('ov', v.k));
-    relayout(false);
+    if (active === 'ov') relayout(true);
   }
   let zoneSig = '';
   function repaint() {
     // Flächen der Erreichbarkeit nur neu setzen, wenn sich etwas daran geändert hat
     const sig = ['walk', 'drive'].map(z => { const e = ISO[isoKey(z)]; return [isoKey(z), S[z].style, S[z].color, S[z].calc, e ? e.st : ''].join('|'); }).join('#');
     if (sig !== zoneSig) { zoneSig = sig; updateZones(); }
-    for (const v of Object.values(views)) v.map.triggerRepaint(); if (views.ov && views.ov.map.loaded()) paintSettle();
+    for (const v of Object.values(views)) v.map.triggerRepaint(); if (active === 'ov' && views.ov && views.ov.map.loaded()) paintSettle();
   }
   function refreshData() {
-    const m = views.mi.map; if (!m.getSource('site')) return;
-    m.getSource('site').setData(siteGeo()); m.getSource('bld').setData(bldGeo()); m.getSource('draft').setData(draftGeo()); repaint();
+    for (const kk of ['mi', 'mk']) {
+      const m = views[kk] && views[kk].map; if (!m || !m.getSource('site')) continue;
+      m.getSource('site').setData(siteGeo()); m.getSource('bld').setData(bldGeo()); m.getSource('draft').setData(draftGeo());
+    }
+    repaint();
   }
 
   // ---------- Interaktion ----------
   function setPoint(lon, lat, recenter = true) {
     P.lon = lon; P.lat = lat;
-    if (recenter) { P.miCenter = [lon, lat]; views.mi.map.jumpTo({ center: P.miCenter, zoom: miPreviewZoom() }); }
-    // liegt der Punkt außerhalb der Übersicht (z. B. Leipzig statt Stuttgart), Übersicht mitführen
-    const om = views.ov.map, q = om.project([lon, lat]), c = om.getCanvas();
-    if (recenter && (q.x < 0 || q.y < 0 || q.x > c.clientWidth || q.y > c.clientHeight)) {
-      P.ov.center = [lon, lat]; om.jumpTo({ center: P.ov.center, zoom: ovZoomE() - Math.log2(exportCss('ov').w / views.ov.sz.w) });
-    }
-    repaint();
+    if (recenter) { P.miCenter = [lon, lat]; P.mkCenter = [lon, lat]; }
+    // liegt der Punkt außerhalb der Landkarte (z. B. Leipzig statt Stuttgart), Landkarte mitführen
+    const fo = fmt('ov'), c0 = P.ov.center, hw = fo.w / 100 * +S.ovScale / 2 / (111320 * Math.cos(c0[1] * Math.PI / 180)), hh = fo.h / 100 * +S.ovScale / 2 / 110540;
+    if (recenter && (Math.abs(lon - c0[0]) > hw * 0.95 || Math.abs(lat - c0[1]) > hh * 0.95)) P.ov.center = [lon, lat];
+    if (recenter || active !== 'ov') relayout(false); else repaint();
   }
   function onClick(v, e) {
     const { lng, lat } = e.lngLat;
@@ -1773,7 +1859,7 @@ return maplibregl$1;
     else if (mode === 'bld') {
       if (!v.map.getLayer('building')) { status('Einzelgebäude sind nur bei „Bebauung: Einzelgebäude“ wählbar.'); return; }
       const f = v.map.queryRenderedFeatures(e.point, { layers: ['building', 'bld'] })[0];
-      if (!f) { status('Hier ist kein Gebäude. Im Maßstab 1:50.000 werden keine Gebäude gezeigt.'); return; }
+      if (!f) { status('Hier ist kein Gebäude. Ab 1:50.000 zeigt die Makrolage Siedlungsflächen statt Einzelgebäuden.'); return; }
       const key = JSON.stringify(f.geometry.coordinates);
       const i = P.bld.findIndex(g => JSON.stringify(g.coordinates) === key);
       if (i >= 0) P.bld.splice(i, 1); else P.bld.push(f.geometry);
@@ -1788,9 +1874,9 @@ return maplibregl$1;
     if (mode === 'draw' && b.dataset.mode !== 'draw') finishDraw();
     mode = b.dataset.mode;
     document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
-    $('miFrame').classList.toggle('drawing', mode === 'draw' || mode === 'bld');
+    for (const kk of ['mi', 'mk']) $(kk + 'Frame').classList.toggle('drawing', mode === 'draw' || mode === 'bld');
     $('modeHint').textContent = {
-      point: 'Klick in den Lageplan setzt den Projektpunkt.',
+      point: 'Klick in Makro- oder Mikrolage setzt den Projektpunkt.',
       draw: 'Eckpunkte des Baufelds anklicken. Doppelklick oder „Baufeld schließen“ beendet die Fläche.',
       bld: 'Gebäude anklicken, um sie farbig zu markieren. Erneuter Klick hebt die Markierung auf.',
       pan: 'Karte verschieben, ohne etwas zu ändern.'
@@ -1845,7 +1931,7 @@ return maplibregl$1;
     store.set('projects', projects); store.set('current', P.id); fillProjects(); status('Gespeichert: ' + (P.name || 'Projekt').replace(/\s*\n\s*/g, ' '));
   };
   $('projNew').onclick = () => {
-    P = { id: 'p' + Date.now(), name: '', lon: P.lon, lat: P.lat, site: [], bld: [], ov: { center: P.ov.center.slice(), zE: P.ov.zE }, miCenter: [P.lon, P.lat] };
+    P = { id: 'p' + Date.now(), name: '', lon: P.lon, lat: P.lat, site: [], bld: [], ov: { center: P.ov.center.slice(), zE: P.ov.zE }, miCenter: [P.lon, P.lat], mkCenter: [P.lon, P.lat] };
     drawRing = []; $('projName').value = ''; $('projName').focus(); refreshData(); repaint();
     const o = document.createElement('option'); o.value = P.id; o.textContent = 'Neues Projekt'; $('projSel').appendChild(o); $('projSel').value = P.id;
   };
@@ -1881,13 +1967,19 @@ return maplibregl$1;
     store.set('draft', null); location.reload();
   };
   document.querySelectorAll('select.preset').forEach(sel => { for (const [v, t] of PRESETS) { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); } });
-  for (const kind of ['ov', 'mi']) {
+  for (const kind of KINDS) {
     $(kind + 'Preset').value = S[kind + 'Preset']; $(kind + 'Cw').value = S[kind + 'Cw']; $(kind + 'Ch').value = S[kind + 'Ch'];
     $(kind + 'Custom').hidden = S[kind + 'Preset'] !== 'custom';
     $(kind + 'Preset').onchange = () => { S[kind + 'Preset'] = $(kind + 'Preset').value; $(kind + 'Custom').hidden = S[kind + 'Preset'] !== 'custom'; saveS(); relayout(); };
     $(kind + 'Cw').onchange = $(kind + 'Ch').onchange = () => { S[kind + 'Cw'] = +$(kind + 'Cw').value || 15; S[kind + 'Ch'] = +$(kind + 'Ch').value || 10; saveS(); relayout(); };
   }
-  $('dpi').value = S.dpi; $('scale').value = S.scale; $('ovScale').value = S.ovScale;
+  for (let v = 5e5; v <= 1e7; v += 5e5) { const o = document.createElement('option'); o.value = String(v); o.textContent = '1:' + v.toLocaleString('de-DE'); $('ovScale').appendChild(o); }
+  $('dpi').value = S.dpi; $('scale').value = String(S.scale); $('ovScale').value = S.ovScale; $('mkScale').value = String(S.mkScale);
+  $('mkScale').onchange = () => { S.mkScale = +$('mkScale').value; saveS(); relayout(); setTimeout(() => loadMapping(), 400); };
+  for (const [id, z, kk] of [['mapInMi', 'mapIn', 'mi'], ['mapInMk', 'mapIn', 'mk'], ['walkInMi', 'walkIn', 'mi'], ['walkInMk', 'walkIn', 'mk']]) {
+    $(id).checked = !!S[z][kk];
+    $(id).onchange = () => { S[z][kk] = $(id).checked; saveS(); updateZones(); if (active === kk) relayout(); };
+  }
   $('dpi').onchange = () => { S.dpi = +$('dpi').value; saveS(); };
   $('scale').onchange = () => { S.scale = +$('scale').value; saveS(); relayout(); setTimeout(() => loadMapping(), 400); };
   renderMapCats();
@@ -1945,25 +2037,24 @@ return maplibregl$1;
   $('driveLabels').checked = !!S.drive.labels; $('driveLabels').onchange = () => { S.drive.labels = $('driveLabels').checked; saveS(); repaint(); };
   $('hillOv').checked = !!S.hill.ov; $('hillOv').onchange = () => { S.hill.ov = $('hillOv').checked; saveS(); relayout(); };
   $('hillMi').checked = !!S.hill.mi; $('hillMi').onchange = () => { S.hill.mi = $('hillMi').checked; saveS(); relayout(); };
+  $('hillMk').checked = !!S.hill.mk; $('hillMk').onchange = () => { S.hill.mk = $('hillMk').checked; saveS(); relayout(); };
   $('hillStrength').value = S.hill.strength; $('hillStrength').onchange = () => { S.hill.strength = $('hillStrength').value; saveS(); relayout(); };
   $('walkLabels').checked = !!S.walk.labels; $('walkLabels').onchange = () => { S.walk.labels = $('walkLabels').checked; saveS(); repaint(); };
-  $('ovScale').onchange = () => {
-    if ($('ovScale').value === 'frei' && ovFixed()) P.ov.zE = ovZoomE();
-    S.ovScale = $('ovScale').value; saveS(); restyleOv();
-  };
+  $('ovScale').onchange = () => { S.ovScale = $('ovScale').value; saveS(); restyleOv(); };
   document.querySelectorAll('.swatch').forEach(b => {
     b.classList.toggle('on', b.dataset.c === S.accent);
     b.onclick = () => { S.accent = b.dataset.c; document.querySelectorAll('.swatch').forEach(x => x.classList.toggle('on', x === b)); saveS(); relayout(); };
   });
   const nLines = () => Math.max(1, (P.name || '').split(/\r?\n/).filter(t => t.trim()).length);
-  $('fsOv').value = S.fsOv; $('fsMi').value = S.fsMi;
+  $('fsOv').value = S.fsOv; $('fsMi').value = S.fsMi; $('fsMk').value = S.fsMk;
+  $('fsMk').oninput = () => { S.fsMk = Math.min(24, Math.max(5, +$('fsMk').value || 7.5)); saveS(); repaint(); };
   $('fsOv').oninput = () => { S.fsOv = Math.min(24, Math.max(5, +$('fsOv').value || 8)); saveS(); repaint(); };
   $('fsMi').oninput = () => { S.fsMi = Math.min(24, Math.max(5, +$('fsMi').value || 7.5)); saveS(); repaint(); };
   $('built').value = S.built || 'auto';
   $('built').onchange = () => { S.built = $('built').value; saveS(); relayout(); };
   document.querySelectorAll('[data-lp]').forEach(b => b.onclick = () => {
     const [kind, pos] = b.dataset.lp.split(':');
-    const fs = kind === 'ov' ? S.fsOv : S.fsMi, gap = kind === 'ov' ? 2.8 : 3.2, half = nLines() * fs * 0.37 / 2;
+    const fs = { ov: S.fsOv, mi: S.fsMi, mk: S.fsMk }[kind], gap = kind === 'ov' ? 2.8 : 3.2, half = nLines() * fs * 0.37 / 2;
     P.lbl = P.lbl || {};
     P.lbl[kind] = { right: { dx: gap, dy: 0, al: 'left' }, left: { dx: -gap, dy: 0, al: 'right' },
                     top: { dx: 0, dy: -(gap + half), al: 'center' }, bottom: { dx: 0, dy: gap + half, al: 'center' } }[pos];
@@ -1973,8 +2064,8 @@ return maplibregl$1;
   $('settle').value = S.settle; $('settle').onchange = () => { S.settle = $('settle').value; saveS(); repaint(); };
   $('cityMin').value = String(S.cityMin);
   $('cityMin').onchange = () => { S.cityMin = +$('cityMin').value; saveS(); repaint(); };
-  const opts = { optAirport: 'airport', optAbroad: 'abroad', optMotorway: 'motorway', ovTitle: 'ovTitle', miTitle: 'miTitle',
-                 optLegend: 'legend', optWaterBlack: 'waterBlack', optAttrib: 'attrib', optFrame: 'ovFrame', optTransp: 'transp' };
+  const opts = { optAirport: 'airport', optAbroad: 'abroad', optMotorway: 'motorway', ovTitle: 'ovTitle', miTitle: 'miTitle', mkTitle: 'mkTitle',
+                 optLegend: 'legend', optWaterBlack: 'waterBlack', optAttrib: 'attrib', optFrame: 'ovFrame', optMkFrame: 'mkFrame', optTransp: 'transp' };
   for (const [id, key] of Object.entries(opts)) {
     $(id).checked = !!S[key];
     $(id).onchange = () => { S[key] = $(id).checked; saveS(); (key === 'motorway' || key === 'waterBlack' || key === 'airport') ? relayout() : repaint(); };
@@ -1983,11 +2074,12 @@ return maplibregl$1;
   // ---------- Beschriftungen ----------
   function setNoteMode(kind) {
     noteMode = noteMode === kind ? null : kind;
-    $('noteOv').classList.toggle('on', noteMode === 'ov'); $('noteMi').classList.toggle('on', noteMode === 'mi');
-    $('noteHint').textContent = noteMode ? 'Jetzt die Stelle ' + (noteMode === 'ov' ? 'in der Übersicht' : 'im Lageplan') + ' anklicken.'
+    for (const kk of KINDS) $('note' + kk[0].toUpperCase() + kk[1]).classList.toggle('on', noteMode === kk);
+    if (noteMode && noteMode !== active) setTab(noteMode);
+    $('noteHint').textContent = noteMode ? 'Jetzt die Stelle in der ' + KNAME[noteMode] + ' anklicken.'
       : '„+ Text …“ wählen, dann die Stelle in der Karte anklicken. Der Text lässt sich mit der Maus verschieben; ab 3 mm Abstand erscheint eine feine Hinweislinie.';
   }
-  $('noteOv').onclick = () => setNoteMode('ov'); $('noteMi').onclick = () => setNoteMode('mi');
+  $('noteOv').onclick = () => setNoteMode('ov'); $('noteMi').onclick = () => setNoteMode('mi'); $('noteMk').onclick = () => setNoteMode('mk');
   function addNote(kind, ll) {
     P.notes = P.notes || [];
     const n = { id: 'n' + Date.now(), kind, lon: ll.lng, lat: ll.lat, dx: 1.5, dy: 0, t: '', size: 6.5 };
@@ -1999,7 +2091,7 @@ return maplibregl$1;
     const box = $('noteList'); if (!box) return; box.innerHTML = '';
     for (const n of P.notes || []) {
       const r = document.createElement('div'); r.className = 'nrow'; r.dataset.id = n.id;
-      r.innerHTML = `<b>${n.kind === 'ov' ? 'ÜB' : 'LP'}</b><input type="text" placeholder="Text, // für neue Zeile" aria-label="Beschriftung">
+      r.innerHTML = `<b>${({ ov: 'LK', mi: 'MA', mk: 'MI' })[n.kind] || 'LK'}</b><input type="text" placeholder="Text, // für neue Zeile" aria-label="Beschriftung">
         <select aria-label="Schriftgröße"><option value="5.5">5,5 pt</option><option value="6.5">6,5 pt</option><option value="8">8 pt</option><option value="10">10 pt</option></select><button aria-label="Beschriftung löschen">×</button>`;
       const [, inp, sel, del] = r.children;
       inp.value = n.t; inp.oninput = () => { n.t = inp.value; repaint(); };
@@ -2011,12 +2103,12 @@ return maplibregl$1;
   // ---------- Eigene POIs ----------
   function setPoiPlace(id) {
     poiPlace = id;
-    $('poiHint').textContent = id ? 'Jetzt die Stelle in der Übersicht oder im Lageplan anklicken.'
-      : 'Neue POIs erscheinen in der Mitte des Lageplans. Punkt mit der Maus an die richtige Stelle ziehen, den Namen ebenso. Häkchen blendet ein und aus, ▾ öffnet die Gestaltung. Mit „//“ beginnt eine neue Zeile.';
+    $('poiHint').textContent = id ? 'Jetzt die Stelle in der aktiven Karte anklicken.'
+      : 'Neue POIs erscheinen in der Mitte der aktiven Karte. Punkt mit der Maus an die richtige Stelle ziehen, den Namen ebenso. Häkchen blendet ein und aus, ▾ öffnet die Gestaltung. Mit „//“ beginnt eine neue Zeile.';
   }
   $('poiAdd').onclick = () => {
     P.pois = P.pois || [];
-    const c = views.mi.map.getCenter(), off = P.pois.length * 0.0006;
+    const cc = centerOf(active), c = { lng: cc[0], lat: cc[1] }, off = P.pois.length * (active === 'ov' ? 0.03 : 0.0006);
     const o = Object.assign({}, POI_DEF, { id: 'poi' + Date.now(), lon: c.lng + off, lat: c.lat + 0.0012 + off });
     P.pois.push(o); renderPois(o.id); repaint();
     const inp = document.querySelector(`.prow[data-id="${o.id}"] input[type=text]`); if (inp) inp.focus();
@@ -2044,7 +2136,7 @@ return maplibregl$1;
         <div class="row"><label class="f">Schriftfarbe<button class="sw" data-k="tcol" aria-label="Schriftfarbe"></button></label>
           <label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-k="ring"> Weißer Rand</label>
           <label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-k="shadow"> Schatten</label></div>
-        <div class="row"><label class="check"><input type="checkbox" data-k="ov"> in Übersicht</label><label class="check"><input type="checkbox" data-k="mi"> im Lageplan</label></div>
+        <div class="row"><label class="check"><input type="checkbox" data-k="ov"> Landkarte</label><label class="check"><input type="checkbox" data-k="mi"> Makro</label><label class="check"><input type="checkbox" data-k="mk"> Mikro</label></div>
         <div class="row"><button data-act="place">Per Klick platzieren</button><button data-act="lbl">Name neben Punkt</button></div>`;
       d.querySelectorAll('[data-k]').forEach(el => {
         const k = el.dataset.k;
@@ -2061,6 +2153,7 @@ return maplibregl$1;
   swatchBtn($('ppColor'), () => S.pp.color || S.accent, c => { S.pp.color = c; saveS(); repaint(); });
   $('ppROv').value = S.pp.rOv; $('ppROv').oninput = () => { S.pp.rOv = Math.min(5, Math.max(0.4, +$('ppROv').value || 1.5)); saveS(); repaint(); };
   $('ppRMi').value = S.pp.rMi; $('ppRMi').oninput = () => { S.pp.rMi = Math.min(5, Math.max(0.4, +$('ppRMi').value || 1.2)); saveS(); repaint(); };
+  $('ppRMk').value = S.pp.rMk; $('ppRMk').oninput = () => { S.pp.rMk = Math.min(5, Math.max(0.4, +$('ppRMk').value || 1.2)); saveS(); repaint(); };
   $('ppRing').checked = !!S.pp.ring; $('ppRing').onchange = () => { S.pp.ring = $('ppRing').checked; saveS(); repaint(); };
   $('ppShadow').checked = !!S.pp.shadow; $('ppShadow').onchange = () => { S.pp.shadow = $('ppShadow').checked; saveS(); repaint(); };
   $('ppReset').onclick = () => { S.pp.color = ''; $('ppColor').style.background = S.accent; saveS(); repaint(); };
@@ -2094,14 +2187,13 @@ return maplibregl$1;
     const f = fmt(kind), ec = exportCss(kind), pr = S.dpi / DPI[kind], k = DPI[kind] / 25.4;
     const Wd = Math.round(ec.w * pr), Hd = Math.round(ec.h * pr);
     status('Erreichbarkeitszonen werden abgewartet …'); await isoWait();
-    status(`Rendere ${kind === 'ov' ? 'Übersicht' : 'Lageplan'} (${Wd} × ${Hd} px) …`);
-    $('expOv').disabled = $('expMi').disabled = true;
+    status(`Rendere ${KNAME[kind]} (${Wd} × ${Hd} px) …`);
+    $('expGo').disabled = true;
     const div = document.createElement('div');
     div.style.cssText = `position:fixed;left:-20000px;top:0;width:${ec.w}px;height:${ec.h}px;`;
     document.body.appendChild(div);
-    const center = kind === 'ov' ? views.ov.map.getCenter().toArray() : views.mi.map.getCenter().toArray();
-    const zoom = kind === 'ov' ? (ovFixed() ? zoomForScale('ov', +S.ovScale, center[1]) : views.ov.map.getZoom() + Math.log2(ec.w / views.ov.sz.w))
-                               : zoomForScale('mi', S.scale, P.lat);
+    const center = views[kind].map.getCenter().toArray();
+    const zoom = kind === 'ov' ? zoomForScale('ov', +S.ovScale, center[1]) : zoomForScale(kind, scaleOf(kind), P.lat);
     const st = styleFor(kind, k);
     if (S.transp) { const bg = st.layers.find(l => l.id === 'bg'); if (bg) bg.paint['background-color'] = 'rgba(255,255,255,0)'; }
     const map = new maplibregl.Map({ container: div, style: st, center, zoom, pixelRatio: pr, interactive: false,
@@ -2124,7 +2216,7 @@ return maplibregl$1;
       const blob = await new Promise(r => out.toBlob(r, 'image/png'));
       const a = document.createElement('a');
       const safe = (P.name || 'Projekt').replace(/\s*\n\s*/g, ' ').replace(/[^\wÄÖÜäöüß-]+/g, '_');
-      a.download = `${safe}${S.transp ? '_transparent' : ''}_${kind === 'ov' ? 'Uebersicht' + (ovFixed() ? '_M' + S.ovScale : '') : 'Lageplan_M' + S.scale}_${f.w}x${f.h}cm_${S.dpi}dpi.png`;
+      a.download = `${safe}${S.transp ? '_transparent' : ''}_${KNAME[kind]}_M${scaleOf(kind)}_${f.w}x${f.h}cm_${S.dpi}dpi.png`;
       a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
       status(`Fertig: ${a.download}`);
@@ -2132,11 +2224,10 @@ return maplibregl$1;
       status('Export fehlgeschlagen (' + ((e && e.message) || e) + '). Probier 150 dpi oder prüfe die Internetverbindung.');
       console.error(e);
     } finally {
-      map.remove(); div.remove(); $('expOv').disabled = $('expMi').disabled = false;
+      map.remove(); div.remove(); $('expGo').disabled = false;
     }
   }
-  $('expOv').onclick = () => exportPng('ov');
-  $('expMi').onclick = () => exportPng('mi');
+  $('expGo').onclick = () => exportPng(active);
 
   // ---------- Start ----------
   // ---------- Selbsttest: zeigt klar an, woran es liegt, wenn etwas fehlt ----------
@@ -2156,13 +2247,82 @@ return maplibregl$1;
     finally { clearTimeout(t); }
   })();
   fillProjects();
-  makeView('ov'); makeView('mi');
-  views.mi.map.on('load', refreshData);
-  views.mi.map.once('idle', () => loadMapping());
-  views.mi.map.on('idle', () => { if (geoDirty) { geoDirty = false; computeMapGeo(); } });
-  views.mi.map.on('moveend', () => { geoDirty = true; });
-  views.mi.map.on('styledata', () => { geoDirty = true; });
-  relayout(false);
+  KINDS.forEach(makeView);
+  for (const kk of ['mi', 'mk']) {
+    const m = views[kk].map;
+    m.on('load', refreshData);
+    m.on('idle', () => { if (geoDirty && active === kk) { geoDirty = false; computeMapGeo(); } });
+    m.on('moveend', () => { if (active === kk) geoDirty = true; });
+    m.on('styledata', () => { if (active === kk) geoDirty = true; });
+  }
+
+  // ---------- Reiter: immer nur eine Karte offen; die Seitenleiste klappt die passende Gruppe auf ----------
+  const groupState = store.get('groups', {});
+  const groups = [...document.querySelectorAll('aside .group')].map(gh => {
+    const body = document.createElement('div'); body.className = 'gbody';
+    let n = gh.nextElementSibling;
+    while (n && !n.classList.contains('group') && !n.classList.contains('expbar')) { const nx = n.nextElementSibling; body.appendChild(n); n = nx; }
+    gh.after(body);
+    const id = gh.textContent.replace(/^\d+/, '').trim();
+    const set = c => { gh.classList.toggle('closed', c); body.hidden = c; gh.setAttribute('aria-expanded', String(!c)); };
+    gh.tabIndex = 0; gh.setAttribute('role', 'button');
+    const tog = () => { const c = !gh.classList.contains('closed'); set(c); groupState[id] = c; store.set('groups', groupState); };
+    gh.addEventListener('click', tog);
+    gh.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
+    set(!!groupState[id]);
+    return { gh, set, tabs: (gh.dataset.tab || '').split(' ').filter(Boolean) };
+  });
+  const HINT = { ov: 'Ziehen verschiebt den Ausschnitt · Klick setzt den Projektpunkt', mi: 'Ziehen verschiebt den Ausschnitt', mk: 'Ziehen verschiebt den Ausschnitt' };
+  function setTab(kind) {
+    active = kind; store.set('tab', kind);
+    document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === kind)));
+    document.querySelectorAll('.stage .panel').forEach(p => { p.hidden = p.dataset.kind !== kind; });
+    for (const g of groups) if (g.tabs.length) { const on = g.tabs.includes(kind); g.set(!on); g.gh.classList.toggle('act', on); }
+    $('expGo').textContent = KNAME[kind] + ' als PNG';
+    $('actHint').textContent = HINT[kind] + ' · Mausrad zoomt die Ansicht · Leertaste + Ziehen verschiebt das Blatt';
+    relayout(true);
+    if (kind !== 'ov') { geoDirty = true; setTimeout(() => views[kind].map.once('idle', () => loadMapping()), 50); }
+  }
+  document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => { if (b.dataset.tab !== active) setTab(b.dataset.tab); });
+
+  // ---------- Ansichts-Zoom zur Bearbeitung: Mausrad, − / 100 % / +, Leertaste + Ziehen ----------
+  const ZSTEPS = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8];
+  function setZoom(dir, anchor) {
+    const kind = active, cur = vzoom[kind], mx = maxZoom(kind);
+    let nz = dir === 0 ? 1 : dir > 0 ? (ZSTEPS.find(z => z > cur + 1e-6) || cur) : ([...ZSTEPS].reverse().find(z => z < cur - 1e-6) || 1);
+    nz = Math.min(nz, mx); if (Math.abs(nz - cur) < 1e-6) return;
+    const st = $('stage'), fr = views[kind].frame, r0 = fr.getBoundingClientRect();
+    const ax = anchor ? anchor.x : r0.left + r0.width / 2, ay = anchor ? anchor.y : r0.top + r0.height / 2;
+    const fx = (ax - r0.left) / r0.width, fy = (ay - r0.top) / r0.height;
+    vzoom[kind] = nz; relayout(true);
+    const r1 = fr.getBoundingClientRect();
+    st.scrollLeft += (r1.left + fx * r1.width) - ax; st.scrollTop += (r1.top + fy * r1.height) - ay;
+  }
+  $('zIn').onclick = () => setZoom(1); $('zOut').onclick = () => setZoom(-1); $('zFit').onclick = () => setZoom(0);
+  let wheelT = 0;
+  $('stage').addEventListener('wheel', e => {
+    if (!e.target.closest('.frame')) return;
+    e.preventDefault();
+    const now = Date.now(); if (now - wheelT < 180) return; wheelT = now;
+    setZoom(e.deltaY < 0 ? 1 : -1, { x: e.clientX, y: e.clientY });
+  }, { passive: false });
+  let space = false, grab = null;
+  const typing = el => el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
+  window.addEventListener('keydown', e => {
+    if (e.code !== 'Space' || typing(document.activeElement) || space) return;
+    e.preventDefault(); space = true; $('stage').classList.add('grab'); views[active].map.dragPan.disable();
+  });
+  window.addEventListener('keyup', e => {
+    if (e.code !== 'Space' || !space) return;
+    space = false; grab = null; $('stage').classList.remove('grab', 'grabbing'); views[active].map.dragPan.enable();
+  });
+  $('stage').addEventListener('mousedown', e => {
+    if (!space) return; e.preventDefault(); e.stopPropagation();
+    grab = { x: e.clientX, y: e.clientY, l: $('stage').scrollLeft, t: $('stage').scrollTop }; $('stage').classList.add('grabbing');
+  }, true);
+  window.addEventListener('mousemove', e => { if (!grab) return; $('stage').scrollLeft = grab.l - (e.clientX - grab.x); $('stage').scrollTop = grab.t - (e.clientY - grab.y); });
+  window.addEventListener('mouseup', () => { if (grab) { grab = null; $('stage').classList.remove('grabbing'); } });
+  setTab(active);
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => relayout(), 200); });
   loadCities().then(src => { if (src === 'osm') status('Städteliste aktualisiert: ' + CITIES.length + ' Städte aus OpenStreetMap.'); repaint(); })
     .catch(() => { status('OSM-Städteabfrage gerade nicht erreichbar – es wird die eingebaute Städteliste verwendet (' + CITIES.length + ' Städte).'); repaint(); });
@@ -2179,7 +2339,7 @@ return maplibregl$1;
       h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
     });
   })();
-  window.__lk = { ISO: () => ISO, views, P: () => P, S, styleFor, zoomForScale, cities: () => CITIES, mapData: () => mapData, tileItems: () => tileItems(), catOf };
+  window.__lk = { ISO: () => ISO, views, P: () => P, S, styleFor, zoomForScale, cities: () => CITIES, mapData: () => mapData, tileItems: () => tileItems(), catOf, setTab, setZoom, vzoom, active: () => active };
 })();
 </script>
 </body>
