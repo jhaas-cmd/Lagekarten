@@ -26,9 +26,10 @@ Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), fu
   - 01 Projekt: *Übersicht* (Projekt verwalten mit automatischem Speichern, Ort finden, Lagekennzahlen) · *Stil* (Gestaltung für alle Karten)
   - 02 Landkarte (`ov`), 03 Makrolage (`mi`), 04 Mikrolage (`mk`): je Karte aus der Vorlage `mapUI(kind)` erzeugt,
     mit Unterreitern (Registerlaschen-Optik) *Übersicht* (Ausgabegröße, Maßstab, Markierung, Projektpunkt/-titel) ·
-    *Stil* (Preset + Ebenenliste `LAYERS`, gegliedert nach `GRP`: Kartendarstellung – Schrift, Fokus, Nordpfeil, Maßstabsleiste, Raster, Grenzen ·
+    *Stil* (Preset + kompakte Ebenenliste `LAYERS` + Attribut-Board `.inspector` mit `boardOf()`: je Ebene immer Farbe/Deckkraft · Strich · Darstellung · Beschriftung;
+    gegliedert nach `GRP`: Kartendarstellung – Schrift, Fokus, Nordpfeil, Maßstabsleiste, Raster, Grenzen ·
     Verkehr – Autobahnen, Straßen (Darstellung Linie/Fläche/Kontur/beides, Straßennamen mit eigener Schrift), Bahn ·
-    Stadt und Landschaft – Orte, Siedlung, Gebäude (Schatten), Gewässer (Flussnamen), Wald, Wiesen & Felder, Schummerung, Höhenlinien, Höhenstufen)
+    Stadt und Landschaft – Orte, Siedlung, Gebäude (Schatten), Gewässer (Flussnamen), Wald, Wiesen & Felder · Topographie – Schummerung, Höhenlinien, Höhenstufen)
     · *Mapping* (Fahrzeiten, Funktionen, POIs, freie Texte). Bäume sind vorerst ausgeblendet (OSM-Daten zu lückenhaft).
   - Abschnitte als Akkordeon (nur einer offen je Bereich); statische Hinweise hinter (i)
   - Nur die Gruppe der aktiven Karte ist sichtbar. Gemeinsame Abschnitte (`#sec_mark`, `#sec_funk`, `#sec_poi`, `#sec_note`)
