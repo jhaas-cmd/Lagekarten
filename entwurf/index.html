@@ -1126,6 +1126,7 @@ return maplibregl$1;
     // Fokus: außerhalb des Radius keine Namen, Punkte grau
     const fr = F && F.on ? (+F.r || 1000) / mppOf(map) : Infinity;
     const inF = q => Math.hypot(q.x - proj.x, q.y - proj.y) <= fr;
+    inF.fade = F && F.on ? Math.min(0.8, (+F.fade || 0) / 100) : 0;     // außerhalb des Fokus: grau und aufgehellt
     g.textBaseline = 'middle';
     if (T.contour.on) drawContours(g, map, kind, k, T);
     if (T.grid.on) drawGrid(g, map, kind, k, W, H, false);
@@ -1428,10 +1429,16 @@ return maplibregl$1;
     if (!pts.length) return;
     const a = Math.min(1, (+T.alpha || 85) / 100), off = Math.min(mm(1.2), Math.max(mm(0.2), 6 / mpp));
     g.save();
-    if (T.shadow) { g.fillStyle = 'rgba(30,34,38,.18)'; g.beginPath(); for (const [x, y, r] of pts) { g.moveTo(x + off * 0.7 + r, y + off); g.arc(x + off * 0.7, y + off, r, 0, 7); } g.fill(); }
+    // außerhalb des Fokus: grau UND aufgehellt wie die übrige Karte (Wert „Außen aufhellen“)
+    const FC = ST(kind).focus, fade = FC && FC.on ? Math.min(0.8, (+FC.fade || 0) / 100) : 0;
+    if (T.shadow) for (const outF of [false, true]) {
+      g.fillStyle = `rgba(30,34,38,${(0.18 * (outF ? 1 - fade : 1)).toFixed(3)})`; g.beginPath();
+      for (const [x, y, r] of pts) { if (!inF({ x, y }) !== outF) continue; g.moveTo(x + off * 0.7 + r, y + off); g.arc(x + off * 0.7, y + off, r, 0, 7); }
+      g.fill();
+    }
     g.globalAlpha = a;
     // leichte Tonvariation zwischen den Kronen (±8 %), wirkt im geschlossenen Kronendach naturnah
-    const tones = [mix(col, '#000000', 0.08), mix(col, '#000000', 0.04), col, mix(col, '#FFFFFF', 0.05), mix(col, '#FFFFFF', 0.1)], toneG = tones.map(gray);
+    const tones = [mix(col, '#000000', 0.08), mix(col, '#000000', 0.04), col, mix(col, '#FFFFFF', 0.05), mix(col, '#FFFFFF', 0.1)], toneG = tones.map(t => mix(gray(t), '#FFFFFF', fade));
     for (const [x, y, r, t] of pts) { g.fillStyle = inF({ x, y }) ? tones[t || 2] : toneG[t || 2]; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
     g.restore();
   }
@@ -2005,7 +2012,7 @@ return maplibregl$1;
         const p = map.project(pt);
         if (p.x < -r || p.y < -r || p.x > W + r || p.y > H + r) continue;
         g.fillStyle = '#FFFFFF';
-        const dc = inF && !inF(p) ? gray(st.color) : st.color;
+        const dc = inF && !inF(p) ? mix(gray(st.color), '#FFFFFF', inF.fade || 0) : st.color;
         if (d.sq) { const a = r * 0.85; g.fillRect(p.x - a - mm(0.25), p.y - a - mm(0.25), 2 * a + mm(0.5), 2 * a + mm(0.5)); g.fillStyle = dc; g.fillRect(p.x - a, p.y - a, 2 * a, 2 * a); continue; }
         g.beginPath(); g.arc(p.x, p.y, r + mm(0.25), 0, 7); g.fill();
         g.fillStyle = dc; g.beginPath(); g.arc(p.x, p.y, r, 0, 7); g.fill();
