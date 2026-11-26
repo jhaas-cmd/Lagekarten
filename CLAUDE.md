@@ -92,7 +92,7 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 
 ## Stand Etappe 1 (umgesetzt)
 - Luftbild unter Kartendarstellung. Straßen: `mw` Autobahnen · `road` Haupt-/Nebenstraßen (sec/pri) · `minor` Wohn-/Anliegerstraßen (min; Migration aus road).
-- Vegetation (`veg` + `wood`, `park`, `green` (Gärten, Bayern-CIR, sonst Wohngebiets-Tönung `garden`), `field`, `crowns`): Stimmungen `VEG_PRESETS` (baeume, halbton, flaeche, schwarzplan); Bäume ohne Stamm/Kontur mit Dichte `crowns.dens`, Größe `crowns.size`, Varianz `crowns.vari`, Bündeln zu Baumgruppen `crowns.grp` (`groupTrees`: Zufallsfeld ~75 m, nur in größeren Grünflächen); Farbpalette `PALROWS` (Blau, Grün, Signal) + Grau;
+- Vegetation (`veg` + `wood`, `park`, `green` (Gärten, Bayern-CIR, sonst Wohngebiets-Tönung `garden`), `field`, `crowns`): Stimmungen `VEG_PRESETS` (baeume, halbton, flaeche, schwarzplan); Bäume ohne Stamm/Kontur mit Dichte `crowns.dens`, Größe `crowns.size`, Varianz `crowns.vari`, Bündeln zu Baumgruppen `crowns.grp` (`groupTrees`: Zufallsfeld ~75 m, nur in größeren Grünflächen); Kronendach im Wald `crowns.forest` (`woodPolys`, ortsfestes Raster ~5 m), Tonvariation je Krone; Palette mit Sand · Braun; Farbpalette `PALROWS` (Blau, Grün, Signal) + Grau;
   Halbtonmuster `half-s/m/l`; Baumkronen `drawCrowns` aus CIR (`findCrowns`, experimentell) oder OSM (`loadTrees`).
 - Hervorheben und POIs je Karte (`inK`, `hidK`, `takeOver`, `dropK`): Liste zeigt nur Elemente der aktiven Karte; „Aus anderen Karten übernehmen“.
 

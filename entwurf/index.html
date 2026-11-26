@@ -718,7 +718,7 @@ return maplibregl$1;
     field: { on: false, mode: 'green', color: '#E4EEDB', alpha: 100 },
     veg: { on: true, preset: 'eigen' },
     park: { on: false, mode: 'green', color: '#D5E6C6', alpha: 100 },
-    crowns: { on: false, src: 'auto', color: '#86A873', alpha: 85, shadow: true, size: 100, dens: 100, vari: 30, grp: 0 },
+    crowns: { on: false, src: 'auto', color: '#86A05C', alpha: 85, shadow: true, size: 100, dens: 100, vari: 30, grp: 0, forest: 0 },
     hill: { on: !!(S.hill && S.hill[kind]), alpha: HILLA[(S.hill && S.hill.strength) || 'mittel'] || 55 },
     contour: { on: false, step: 'auto', color: '#B5A58C', w: 0.1, idx: true, alpha: 100 },
     hypso: { on: false, alpha: 70 },
@@ -1369,31 +1369,70 @@ return maplibregl$1;
     }
     return out;
   }
+  // Waldflächen (sichtbare Wald-Ebene) als Bildschirm-Polygone mit Begrenzungsrahmen
+  function woodPolys(map) {
+    const ids = ['wood', 'wood-pat'].filter(id => map.getLayer(id)); if (!ids.length) return [];
+    let fs = []; try { fs = map.queryRenderedFeatures({ layers: ids }); } catch (e) { return []; }
+    const out = [];
+    for (const f of fs) {
+      const gm = f.geometry, polys = gm.type === 'Polygon' ? [gm.coordinates] : gm.type === 'MultiPolygon' ? gm.coordinates : [];
+      for (const poly of polys) {
+        const rings = poly.map(r => r.map(c => { const q = map.project(c); return [q.x, q.y]; })), b = [Infinity, Infinity, -Infinity, -Infinity];
+        for (const [x, y] of rings[0]) { b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y); }
+        out.push({ rings, b });
+      }
+    }
+    return out;
+  }
+  const pip = (rings, x, y) => { let c = false; for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i], [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
   function drawCrowns(g, map, kind, k, W, H, inF) {
     if (!crownsVisible(kind)) return;
     const T = ST(kind).crowns, mm = v => v * k, mpp = mppOf(map), f = (+T.size || 100) / 100, col = T.color || '#86A873';
     let pts = [];
     if (crownSrc(kind) === 'luftbild') {
-      const G = GREEN[kind]; if (!G || !G.crowns) return;
-      const lat = P.lat * Math.PI / 180;
-      for (const [x, y, r] of G.crowns) { const p = map.project(fromMerc(x, y)), q = [p.x, p.y, Math.max(mm(0.35), r * Math.cos(lat) / mpp * f)]; q.gx = x / 10; q.gy = y / 10; q.mx = x; q.my = y; pts.push(q); }
+      const G = GREEN[kind], lat = P.lat * Math.PI / 180;
+      if (G && G.crowns) for (const [x, y, r] of G.crowns) { const p = map.project(fromMerc(x, y)), q = [p.x, p.y, Math.max(mm(0.35), r * Math.cos(lat) / mpp * f)]; q.gx = x / 10; q.gy = y / 10; q.mx = x; q.my = y; pts.push(q); }
     } else {
-      if (!TREES.list || TREES.kind !== kind) { loadTrees(); return; }
       const r = Math.max(mm(0.35), 4 / mpp * f);
-      for (const c of TREES.list) { const p = map.project(c), q = [p.x, p.y, r]; q.gx = c[0] * 1e4; q.gy = c[1] * 1e4; const m = toMerc(c[0], c[1]); q.mx = m[0]; q.my = m[1]; pts.push(q); }
+      if (!TREES.list || TREES.kind !== kind) loadTrees();
+      else for (const c of TREES.list) { const p = map.project(c), q = [p.x, p.y, r]; q.gx = c[0] * 1e4; q.gy = c[1] * 1e4; const m = toMerc(c[0], c[1]); q.mx = m[0]; q.my = m[1]; pts.push(q); }
     }
     // Dichte und Varianz: je Baum ein fester Zufallswert aus seiner Lage, damit das Bild beim Neuzeichnen gleich bleibt
     const dens = (T.dens == null ? 100 : +T.dens) / 100, vari = (T.vari == null ? 30 : +T.vari) / 100;
     const rnd = (x, y, s) => { const v = Math.sin(x * 12.9898 + y * 78.233 + s * 37.719) * 43758.5453; return v - Math.floor(v); };
+    // Waldflächen der Karte: dort statt Einzelbäumen ein zusammenhängendes Kronendach auf einem leicht verwackelten Raster
+    const forest = (+T.forest || 0) / 100, wood = forest > 0 ? woodPolys(map) : [];
+    const inWood = (x, y) => wood.some(w => x >= w.b[0] && x <= w.b[2] && y >= w.b[1] && y <= w.b[3] && pip(w.rings, x, y));
+    if (wood.length) pts = pts.filter(p => !inWood(p[0], p[1]));
     pts = groupTrees(pts, (+T.grp || 0) / 100, mpp, rnd);
-    pts = pts.filter((p, i) => rnd(p.gx, p.gy, 1) < dens).map(p => { const q = [p[0], p[1], p[2] * (1 + vari * (rnd(p.gx, p.gy, 2) - 0.5) * 1.4)]; return q; });
+    pts = pts.filter((p, i) => rnd(p.gx, p.gy, 1) < dens);
+    if (wood.length) {
+      const cl = Math.cos(P.lat * Math.PI / 180), px = cl / mpp, c0 = map.getCenter(), m0 = toMerc(c0.lng, c0.lat), s0 = map.project(c0);
+      let stepG = 5.2 * f; const area = wood.reduce((a, w) => a + (w.b[2] - w.b[0]) * (w.b[3] - w.b[1]), 0) * mpp * mpp;
+      if (area / (stepG * stepG) > 60000) stepG = Math.sqrt(area / 60000);
+      const st = stepG / cl;                                   // Rasterweite in Web-Mercator-Metern, ortsfest
+      const rBase = Math.max(mm(0.35), 4 * f / mpp);
+      for (const w of wood) {
+        const mxa = m0[0] + (w.b[0] - s0.x) / px, mxb = m0[0] + (w.b[2] - s0.x) / px, mya = m0[1] - (w.b[3] - s0.y) / px, myb = m0[1] - (w.b[1] - s0.y) / px;
+        for (let gx = Math.floor(mxa / st) * st; gx <= mxb; gx += st) for (let gy = Math.floor(mya / st) * st; gy <= myb; gy += st) {
+          const sx = gx / 10, sy = gy / 10; if (rnd(sx, sy, 7) > forest) continue;
+          const mx = gx + (rnd(sx, sy, 8) - 0.5) * st * 0.8, my = gy + (rnd(sx, sy, 9) - 0.5) * st * 0.8;
+          const x = s0.x + (mx - m0[0]) * px, y = s0.y - (my - m0[1]) * px;
+          if (!pip(w.rings, x, y)) continue;
+          const q = [x, y, rBase * (0.85 + rnd(sx, sy, 11) * 0.3)]; q.gx = sx; q.gy = sy; pts.push(q);
+        }
+      }
+    }
+    pts = pts.map(p => [p[0], p[1], p[2] * (1 + vari * (rnd(p.gx, p.gy, 2) - 0.5) * 1.4), Math.floor(rnd(p.gx, p.gy, 3) * 5)]);
     pts = pts.filter(p => p[0] > -p[2] && p[1] > -p[2] && p[0] < W + p[2] && p[1] < H + p[2]);
     if (!pts.length) return;
     const a = Math.min(1, (+T.alpha || 85) / 100), off = Math.min(mm(1.2), Math.max(mm(0.2), 6 / mpp));
     g.save();
     if (T.shadow) { g.fillStyle = 'rgba(30,34,38,.18)'; g.beginPath(); for (const [x, y, r] of pts) { g.moveTo(x + off * 0.7 + r, y + off); g.arc(x + off * 0.7, y + off, r, 0, 7); } g.fill(); }
     g.globalAlpha = a;
-    for (const [x, y, r] of pts) { g.fillStyle = inF({ x, y }) ? col : gray(col); g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+    // leichte Tonvariation zwischen den Kronen (±8 %), wirkt im geschlossenen Kronendach naturnah
+    const tones = [mix(col, '#000000', 0.08), mix(col, '#000000', 0.04), col, mix(col, '#FFFFFF', 0.05), mix(col, '#FFFFFF', 0.1)], toneG = tones.map(gray);
+    for (const [x, y, r, t] of pts) { g.fillStyle = inF({ x, y }) ? tones[t || 2] : toneG[t || 2]; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
     g.restore();
   }
   function drawTrees(g, map, k, W, H, T, inF) {
@@ -2113,7 +2152,8 @@ return maplibregl$1;
   // abgestimmte Palette: Blautöne (GIEAG #255AA8), Grautöne, Grüntöne für die Natur, Signalfarben
   const PALROWS = [
     ['Blau', ['#0B2545', '#13315C', '#1D4278', '#255AA8', '#3A6FBF', '#5B8BD0', '#86A8DD', '#AFC6EA', '#D3E0F4', '#EAF0FA']],
-    ['Grün · Natur', ['#22402E', '#2F5A3E', '#3F7350', '#567F55', '#6F9A5A', '#86A873', '#A3BF92', '#C3D8B2', '#DCEACF', '#EEF4E7']],
+    ['Grün · Natur', ['#2E4A2C', '#3F5E35', '#56743F', '#6E8A4B', '#86A05C', '#9FB474', '#B7C78F', '#CCD8AC', '#DFE7CB', '#EFF3E4']],
+    ['Sand · Braun', ['#4A3624', '#6B4E33', '#8B6A47', '#A8865E', '#C2A27A', '#D4B994', '#E2CCAA', '#ECDCC2', '#F4EAD9', '#FAF5EC']],
     ['Signal', ['#9E2A2B', '#C0392B', '#E8604C', '#E67E22', '#F5A04A', '#F1C40F', '#F9DF74', '#D63384', '#EF85B5', '#F8C9DD']]
   ];
   function openPalette(after, cur, onPick, extra) {
@@ -2867,9 +2907,9 @@ return maplibregl$1;
   const VMODES = '<option value="green">Fläche</option><option value="dots">Punktraster</option><option value="hatch">Schraffur</option><option value="green-dots">Fläche + Punkte</option><option value="half-s">Halbton fein</option><option value="half-m">Halbton mittel</option><option value="half-l">Halbton grob</option>';
   // fertige Vegetations-Stimmungen
   const VEG_PRESETS = {
-    baeume: k => ({ wood: { on: true, mode: 'green', color: '#C3D8B2', alpha: 100 }, park: { on: true, mode: 'green', color: '#DCEACF', alpha: 100 },
-      field: { on: k !== 'mk', mode: 'green', color: '#EEF4E7', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DCEACF', alpha: 100 },
-      crowns: { on: k !== 'ov', shadow: true, color: '#86A873', alpha: 90, dens: 100, size: 100, vari: 30, grp: 60 } }),
+    baeume: k => ({ wood: { on: true, mode: 'green', color: '#B7C78F', alpha: 100 }, park: { on: true, mode: 'green', color: '#DFE7CB', alpha: 100 },
+      field: { on: k !== 'mk', mode: 'green', color: '#EFF3E4', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DFE7CB', alpha: 100 },
+      crowns: { on: k !== 'ov', shadow: true, color: '#86A05C', alpha: 90, dens: 30, forest: 100, size: 100, vari: 30, grp: 60 } }),
     halbton: k => ({ wood: { on: true, mode: 'half-l', color: '#6F9A5A', alpha: 100 }, park: { on: true, mode: 'half-m', color: '#86A873', alpha: 100 },
       field: { on: k !== 'mk', mode: 'half-s', color: '#A3BF92', alpha: 100 }, green: { on: k !== 'ov', mode: 'halbton', color: '#86A873', alpha: 100 },
       crowns: { on: false } }),
@@ -2950,14 +2990,15 @@ return maplibregl$1;
           <select data-s="crowns.src" aria-label="Quelle Bäume"><option value="auto">automatisch</option><option value="luftbild">aus Luftbild</option><option value="osm">aus OpenStreetMap</option></select></div>
           <div class="row"><label class="f">Farbe<button class="sw" data-s="crowns.color" aria-label="Farbe Bäume"></button></label>
           <label class="f"><span>Deckkraft · <b data-out="crowns.alpha"></b></span><input type="range" data-s="crowns.alpha" min="10" max="100" step="5"></label></div>
-          <label class="f"><span>Baumdichte · <b data-out="crowns.dens"></b></span><input type="range" data-s="crowns.dens" min="10" max="100" step="5"></label>
+          <label class="f"><span>Baumdichte Siedlung · <b data-out="crowns.dens"></b></span><input type="range" data-s="crowns.dens" min="5" max="100" step="5"></label>
+          <label class="f"><span>Kronendach im Wald · <b data-out="crowns.forest"></b></span><input type="range" data-s="crowns.forest" min="0" max="100" step="5"></label>
           <label class="f"><span>Baumgröße · <b data-out="crowns.size"></b></span><input type="range" data-s="crowns.size" min="40" max="250" step="10"></label>
           <label class="f"><span>Varianz der Kronen · <b data-out="crowns.vari"></b></span><input type="range" data-s="crowns.vari" min="0" max="100" step="5"></label>
           <label class="f"><span>Zu Baumgruppen bündeln · <b data-out="crowns.grp"></b></span><input type="range" data-s="crowns.grp" min="0" max="100" step="10"></label>
           <label class="check"><input type="checkbox" data-s="crowns.shadow"> Schatten unter den Kronen</label></div>
         <label class="f"><span>Empfindlichkeit Luftbild · <b data-out="green.thr"></b></span><input type="range" data-s="green.thr" min="10" max="90" step="10"></label>` : ''}
         </div>
-        <p class="hint">Wald und öffentliches Grün (Parks, Friedhöfe, Sport- und Spielplätze) aus OpenStreetMap. Private Gärten und Baumkronen werden in Bayern aus dem Infrarot-Luftbild erkannt; außerhalb Bayerns werden Gärten als Tönung der Wohngebiete gezeigt und Baumkronen aus OpenStreetMap übernommen (dort oft lückenhaft). Baumkronen erscheinen ab 1:25.000.</p>` },
+        <p class="hint">Wald und öffentliches Grün (Parks, Friedhöfe, Sport- und Spielplätze) aus OpenStreetMap. Private Gärten und Baumkronen werden in Bayern aus dem Infrarot-Luftbild erkannt; außerhalb Bayerns werden Gärten als Tönung der Wohngebiete gezeigt und Baumkronen aus OpenStreetMap übernommen (dort oft lückenhaft). Bäume erscheinen ab 1:25.000. „Baumdichte Siedlung“ dünnt die Bäume außerhalb des Waldes aus (bewährt: 20–40 %); „Kronendach im Wald“ füllt die Waldflächen mit einem zusammenhängenden Kronendach (Wald muss eingeschaltet sein).</p>` },
     { grp: 'darst', id: 'photo', name: () => 'Luftbild', eye: 'photo.on', alpha: 'photo.alpha', keys: ['photo'],
       opt: k => `<label class="f">Quelle<select data-s="photo.src"><option value="auto">Amtliches Luftbild (Bayern, BW), sonst Satellit</option><option value="sat">Satellitenbild 2016 (10 m)</option></select></label>
         <label class="f"><span>Graustufen · <b data-out="photo.gray"></b></span><input type="range" data-s="photo.gray" min="0" max="100" step="10"></label>
@@ -3102,7 +3143,7 @@ return maplibregl$1;
     if (path === 'grid.type') ST(kind).grid.size = 'auto';
     if (path === 'veg.preset' && VEG_PRESETS[ST(kind).veg.preset]) { const T = ST(kind), V = VEG_PRESETS[T.veg.preset](kind); for (const [key, o] of Object.entries(V)) Object.assign(T[key], o); T.veg.on = true; }
     else if (/^(wood|park|field|green|crowns)\.(mode|color|on)$/.test(path)) ST(kind).veg.preset = 'eigen';
-    if (/^crowns\.(dens|size|vari|grp)$/.test(path)) repaint();
+    if (/^crowns\.(dens|size|vari|grp|forest)$/.test(path)) repaint();
     if (/^(crowns|green|veg)\./.test(path)) { ensureGreen(active); loadTrees(); paintBase(); }
     saveS(); syncAllPresets();
     if (/^(contour|hypso)\./.test(path)) { ensureDem(active); paintBase(); }
