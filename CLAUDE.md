@@ -53,7 +53,7 @@ Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), fu
 - `relayout` arbeitet nur auf der aktiven Karte und setzt `v.relayouting`, damit Größenänderungen den gespeicherten Ausschnitt nicht überschreiben.
 - Rückgängig/Wiederholen (`hist`, `snap`, `undo`, `redo`): Momentaufnahmen von `{S, P}` nach jeder Änderung (`saveS`, `repaint`);
   `syncAllUI()` setzt danach alle Bedienelemente neu. `snap` speichert das Projekt zugleich automatisch (`autosave`).
-- Export-Dialog (`#expDlg`): Karten wählen, dpi, transparent, Dateinamen-Vorschau; PDF/SVG vorgesehen, noch nicht gebaut.
+- Export-Dialog (`#expDlg`): alle drei Karten vorgewählt, dpi, transparent, Dateinamen-Vorschau; mehrere Karten als ZIP (`#expZip`, `makeZip` ohne Kompression, `saveBlob`, `zipName`); `exportPng(kind, collect)` sammelt Blobs statt Download. PDF/SVG noch nicht gebaut (ausgeblendet).
 - Reiterleiste: Format/Maßstab der aktiven Karte (`syncBar`), „⌖ Projekt“ (`centerBtn`, zentriert die aktive Karte), Rückgängig/Wiederholen, Zoom; Tasten 1/2/3, 0, +/−, Strg+Z/Y.
 - Luftbild (`st.photo`, `photoLayers` in `styleFor`): Rasterebene unter allem; Quelle auto = amtliches DOP20 des Bundeslands (`DOP.BY`/`DOP.BW`, WMS mit {bbox-epsg-3857}),
   sonst Sentinel-2 cloudless 2016 (`SAT`); Bundesland per Nominatim-Reverse in `P.region`/`P.regionAt`; Ebenennamen aus GetCapabilities in `store 'photoL'`.
@@ -105,3 +105,15 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - Verkehr auf Knopfdruck (`loadTraffic`): Bayern über BAYSIS ArcGIS REST (DTV-Zählstellen im Umkreis); BW nur Hinweis (Verkehrsmonitoring als PDF).
 - **Zensus-Raster als Kartenebene** (Mapping, `#sec_zg`, `S.zg[kind]`, `ensureZg`, `drawZg` in `drawBase`, `zgLegend`): 10 Merkmale (`ZATTR`), Halbtonraster/Farbstufen, 5 Quantilstufen, Legende oben links.
 - Nicht frei verfügbar / offen: Pendler (BA), Baulandpreise, Bodenrichtwerte als Dienst (BW nur Portal, Bayern kostenpflichtig), Kaufkraft (GfK). CORS der externen Dienste im Browser von Julius prüfen.
+
+## Bedienung und Kennzahlen (Überarbeitung Nov. 2026)
+- Projektzeile oben (`#projLine`, `syncProjLine`, `foldProject`): 01 Projekt klappt beim Kartenwechsel zu. Geführter Start (`#startCard`, `showStart`).
+- Klick-Modi mit Leiste und Esc (`setMode`, `modeBar`, `endModes`); Rechtsklick-Menü (`openCtx`/`closeCtx`); Hilfe `#helpDlg` (Taste ?); `status()` blendet nach 7 s aus.
+- Hintergrund-Aktivität oben rechts (`BUSY`, `paintBusy`, `track(label, fn)` um die Lade-/Rechenfunktionen); `paintBusy` aktualisiert auch die Berechnungsliste.
+- Vorlagen: GIEAG-Vorlagen je Zielgruppe (`FAMS`, `FAM_VER`, `ensureFamilies`, Presets `gieag_<fam>_<kind>`, `fixed:true`), Schutz per `guardFixed` (Kopie vor erster Änderung), „Speichern unter …“, „Für alle Karten übernehmen“. Inaktive Ebenen: `LAYERS[].inact`.
+- Gemeinsame Gestaltung `#sec_glob` hängt oben im Stil-Reiter jeder Karte.
+- 01 Projekt → „Lagekennzahlen · Berechnungen“ (`#calcList`, `renderCalc`, `#calcAll`): Entfernungen/Fahrzeiten (`computeKpi`, Ort in `P.kpiAt`), Zensus im Radius, Stadtvergleich, Regionalatlas, Verkehr (optional); Status ✓ / veraltet / läuft.
+- 05 Kennzahlen: rechnet beim Öffnen automatisch (`kzStale`, `runKz`); Spalten Radius | Stadt | Deutschland | Einschätzung.
+  Stadt = Gemeindegrenze aus Overpass (`cityArea`: admin_level 8, sonst 6; gerade/ungerade-Regel je 100-m-Rasterzeile), Auswertung `zSum(bb, test, km2)` (allgemeine Form von `zAgg`), Ergebnis `P.kz.city = {name, kind, s, at}` bzw. `{err}`; `loadCity`.
+  Bewertung: `KZPOL` (Richtung und Gewicht je Assetklasse), `devOf`, `evCell`, Lageindex `kzScore` (Stadt = 100; Regionalatlaswerte gegen Land), Kernwerte `KZKEY`. Nicht verfügbare Kennzahlen eingeklappt (`S.kz.showExt`).
+  Radius in Makro-/Mikrolage per `S.kz.showR` (in `drawOverlay`, auch im Export).
