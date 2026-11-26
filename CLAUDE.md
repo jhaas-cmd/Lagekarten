@@ -119,7 +119,7 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
   Radius in Makro-/Mikrolage per `S.kz.showR` (in `drawOverlay`, auch im Export).
 
 ## ATLAS (Nov. 2026)
-- Name ATLAS, Untertitel „axperon site information“, Globus-Logo (SVG inline in `.brand`, Farbe #14284B), Schrift Jost (Google Fonts). Backup-Kennung `app: 'gieag-lagekarten'` bleibt (Kompatibilität).
+- Name ATLAS, Untertitel „axperon site information“, Logo: Globus aus fünf Querbalken (Verwandtschaft zum GIEAG-Zeichen) mit Meridian-Aussparung und Standortmarke in Orange (SVG inline in `.brand`). Farben: Dunkelblau #14284B, Kontrast Orange #F0642D (keine Pinktöne). Schrift Archivo (Wortmarke/Überschriften, 800/900), sonst Inter. Backup-Kennung `app: 'gieag-lagekarten'` bleibt (Kompatibilität).
 - Zentrieren-Knopf `#centerBtn` nur Fadenkreuz; `.zoom button` einheitlich 34 px hoch.
 - Ladezeiten: `overpassQ` = Zwischenspeicher (20 min) + Zusammenlegen gleicher Anfragen + `overpassRace` (Server gestaffelt parallel, 2,5 s Versatz, schnellster zuerst, `ovBest`);
   `relayout` setzt den Stil nur neu, wenn sich `JSON.stringify(styleFor(...))` geändert hat (`v.sig`); Preconnect zu Kacheln/Overpass/Valhalla.
@@ -127,3 +127,6 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - Infrastruktur im Umgriff (`INFRA`, `loadInfra`, Ergebnis `P.kz.infra.items[id] = {n, d, nm}`): Lebensmittelmärkte, Einzelhandel gesamt (nur Anzahl), Ärzte, Apotheken, Kitas, Schulen, U-/Stadtbahn (nur städtisch, `urban`), S-Bahn/Bahnhalte. Eine Overpass-Abfrage mit `out count` als Trenner, zweite Abfrage im weiten Umkreis für fehlende.
 - Kennzahlen-Gruppen `infra` und `anb` (Verkehrsanbindung aus `P.kpiList`), Bewertung nach Entfernung (`distEv`, Schwellen in `INFRA`/`ANB`, Gewichte je Assetklasse, ÖPNV über `ADW`), fließt in `kzScore`.
 - Dossier: Kopf mit Logo (`.dhead`), Kartenausschnitt Mikrolage mit Radius (`mapShot`, `SHOT`, `shotPlan`: Maßstab so, dass der Radius passt), „Dossier drucken / als PDF“ (`#kzPrint`, `#printArea`, Druck-CSS A4).
+- Dossier im Stil der GIEAG-Teaser (Hochformat): Kicker-Zeile, Logo rechts, große Versal-Überschrift „Standort / <Assetklasse in Orange> / <Stadt>“, Kernwerte mit Linie, Karte, Lageindex, Tabellen mit Gruppennamen im Tabellenkopf (`th.g`) und Quelle darunter (`.tsrc`); Bewertung dunkelblau = günstig, orange = ungünstig.
+- Dossier-Karte: Grundkarte einmal gerendert (`renderBase`, `BASE`, Vorlage `gieag_atlas_mk`, zusätzlich Graustufenfilter), darüber `composeShot` (Radius + halber Radius, Einrichtungen aus `infra.items[id].pts`, Projektpunkt orange, Legende, Maßstab, Nordpfeil); `dosProj` = Mercator ohne Karte.
+- Neue GIEAG-Vorlage `atlas` („ATLAS · Graustufen“, Vegetation `grau` mit Schraffuren), `FAM_VER = 4`.
