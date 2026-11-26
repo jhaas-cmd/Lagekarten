@@ -190,9 +190,11 @@ return maplibregl$1;
   .pane { display: flex; flex-direction: column; gap: 22px; padding-top: 14px; }
   .frame .focus { position: absolute; inset: 0; pointer-events: none; backdrop-filter: grayscale(1); -webkit-backdrop-filter: grayscale(1); }
   .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
+  .lgrp { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--blau); font-weight: 700; padding: 14px 0 5px; border-bottom: 1px solid var(--ink); }
+  .lgrp:first-child { padding-top: 2px; }
   .lhead select { padding: 4px 3px; font-size: 12px; }
   .pbar { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--flaeche); }
-  .layers { display: flex; flex-direction: column; border-top: 1px solid var(--ink); }
+  .layers { display: flex; flex-direction: column; }
   .layer { border-bottom: 1px solid var(--linie); }
   .lhead { display: grid; grid-template-columns: 18px 1fr 30px 62px 22px; gap: 6px; align-items: center; padding: 4px 0; }
   .lhead input[type=number] { padding: 4px 5px; font-size: 12px; }
@@ -296,7 +298,6 @@ return maplibregl$1;
         <button class="swatch" data-c="#E3000F" style="background:#E3000F" title="Signalrot" aria-label="Signalrot"></button>
         <button class="swatch" data-c="#0A0A0A" style="background:#0A0A0A" title="Schwarz" aria-label="Schwarz"></button>
       </div>
-      <label class="check"><input type="checkbox" id="optLegend"> Maßstabsleiste und Kartentitel (Makro und Mikro mit Nordpfeil)</label>
       <label class="check"><input type="checkbox" id="optAttrib"> Quellenangabe OpenStreetMap</label>
       <label class="check"><input type="checkbox" id="optTransp"> Hintergrund transparent (PNG für farbige Folien)</label>
       <p class="hint">Kartendaten © OpenStreetMap-Mitwirkende (ODbL), Kacheln OpenFreeMap. Die Quellenangabe sollte auf der Folie sichtbar bleiben.</p>
@@ -591,21 +592,25 @@ return maplibregl$1;
   const dm = (a, b) => { for (const [k, v] of Object.entries(b || {})) { if (v && typeof v === 'object' && !Array.isArray(v) && a[k] && typeof a[k] === 'object') dm(a[k], v); else a[k] = v; } return a; };
   const WSTEPS = [0.05, 0.1, 0.15, 0.25, 0.35, 0.5, 0.7, 1];        // feste Strichstärken-Stufen in mm
   const WATERPAL = ['#111111', '#3A3F44', '#6E747A', '#A3A9AE', '#C9CDD1', '#1F4E79', '#2F6EA8', '#5B95C9', '#8FB8DE', '#C4DCEF'];
+  const LBL = (o) => Object.assign({ lbl: false, lblFont: '', lblWeight: 400, lblItalic: false, lblSize: 5, lblColor: '#3C4044', lblBg: true, lblBgCol: '#FFFFFF' }, o);
   const stDef = kind => ({
     font: 'aptos', weight: 300, italic: false, caps: true, txt: true, tcol: '#0A0A0A',
     ts: kind === 'ov' ? { big: 7, mid: 5.5, small: 5 } : { big: 8, mid: 6.5, small: 5.5 },
-    halo: { title: kind !== 'ov', cities: kind !== 'ov', roads: true, notes: true, pois: false, legend: true },
+    halo: { title: kind !== 'ov', cities: kind !== 'ov', notes: true, pois: false, legend: true },
+    focus: { on: false, r: kind === 'ov' ? 60000 : kind === 'mi' ? 1500 : 300, fade: 20 },
+    north: { on: kind !== 'ov' && S.legend !== false, pos: 'br', size: 3.4, color: '#0A0A0A' },
+    scalebar: { on: S.legend !== false },
     cities: { on: kind === 'ov' ? +S.cityMin > 0 : false, min: kind === 'ov' ? (+S.cityMin || 50000) : 2000, abroad: !!S.abroad },
     settle: { on: S.settle !== 'off', color: kind === 'ov' ? '#E3E5E8' : '#CFD2D6', mode: S.settle === 'big' ? 'big' : 'shown' },
-    bldg: { on: true, color: '#B9BDC2', shadow: kind === 'mk' },
-    trees: { on: kind === 'mk', color: '#A9C59A', shadow: true },
-    mw: kind === 'ov' ? { on: S.motorway !== false, color: '#A4A8AD', w: 0.25, lbl: false, casing: false, fill: '#FFFFFF' }
-      : { on: true, color: '#999DA2', w: 0.5, lbl: false, casing: kind === 'mk', fill: '#FFFFFF' },
-    road: kind === 'ov' ? { on: false, color: '#C4C7CB', w: 0.15, lbl: false, casing: false, fill: '#FFFFFF', lblSize: 5 }
-      : { on: true, color: kind === 'mk' ? '#8F9398' : '#A9ACB1', w: 0.35, lbl: kind === 'mk', casing: kind === 'mk', fill: '#FFFFFF', lblSize: kind === 'mk' ? 5.5 : 5 },
+    bldg: { on: true, color: '#B9BDC2', shadow: kind === 'mk', shAlpha: 25 },
+    trees: { on: false, color: '#A9C59A', shadow: true },
+    mw: kind === 'ov' ? { on: S.motorway !== false, color: '#A4A8AD', w: 0.25, lbl: false, mode: 'line', fill: '#FFFFFF' }
+      : { on: true, color: '#999DA2', w: 0.5, lbl: false, mode: kind === 'mk' ? 'both' : 'line', fill: '#FFFFFF' },
+    road: kind === 'ov' ? LBL({ on: false, color: '#C4C7CB', w: 0.15, mode: 'line', fill: '#FFFFFF' })
+      : LBL({ on: true, color: kind === 'mk' ? '#8F9398' : '#A9ACB1', w: 0.35, mode: kind === 'mk' ? 'both' : 'line', fill: '#FFFFFF', lbl: kind === 'mk', lblSize: kind === 'mk' ? 5.5 : 5, tracks: false }),
     rail: kind === 'ov' ? { on: true, color: '#7E8388', w: 0.15, classic: false, st: false } : { on: true, color: '#3C4044', w: 0.35, classic: true, st: true },
     border: { on: true, color: '#9A9EA3', w: 0.25 },
-    water: { on: true, color: S.waterBlack === false ? '#8FB8DE' : '#111111', lbl: false, lblSize: 5.5 },
+    water: LBL({ on: true, color: S.waterBlack === false ? '#8FB8DE' : '#111111', lblItalic: true, lblSize: 5.5, lblColor: '#3A3F44' }),
     wood: { on: kind !== 'ov', mode: 'dots', color: '#B4B8BD' },
     field: { on: false, mode: 'green', color: '#E4EEDB' },
     hill: { on: !!(S.hill && S.hill[kind]), alpha: HILLA[(S.hill && S.hill.strength) || 'mittel'] || 55 },
@@ -618,6 +623,8 @@ return maplibregl$1;
     if (st.land) { const gr = st.land.mode === 'green';
       st.wood = { on: !!st.land.on, mode: gr ? 'green' : 'dots', color: gr ? '#C6DBB4' : '#B4B8BD' }; st.field = { on: !!st.land.on && gr, mode: 'green', color: '#E4EEDB' }; delete st.land; }
     if (st.water && st.water.col) { st.water.color = WCOL[st.water.col] || '#111111'; delete st.water.col; }
+    for (const r of ['road', 'mw']) if (st[r] && st[r].casing != null && !st[r].mode) { st[r].mode = st[r].casing ? 'both' : 'line'; delete st[r].casing; }
+    if (st.halo && st.halo.roads != null) { for (const r of ['road', 'water']) if (st[r] && st[r].lblBg == null) st[r].lblBg = st.halo.roads; delete st.halo.roads; }
     if (st.cities && st.cities.settle) { st.settle = Object.assign({}, st.settle, { on: st.cities.settle !== 'off', mode: st.cities.settle === 'big' ? 'big' : 'shown' }); delete st.cities.settle; }
     return st;
   };
@@ -634,6 +641,7 @@ return maplibregl$1;
   }
   for (const pr of Object.values(S.presets)) {
     const tf = pr.st.tsize && pr.st.tsize !== 100 ? pr.st.tsize / 100 : 0;
+    if (!pr.st.focus && S.focus && S.focus[pr.base || 'mi']) pr.st.focus = Object.assign({}, S.focus[pr.base || 'mi']);
     pr.st = dm(stDef(pr.base || 'mi'), migrateSt(pr.st));
     if (tf) for (const k of ['big', 'mid', 'small']) pr.st.ts[k] = Math.round(pr.st.ts[k] * tf * 2) / 2;
     delete pr.st.tsize;
@@ -702,11 +710,16 @@ return maplibregl$1;
     const rnd = { 'line-cap': 'round', 'line-join': 'round' };
     const hex = c => /^#[0-9a-f]{6}$/i.test(c) ? c.slice(1) : 'B4B8BD';
     // Landschaft: Wald sowie Wiesen und Felder – jeweils als Fläche, Punktraster oder Schraffur
-    const lc = (id, filter, L) => ({ id, type: 'fill', source: 'omt', 'source-layer': 'landcover', filter,
-      paint: L.mode === 'green' ? { 'fill-color': L.color } : { 'fill-pattern': `pat-${L.mode === 'hatch' ? 'hatch' : 'dots'}-${hex(L.color)}-${Math.round(k * 100)}` } });
+    // Landschaft: Fläche, Punktraster, Schraffur oder Fläche mit Raster darüber
+    const lc = (id, filter, L) => {
+      const pat = m => ({ id: id + (L.mode.startsWith('green-') ? '-pat' : ''), type: 'fill', source: 'omt', 'source-layer': 'landcover', filter,
+        paint: { 'fill-pattern': `pat-${m}-${hex(L.mode.startsWith('green-') ? mix(L.color, '#000000', 0.35) : L.color)}-${Math.round(k * 100)}` } });
+      const flat = { id, type: 'fill', source: 'omt', 'source-layer': 'landcover', filter, paint: { 'fill-color': L.color } };
+      return L.mode === 'green' ? [flat] : L.mode === 'green-dots' ? [flat, pat('dots')] : L.mode === 'green-hatch' ? [flat, pat('hatch')] : [pat(L.mode === 'hatch' ? 'hatch' : 'dots')];
+    };
     const land = [
-      ...(T.field.on ? [lc('field', ['in', ['get', 'class'], ['literal', ['grass', 'farmland', 'wetland']]], T.field)] : []),
-      ...(T.wood.on ? [lc('wood', ['==', ['get', 'class'], 'wood'], T.wood)] : [])
+      ...(T.field.on ? lc('field', ['in', ['get', 'class'], ['literal', ['grass', 'farmland', 'wetland']]], T.field) : []),
+      ...(T.wood.on ? lc('wood', ['==', ['get', 'class'], 'wood'], T.wood) : [])
     ];
     const railF = ['all', ['==', ['get', 'class'], 'rail'], notTunnel, ['!', ['has', 'service']]];
     // Bahn klassisch: dunkle Linie mit weißen Unterbrechungen
@@ -745,28 +758,36 @@ return maplibregl$1;
       layers.push(...tname);
       return { version: 8, sources: { omt: src.omt, zones: src.zones }, layers };
     }
-    // Straßen: ohne Kontur als abgestufte Linien; mit Kontur als helle Fläche mit dunklem Rand,
-    // in der Mikrolage mit maßstäblicher Breite (Autobahn ~26 m, Hauptstraße ~14 m, Nebenstraße ~6,5 m)
-    const road = (id, classes, w, c) => ({ id, type: 'line', source: 'omt', 'source-layer': 'transportation',
-      filter: ['all', ['in', ['get', 'class'], ['literal', classes]], notTunnel], paint: { 'line-color': c, 'line-width': mm(w) }, layout: rnd });
+    // Straßen: Darstellung je Ebene – Linie (abgestuft), Fläche, nur Kontur (zwei parallele Linien) oder Fläche mit Kontur;
+    // Fläche und Kontur in der Mikrolage maßstäblich breit (Autobahn ~26 m, Hauptstraße ~14 m, Nebenstraße ~6,5 m)
+    const road = (id, classes, w, c, gap) => ({ id, type: 'line', source: 'omt', 'source-layer': 'transportation',
+      filter: ['all', ['in', ['get', 'class'], ['literal', classes]], notTunnel],
+      paint: Object.assign({ 'line-color': c, 'line-width': mm(w) }, gap ? { 'line-gap-width': mm(gap) } : {}), layout: rnd });
     // maßstabsabhängig ausdünnen: ab 1:50.000 ohne Feldwege (track) und Zufahrten (service); Ortsstraßen (minor) bleiben
     const tracks = kind === 'mk' || sc < 50000 || T.road.tracks;
     const RG = { min: tracks ? ['minor', 'service', 'track'] : ['minor'], sec: ['secondary', 'tertiary'], pri: ['primary', 'trunk'], mw: ['motorway'] };
     const RF = { min: 0.37, sec: 0.68, pri: 1, mw: 1 }, RW = { min: 6.5, sec: 11, pri: 14, mw: 26 };
-    const LR = g => g === 'mw' ? T.mw : T.road;
-    const rw = g => { const L = LR(g), base = L.w * RF[g]; return L.casing && kind === 'mk' ? Math.max(base, RW[g] * 1000 / sc) : base; };
+    const LR = g => g === 'mw' ? T.mw : T.road, MD = g => LR(g).mode || 'line';
+    const rw = g => { const base = LR(g).w * RF[g]; return MD(g) !== 'line' && kind === 'mk' ? Math.max(base, RW[g] * 1000 / sc) : base; };
     const grp = [...(T.road.on ? ['min', 'sec', 'pri'] : []), ...(T.mw.on ? ['mw'] : [])];
+    const OL = 0.12;                                                         // Konturstärke in mm
     const roads = [];
-    for (const g of grp) if (LR(g).casing) roads.push(road('c-' + g, RG[g], rw(g), LR(g).color));   // erst alle Konturen, dann die Füllungen: Kreuzungen verschmelzen
+    for (const g of grp) if (MD(g) === 'both') roads.push(road('c-' + g, RG[g], rw(g), LR(g).color));   // erst alle Konturen, dann die Füllungen: Kreuzungen verschmelzen
     for (const g of grp) {
-      const L = LR(g), w = rw(g);
-      roads.push(L.casing ? road('r-' + g, RG[g], Math.max(w - 0.2, w * 0.5), L.fill || '#FFFFFF')
-        : road('r-' + g, RG[g], w, g === 'min' ? mix(L.color, '#FFFFFF', 0.45) : g === 'sec' ? mix(L.color, '#FFFFFF', 0.2) : L.color));
+      const L = LR(g), w = rw(g), m = MD(g);
+      if (m === 'both') roads.push(road('r-' + g, RG[g], Math.max(w - 2 * OL, w * 0.5), L.fill || '#FFFFFF'));
+      else if (m === 'fill') roads.push(road('r-' + g, RG[g], w, L.fill || '#FFFFFF'));
+      else if (m === 'outline') roads.push(road('r-' + g, RG[g], OL, L.color, Math.max(w - 2 * OL, 0.08)));
+      else roads.push(road('r-' + g, RG[g], w, g === 'min' ? mix(L.color, '#FFFFFF', 0.45) : g === 'sec' ? mix(L.color, '#FFFFFF', 0.2) : L.color));
     }
     const A = S.accent;
     const bau = builtMode(kind);
     const mapOn = !!S.mapIn[kind];
-    const shOff = Math.min(1.6, Math.max(0.25, 8000 / sc));                 // Schlagschatten maßstabsabhängig (mm)
+    // Schlagschatten: Grundfläche in mehreren kleinen Schritten versetzt – der Schatten hängt am Gebäude und läuft weich aus
+    const shOff = Math.min(1.6, Math.max(0.25, 10000 / sc)), NSH = 6;
+    const shA = Math.min(0.7, Math.max(0.05, (+T.bldg.shAlpha || 25) / 100)), aStep = 1 - Math.pow(1 - shA, 1 / NSH);
+    const shadows = bau === 'gebaeude' && T.bldg.on && T.bldg.shadow && sc <= 25000 ? Array.from({ length: NSH }, (_, i) => ({ id: 'bld-sh' + i, type: 'fill', source: 'omt', 'source-layer': 'building',
+      paint: { 'fill-color': '#1E2226', 'fill-opacity': aStep, 'fill-antialias': false, 'fill-translate': [mm(shOff * 0.7 * (i + 1) / NSH), mm(shOff * (i + 1) / NSH)], 'fill-translate-anchor': 'viewport' } })) : [];
     return { version: 8, sources: src, layers: [
       { id: 'bg', type: 'background', paint: { 'background-color': 'rgba(255,255,255,0)' } },   // Grundfläche liegt darunter
       ...(T.settle.on ? [{ id: 'settle', type: 'fill', source: 'omt', 'source-layer': 'landuse',
@@ -787,8 +808,7 @@ return maplibregl$1;
       { id: 'aero-q', type: 'fill', source: 'omt', 'source-layer': 'aeroway', paint: { 'fill-opacity': 0 } },
       ...tname,
       ...(mapOn ? [{ id: 'mapgeo-area', type: 'fill', source: 'mapgeo', filter: ['==', ['get', 'k'], 'a'], paint: { 'fill-color': ['get', 't'] } }] : []),
-      ...(bau === 'gebaeude' && T.bldg.on && T.bldg.shadow && sc <= 25000 ? [{ id: 'bld-shadow', type: 'fill', source: 'omt', 'source-layer': 'building',
-        paint: { 'fill-color': mix(T.bldg.color, '#000000', 0.6), 'fill-opacity': 0.4, 'fill-translate': [mm(shOff * 0.7), mm(shOff)], 'fill-translate-anchor': 'viewport' } }] : []),
+      ...shadows,
       ...(bau === 'gebaeude' && T.bldg.on ? [{ id: 'building', type: 'fill', source: 'omt', 'source-layer': 'building', paint: { 'fill-color': T.bldg.color } }] : []),
       ...(mapOn ? [{ id: 'mapgeo-bld', type: 'fill', source: 'mapgeo', filter: ['==', ['get', 'k'], 'b'], paint: { 'fill-color': ['get', 'c'] } }] : []),
       { id: 'bld', type: 'fill', source: 'bld', paint: { 'fill-color': A } },
@@ -913,7 +933,7 @@ return maplibregl$1;
   const gray = h => { const [r, gg, b] = hex2(/^#[0-9a-f]{6}$/i.test(h) ? h : '#888888'); const l = Math.round(0.3 * r + 0.59 * gg + 0.11 * b).toString(16).padStart(2, '0'); return '#' + l + l + l; };
   const mppOf = map => EARTH * Math.cos(P.lat * Math.PI / 180) / (512 * Math.pow(2, map.getZoom()));
   function drawOverlay(g, map, kind, k, W, H, view) {
-    const T = ST(kind), pp = S.ppk[kind], F = S.focus[kind];
+    const T = ST(kind), pp = S.ppk[kind], F = T.focus;
     FONT = famOf(T.font, 400); FONT_LIGHT = famOf(T.font, 300); TCOL = T.tcol || '#0A0A0A';
     const mm = v => v * k, pt = v => v * 0.3528 * k;
     const font = (w, s) => `${w} ${pt(s)}px ${FONT}`;
@@ -925,7 +945,6 @@ return maplibregl$1;
     g.textBaseline = 'middle';
     if (T.contour.on) drawContours(g, map, kind, k, T);
     if (T.grid.on) drawGrid(g, map, kind, k, W, H, false);
-    if (kind === 'mk' && T.trees.on) drawTrees(g, map, k, W, H, T, inF);
     const titleOn = ({ ov: S.ovTitle, mi: S.miTitle, mk: S.mkTitle })[kind];
     const fsT = +({ ov: S.fsOv, mi: S.fsMi, mk: S.fsMk })[kind] || (kind === 'ov' ? 8 : 7.5);
     const plate = !!T.halo.title;
@@ -938,7 +957,8 @@ return maplibregl$1;
     const poiHits = drawPois(g, map, kind, k); if (view) view.poiHits = poiHits;
     const pr0 = (+pp.r || 1.2) + 0.7, dotBox = { x: proj.x - mm(pr0), y: proj.y - mm(pr0), w: mm(2 * pr0), h: mm(2 * pr0) };
     const obst = [dotBox].concat(box0 ? [box0] : [], zoneBoxes, poiHits.flatMap(h => [h.dotB, h.lab].filter(Boolean)));
-    if (S.legend) obst.push({ x: W - mm(34), y: H - mm(14), w: mm(34), h: mm(14) });   // Maßstabsleiste freihalten
+    if (T.scalebar.on) obst.push({ x: W - mm(34), y: H - mm(14), w: mm(34), h: mm(14) });   // Maßstabsleiste freihalten
+    if (T.north.on) obst.push(northBox(k, W, H, T));
     if (T.txt) {
       if (T.water.on && T.water.lbl) drawWaterNames(g, map, k, W, H, obst, T, inF);
       if (kind === 'ov') drawRoadRefs(g, map, k, W, H, obst, T, inF);
@@ -952,7 +972,8 @@ return maplibregl$1;
       for (const c of drawRing) { const p = map.project(c); g.fillRect(p.x - mm(0.5), p.y - mm(0.5), mm(1), mm(1)); }
     }
     if (T.grid.on && T.grid.lbl) drawGrid(g, map, kind, k, W, H, true);
-    if (S.legend) scaleBar(g, map, k, W, H, kind);
+    if (T.scalebar.on) scaleBar(g, map, k, W, H, kind);
+    if (T.north.on) drawNorth(g, k, W, H, T);
     if (kind !== 'ov' && S.mapLegend) mapLegend(g, k, W, H, kind);
     const nb = drawNotes(g, map, kind, k);
     if (view) { view.lblBox = box; view.noteBoxes = nb; }
@@ -964,6 +985,25 @@ return maplibregl$1;
       g.fillStyle = '#8A8F94';
       g.fillText(atxt, mm(3), H - mm(3));
     }
+  }
+  // Nordpfeil: Kreis mit Pfeil und „N“; unten rechts sitzt er links neben der Maßstabsleiste
+  function northPos(k, W, H, T) {
+    const mm = v => v * k, sz = (+T.north.size || 3.4) / 3.4, r = mm(1.7) * sz;
+    const pos = T.north.pos || 'br';
+    if (pos === 'tr') return { x: W - mm(4) - r, y: mm(5) + r * 1.6, r };
+    if (pos === 'tl') return { x: mm(4) + r, y: mm(5) + r * 1.6, r };
+    if (pos === 'bl') return { x: mm(4) + r, y: H - mm(9) - r, r };
+    return T.scalebar.on ? { x: W - mm(31) - r, y: H - mm(7.2), r } : { x: W - mm(4) - r, y: H - mm(5) - r, r };
+  }
+  function northBox(k, W, H, T) { const q = northPos(k, W, H, T), m = k * 0.8; return { x: q.x - q.r - m, y: q.y - q.r * 2.4 - m, w: 2 * (q.r + m), h: q.r * 3.4 + 2 * m }; }
+  function drawNorth(g, k, W, H, T) {
+    const q = northPos(k, W, H, T), r = q.r, cx = q.x, cy = q.y, col = T.north.color || '#0A0A0A';
+    if (T.halo.legend) { g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(cx, cy - r * 0.4, r * 1.9, 0, 7); g.fill(); }
+    g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = Math.max(k * 0.2, r * 0.12); g.setLineDash([]);
+    g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke();
+    g.beginPath(); g.moveTo(cx, cy - r * 0.8); g.lineTo(cx + r * 0.35, cy + r * 0.5); g.lineTo(cx, cy + r * 0.25); g.lineTo(cx - r * 0.35, cy + r * 0.5); g.closePath(); g.fill();
+    g.font = `400 ${r * 1.15}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.fillText('N', cx, cy - r - k * 0.5);
+    g.restore(); g.textAlign = 'left';
   }
   // Städte (Landkarte, mit Punkt) bzw. Ortsnamen (Makrolage, mittig auf dem Ort); Größen in pt je Klasse,
   // Großstädte auf Wunsch in Versalien mit leichter Sperrung; Namen weichen einander aus
@@ -1042,13 +1082,19 @@ return maplibregl$1;
       const b = { x: pm.x - hw, y: pm.y - hh, w: 2 * hw, h: 2 * hh };
       if (obst.some(q => hit(b, q))) continue;
       g.save(); g.translate(pm.x, pm.y); g.rotate(ang);
-      if (o.halo) { g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,.92)'; g.lineWidth = mm(0.7); g.strokeText(it.name, 0, 0); }
+      if (o.halo) { g.lineJoin = 'round'; g.strokeStyle = o.haloCol || 'rgba(255,255,255,.92)'; g.lineWidth = mm(0.7); g.strokeText(it.name, 0, 0); }
       g.fillStyle = o.color; g.fillText(it.name, 0, 0); g.restore();
       list.push(pm); obst.push(b);
     }
     g.textAlign = 'left';
   }
   const linesOf = gm => gm.type === 'LineString' ? [gm.coordinates] : gm.type === 'MultiLineString' ? gm.coordinates : [];
+  // Schrift für Linienbeschriftungen: eigene Einstellungen der Ebene, Schriftart „wie Schrift“ übernimmt die Kartenschrift
+  const lblOpts = (k, T, L, minD, inF) => {
+    const size = 0.3528 * k * (+L.lblSize || 5), w = +L.lblWeight || 400;
+    return { font: `${L.lblItalic ? 'italic ' : ''}${w} ${size}px ${famOf(L.lblFont || T.font, w)}`, size, color: L.lblColor || TCOL,
+      halo: L.lblBg !== false, haloCol: L.lblBgCol || '#FFFFFF', minD: minD * k, inF };
+  };
   function drawWaterNames(g, map, k, W, H, obst, T, inF) {
     let fs = []; try { fs = map.querySourceFeatures('omt', { sourceLayer: 'waterway' }); } catch (e) {}
     const items = [];
@@ -1057,9 +1103,7 @@ return maplibregl$1;
       const name = pr['name:de'] || pr.name_de || pr.name; if (!name) continue;
       for (const ln of linesOf(f.geometry)) if (ln.length > 1) items.push({ name, line: ln, prio: pr.class === 'river' ? 2 : 1 });
     }
-    const size = 0.3528 * k * (+T.water.lblSize || 5.5), col = T.water.color || '#111111';
-    drawLineLabels(g, map, k, W, H, items, obst, { font: `italic 400 ${size}px ${famOf(T.font, 400)}`, size, color: mix(col, '#FFFFFF', 0) === '#111111' ? '#1E1E1E' : mix(col, '#000000', 0.25),
-      halo: T.halo.roads, minD: 60 * k, inF });
+    drawLineLabels(g, map, k, W, H, items, obst, lblOpts(k, T, T.water, 60, inF));
   }
   function drawRoadNames(g, map, k, W, H, obst, T, inF, kind) {
     let fs = []; try { fs = map.querySourceFeatures('omt', { sourceLayer: 'transportation_name' }); } catch (e) {}
@@ -1071,8 +1115,7 @@ return maplibregl$1;
       const name = pr['name:de'] || pr.name_de || pr.name; if (!name) continue;
       for (const ln of linesOf(f.geometry)) if (ln.length > 1) items.push({ name, line: ln, prio: PRIO[pr.class] || 0 });
     }
-    const size = 0.3528 * k * (+T.road.lblSize || 5);
-    drawLineLabels(g, map, k, W, H, items, obst, { font: `400 ${size}px ${famOf(T.font, 400)}`, size, color: mix(TCOL, '#FFFFFF', 0.15), halo: T.halo.roads, minD: 45 * k, inF });
+    drawLineLabels(g, map, k, W, H, items, obst, lblOpts(k, T, T.road, 45, inF));
   }
   // Bahnhöfe als Symbol: weißer Kreis mit Rand in Bahnfarbe
   function drawStations(g, map, k, W, H, T) {
@@ -1209,7 +1252,7 @@ return maplibregl$1;
     return out;
   }
   function scaleBar(g, map, k, W, H, kind) {
-    const mm = v => v * k, pt = v => v * 0.3528 * k, withNorth = kind !== 'ov';
+    const mm = v => v * k, pt = v => v * 0.3528 * k;
     const c = map.getCenter();
     const mppCss = EARTH * Math.cos(c.lat * Math.PI / 180) / (512 * Math.pow(2, map.getZoom()));
     const nice = [10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000, 20000, 25000, 50000, 100000, 200000];
@@ -1218,23 +1261,16 @@ return maplibregl$1;
     const barPx = len / mppCss;
     const right = W - mm(4), base = H - mm(6);
     const x0 = right - barPx;
-    if (ST(kind).halo.legend) { g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(x0 - mm(withNorth ? 8.5 : 2), base - mm(6), right - x0 + mm(withNorth ? 10.5 : 4), mm(11)); }
-    g.strokeStyle = '#0A0A0A'; g.fillStyle = '#0A0A0A'; g.lineWidth = mm(0.2);
+    if (ST(kind).halo.legend) { g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(x0 - mm(2), base - mm(6), right - x0 + mm(4), mm(11)); }
+    g.strokeStyle = '#0A0A0A'; g.fillStyle = '#0A0A0A'; g.lineWidth = mm(0.2); g.setLineDash([]);
     g.beginPath(); g.moveTo(x0, base - mm(1)); g.lineTo(x0, base); g.lineTo(x0 + barPx / 2, base); g.lineTo(x0 + barPx / 2, base - mm(0.6));
     g.moveTo(x0 + barPx / 2, base); g.lineTo(right, base); g.lineTo(right, base - mm(1)); g.stroke();
     g.font = `400 ${pt(5.5)}px ${FONT}`; g.textBaseline = 'alphabetic';
     g.textAlign = 'center'; g.fillText('0', x0, base - mm(1.6));
     g.fillText(len >= 1000 ? (len / 1000) + ' km' : len + ' m', right, base - mm(1.6));
     g.textAlign = 'right';
-    const cap = `${KNAME[kind].toUpperCase()}  M 1:${scaleOf(kind).toLocaleString('de-DE')}`;
-    g.fillText(cap, right, base + mm(3));
+    g.fillText(`${KNAME[kind].toUpperCase()}  M 1:${scaleOf(kind).toLocaleString('de-DE')}`, right, base + mm(3));
     g.textAlign = 'left';
-    if (withNorth) {
-      const cx = x0 - mm(5), cy = base - mm(1.2), r = mm(1.7);
-      g.lineWidth = mm(0.2); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke();
-      g.beginPath(); g.moveTo(cx, cy - r * 0.8); g.lineTo(cx + r * 0.35, cy + r * 0.5); g.lineTo(cx, cy + r * 0.25); g.lineTo(cx - r * 0.35, cy + r * 0.5); g.closePath(); g.fill();
-      g.textAlign = 'center'; g.fillText('N', cx, cy - r - mm(0.8)); g.textAlign = 'left';
-    }
   }
 
   // ---------- Erreichbarkeit: Zonen entlang des Straßennetzes (FOSSGIS Valhalla), Rückfall Kreise nach Luftlinie ----------
@@ -1916,7 +1952,7 @@ return maplibregl$1;
     paintBase(); repaint();
   }
   const contourStep = kind => { const T = ST(kind); if (T.contour.step !== 'auto') return +T.contour.step || 20;
-    return [5, 10, 20, 25, 50, 100, 200, 250, 500].find(v => v >= scaleOf(kind) / 2000) || 500; };
+    return [1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500].find(v => v >= scaleOf(kind) / 5000) || 500; };
   // Höhenlinien per „Marching Squares“ auf dem Höhenraster (bei großen Rastern jede 2. Zelle)
   function getContours(d, step) {
     if (d.cont[step]) return d.cont[step];
@@ -1994,12 +2030,12 @@ return maplibregl$1;
     };
     return { fwd, inv };
   })();
-  const GSIZES = { km: [100, 200, 250, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000], grad: [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300], blatt: [20, 25, 30, 40, 50] };
+  const GSIZES = { km: [25, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000], grad: [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300], blatt: [10, 15, 20, 25, 30, 40, 50] };
   const gLabel = (t, v) => t === 'km' ? (v >= 1000 ? v / 1000 + ' km' : v + ' m') : t === 'grad' ? (v >= 60 ? v / 60 + '°' : String(v).replace('.', ',') + '′') : v + ' mm';
   function gridSize(kind) {
     const G = ST(kind).grid; if (G.size !== 'auto' && G.size != null) return +G.size;
     const sc = scaleOf(kind);
-    if (G.type === 'km') return GSIZES.km.find(v => v >= sc * 0.025) || 100000;
+    if (G.type === 'km') return GSIZES.km.find(v => v >= sc * 0.02) || 100000;
     if (G.type === 'grad') return GSIZES.grad.find(v => v >= sc * 0.025 / 1852) || 300;   // Minuten, 1′ ≈ 1852 m
     return 30;
   }
@@ -2027,23 +2063,19 @@ return maplibregl$1;
       if (!labels) { g.beginPath(); for (const [, x] of xs) { g.moveTo(x, 0); g.lineTo(x, H); } for (const [, y] of ys) { g.moveTo(0, y); g.lineTo(W, y); } g.stroke(); }
       else { for (const [v, x] of xs) lab(fd(v), x + mm(0.8), mm(1.2), 'left'); for (const [v, y] of ys) lab(fd(v), mm(1.2), y + mm(0.6), 'left'); }
     } else {
-      const c = map.getCenter(), zone = Math.floor((c.lng + 180) / 6) + 1, b = map.getBounds();
-      const cs = [[b.getWest(), b.getNorth()], [b.getEast(), b.getNorth()], [b.getWest(), b.getSouth()], [b.getEast(), b.getSouth()]].map(([lo, la]) => UTM.fwd(la, lo, zone));
-      const e0 = Math.min(...cs.map(q => q[0])), e1 = Math.max(...cs.map(q => q[0])), n0 = Math.min(...cs.map(q => q[1])), n1 = Math.max(...cs.map(q => q[1]));
-      if ((e1 - e0) / size > 200 || (n1 - n0) / size > 200) { g.restore(); return; }
-      const fk = v => (v / 1000).toLocaleString('de-DE', { maximumFractionDigits: size >= 1000 ? 0 : 1 });
-      const lineE = E => { const q = []; for (let i = 0; i <= 16; i++) q.push(map.project(UTM.inv(E, n0 + (n1 - n0) * i / 16, zone))); return q; };
-      const lineN = N => { const q = []; for (let i = 0; i <= 16; i++) q.push(map.project(UTM.inv(e0 + (e1 - e0) * i / 16, N, zone))); return q; };
-      const cross = (q, axis, v) => { for (let i = 1; i < q.length; i++) { const a = q[i - 1][axis], bb = q[i][axis]; if ((a - v) * (bb - v) <= 0 && a !== bb) { const t = (v - a) / (bb - a); return { x: q[i - 1].x + (q[i].x - q[i - 1].x) * t, y: q[i - 1].y + (q[i].y - q[i - 1].y) * t }; } } return null; };
-      for (let E = Math.ceil(e0 / size) * size; E <= e1; E += size) {
-        const q = lineE(E);
-        if (!labels) { g.beginPath(); q.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.stroke(); }
-        else { const p = cross(q, 'y', mm(1.5)); if (p && p.x > mm(4) && p.x < W - mm(10)) lab(fk(E), p.x + mm(0.8), mm(1.2), 'left'); }
-      }
-      for (let N = Math.ceil(n0 / size) * size; N <= n1; N += size) {
-        const q = lineN(N);
-        if (!labels) { g.beginPath(); q.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.stroke(); }
-        else { const p = cross(q, 'x', mm(1.5)); if (p && p.y > mm(5) && p.y < H - mm(8)) lab(fk(N), mm(1.2), p.y + mm(0.6), 'left'); }
+      // Kilometerraster achsparallel zur Blattkante, Abstand in echten Metern, Ursprung in der linken oberen Ecke
+      const c = map.getCenter(), mpp = EARTH * Math.cos(c.lat * Math.PI / 180) / (512 * Math.pow(2, map.getZoom())), sp = size / mpp;
+      if (W / sp > 300 || H / sp > 300) { g.restore(); return; }
+      const fk = v => v >= 1000 ? (v / 1000).toLocaleString('de-DE', { maximumFractionDigits: 2 }) + ' km' : v + ' m';
+      if (!labels) {
+        g.beginPath();
+        for (let x = sp; x < W - 0.5; x += sp) { g.moveTo(x, 0); g.lineTo(x, H); }
+        for (let y = sp; y < H - 0.5; y += sp) { g.moveTo(0, y); g.lineTo(W, y); }
+        g.stroke();
+      } else {
+        const every = Math.max(1, Math.ceil(mm(14) / sp));           // nur so viele Zahlen, wie lesbar nebeneinander passen
+        for (let i = every; i * sp < W - mm(10); i += every) lab(fk(i * size), i * sp + mm(0.8), mm(1.2), 'left');
+        for (let i = every; i * sp < H - mm(12); i += every) lab(fk(i * size), mm(1.2), i * sp + mm(0.6), 'left');
       }
     }
     g.restore();
@@ -2110,7 +2142,7 @@ return maplibregl$1;
     views[kind] = v;
     map.on('render', () => paint(v));
     if (kind === 'ov') map.on('movestart', () => { $('ovSc').style.opacity = 0.25; });
-    map.on('idle', () => { if (active !== kind) return; paintBase(); ensureDem(kind); if (kind === 'mi') loadPlaces(); if (kind === 'mk') loadTrees(); });
+    map.on('idle', () => { if (active !== kind) return; paintBase(); ensureDem(kind); if (kind === 'mi') loadPlaces(); });
     map.on('moveend', () => {
       if (v.relayouting) return;
       if (kind === 'ov') {
@@ -2173,7 +2205,7 @@ return maplibregl$1;
   }
   // Fokus in der Vorschau: Graustufen außerhalb des Radius (CSS-Filter mit weichem Kreisrand)
   function updateFocus(v) {
-    const el = $(v.kind + 'Focus'), F = S.focus[v.kind]; if (!el) return;
+    const el = $(v.kind + 'Focus'), F = ST(v.kind).focus; if (!el) return;
     if (!F || !F.on) { el.hidden = true; return; }
     el.hidden = false;
     const p = v.map.project([P.lon, P.lat]), r = (+F.r || 1000) / mppOf(v.map) / v.f, x = p.x / v.f, y = p.y / v.f, fe = Math.max(4, r * 0.06);
@@ -2382,50 +2414,70 @@ return maplibregl$1;
   const getP = (o, path) => path.split('.').reduce((a, k) => a == null ? a : a[k], o);
   const setP = (o, path, v) => { const ks = path.split('.'), last = ks.pop(); ks.reduce((a, k) => a[k] = a[k] || {}, o)[last] = v; };
   // Ebenen der Stil-Liste: An/Aus · Name · Farbe · Strichstärke; Klick auf den Namen öffnet die Details
-  const modeSel = p => `<label class="f">Darstellung<select data-s="${p}.mode"><option value="green">Fläche (Grünstufe)</option><option value="dots">Punktraster</option><option value="hatch">Schraffur</option></select></label>`;
-  const casingUI = p => `<div class="row"><label class="check"><input type="checkbox" data-s="${p}.casing"> Mit Kontur</label><label class="f">Füllung<button class="sw" data-s="${p}.fill" aria-label="Füllfarbe"></button></label></div><p class="hint">Farbfeld der Zeile = Kontur. In der Mikrolage mit maßstäblicher Breite.</p>`;
+  const modeSel = p => `<label class="f">Darstellung<select data-s="${p}.mode"><option value="green">Fläche</option><option value="dots">Punktraster</option><option value="hatch">Schraffur</option><option value="green-dots">Fläche + Punktraster</option><option value="green-hatch">Fläche + Schraffur</option></select></label>`;
+  const roadMode = p => `<div class="row"><label class="f">Darstellung<select data-s="${p}.mode"><option value="line">Linie</option><option value="fill">Fläche</option><option value="outline">Nur Kontur</option><option value="both">Fläche mit Kontur</option></select></label>
+    <label class="f">Füllfarbe<button class="sw" data-s="${p}.fill" aria-label="Füllfarbe"></button></label></div>
+    <p class="hint">Farbfeld der Zeile = Linien- bzw. Konturfarbe. Fläche und Kontur sind in der Mikrolage maßstäblich breit.</p>`;
+  const FONT_OPTS = '<option value="">wie Schrift</option><option value="aptos">Aptos</option><option value="inter">Inter</option><option value="source">Source Sans 3</option><option value="plex">IBM Plex Sans</option><option value="arial">Arial</option><option value="georgia">Georgia</option>';
+  const WEIGHT_OPTS = '<option value="300">Light</option><option value="400">Regular</option><option value="500">Medium</option><option value="700">Fett</option>';
+  const lblUI = (p, title) => `<label class="check"><input type="checkbox" data-s="${p}.lbl"> ${title}</label>
+    <div class="row"><label class="f">Schriftart<select data-s="${p}.lblFont">${FONT_OPTS}</select></label><label class="f">Schnitt<select data-s="${p}.lblWeight" data-num>${WEIGHT_OPTS}</select></label></div>
+    <div class="row"><label class="f">Größe (pt)<input type="number" data-s="${p}.lblSize" min="4" max="16" step="0.5"></label><label class="f">Farbe<button class="sw" data-s="${p}.lblColor" aria-label="Schriftfarbe"></button></label>
+      <label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-s="${p}.lblItalic"> Kursiv</label></div>
+    <div class="row"><label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-s="${p}.lblBg"> Hintergrund</label><label class="f">Farbe<button class="sw" data-s="${p}.lblBgCol" aria-label="Hintergrundfarbe"></button></label></div>`;
+  // Gliederung der Stil-Liste
+  const GRP = [['darst', 'Kartendarstellung'], ['verk', 'Verkehr'], ['stadt', 'Stadt und Landschaft']];
   const LAYERS = [
-    { id: 'txt', name: () => 'Schrift', eye: 'txt', col: 'tcol', keys: ['font', 'weight', 'italic', 'caps', 'txt', 'tcol', 'ts', 'halo'],
-      det: k => `<div class="row"><label class="f">Schriftart<select data-s="font"><option value="aptos">Aptos</option><option value="inter">Inter</option><option value="source">Source Sans 3</option><option value="plex">IBM Plex Sans</option><option value="arial">Arial</option><option value="georgia">Georgia</option></select></label>
-        <label class="f">Schnitt<select data-s="weight" data-num><option value="300">Light</option><option value="400">Regular</option><option value="500">Medium</option><option value="700">Fett</option></select></label></div>
+    { grp: 'darst', id: 'txt', name: () => 'Schrift', eye: 'txt', col: 'tcol', keys: ['font', 'weight', 'italic', 'caps', 'txt', 'tcol', 'ts', 'halo'],
+      det: k => `<div class="row"><label class="f">Schriftart<select data-s="font">${FONT_OPTS.replace('<option value="">wie Schrift</option>', '')}</select></label>
+        <label class="f">Schnitt<select data-s="weight" data-num>${WEIGHT_OPTS}</select></label></div>
         <div class="row"><label class="check"><input type="checkbox" data-s="italic"> Kursiv</label><label class="check"><input type="checkbox" data-s="caps"> Großstädte in Versalien</label></div>
         <div class="row"><label class="f">${k === 'ov' ? 'Großstadt' : '≥ 100.000 EW'} (pt)<input type="number" data-s="ts.big" min="4" max="24" step="0.5"></label>
           <label class="f">${k === 'ov' ? 'Mittelstadt' : '≥ 10.000 EW'} (pt)<input type="number" data-s="ts.mid" min="4" max="24" step="0.5"></label>
           <label class="f">${k === 'ov' ? 'Kleinstadt' : 'kleiner'} (pt)<input type="number" data-s="ts.small" min="4" max="24" step="0.5"></label></div>
         <label class="f">Weißer Hintergrund hinter …</label>
-        <div class="checks">${[['title', 'Projekttitel'], ['cities', 'Ortsnamen'], ['roads', 'Straßen-, Flussnamen'], ['notes', 'freien Texten'], ['pois', 'POI-Namen'], ['legend', 'Legende, Maßstab']].map(([h, t]) => `<label class="check"><input type="checkbox" data-s="halo.${h}"> ${t}</label>`).join('')}</div>` },
-    { id: 'cities', name: k => k === 'ov' ? 'Städte' : 'Ortsnamen', eye: 'cities.on', only: ['ov', 'mi'], keys: ['cities'],
+        <div class="checks">${[['title', 'Projekttitel'], ['cities', 'Ortsnamen'], ['notes', 'freien Texten'], ['pois', 'POI-Namen'], ['legend', 'Legende, Maßstab']].map(([h, t]) => `<label class="check"><input type="checkbox" data-s="halo.${h}"> ${t}</label>`).join('')}</div>
+        <p class="hint">Straßen- und Flussnamen stellst du direkt bei Straßen bzw. Gewässern ein.</p>` },
+    { grp: 'darst', id: 'focus', name: () => 'Fokus', eye: 'focus.on', keys: ['focus'],
+      det: k => `<div class="row"><label class="f">Radius (${k === 'ov' ? 'km' : 'm'})<input type="number" data-s="focus.r" data-mul="${k === 'ov' ? 1000 : 1}" min="${k === 'ov' ? 1 : 50}" step="${k === 'ov' ? 5 : 50}"></label>
+        <label class="f">Außen aufhellen (%)<input type="number" data-s="focus.fade" min="0" max="80" step="5"></label></div>
+        <p class="hint">Innerhalb des Radius farbig und beschriftet; außerhalb grau, Orts-, Straßen- und Flussnamen entfallen.</p>` },
+    { grp: 'darst', id: 'north', name: () => 'Nordpfeil', eye: 'north.on', col: 'north.color', keys: ['north'],
+      det: () => `<div class="row"><label class="f">Position<select data-s="north.pos"><option value="br">unten rechts</option><option value="tr">oben rechts</option><option value="tl">oben links</option><option value="bl">unten links</option></select></label>
+        <label class="f">Größe (mm)<input type="number" data-s="north.size" min="2" max="12" step="0.5"></label></div>` },
+    { grp: 'darst', id: 'scalebar', name: () => 'Maßstabsleiste', eye: 'scalebar.on', keys: ['scalebar'],
+      det: () => '<p class="hint">Unten rechts, mit Kartentitel und Maßstab.</p>' },
+    { grp: 'darst', id: 'grid', name: () => 'Kartenraster', eye: 'grid.on', col: 'grid.color', w: 'grid.w', keys: ['grid'],
+      det: () => `<div class="row"><label class="f">Art<select data-s="grid.type"><option value="km">Meter / Kilometer</option><option value="grad">Gradnetz</option><option value="blatt">Blattraster A1, B2 …</option></select></label><label class="f">Größe<select data-s="grid.size"></select></label></div>
+        <div class="row"><label class="f">Linie<select data-s="grid.dash"><option value="solid">durchgehend</option><option value="dashed">gestrichelt</option><option value="dotted">gepunktet</option></select></label><label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-s="grid.lbl"> Beschriften</label></div>
+        <p class="hint">Meterraster und Blattraster laufen rechtwinklig zur Blattkante, beginnend in der linken oberen Ecke.</p>` },
+    { grp: 'darst', id: 'border', name: () => 'Grenzen', eye: 'border.on', col: 'border.color', w: 'border.w', only: ['ov'], keys: ['border'], det: () => '' },
+    { grp: 'verk', id: 'mw', name: () => 'Autobahnen', eye: 'mw.on', col: 'mw.color', w: 'mw.w', keys: ['mw'],
+      det: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="mw.lbl"> Autobahnnummern (A 8)</label>' : roadMode('mw') },
+    { grp: 'verk', id: 'road', name: k => k === 'ov' ? 'Bundesstraßen' : 'Straßen', eye: 'road.on', col: 'road.color', w: 'road.w', keys: ['road'],
+      det: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="road.lbl"> Straßennummern (B 27)</label>'
+        : roadMode('road') + (k === 'mi' ? '<label class="check"><input type="checkbox" data-s="road.tracks"> Feldwege und Zufahrten auch ab 1:50.000</label>' : '') + lblUI('road', 'Straßennamen') },
+    { grp: 'verk', id: 'rail', name: () => 'Bahn', eye: 'rail.on', col: 'rail.color', w: 'rail.w', keys: ['rail'],
+      det: k => '<label class="check"><input type="checkbox" data-s="rail.classic"> Klassisch: schwarz-weiß gestrichelt</label>' + (k !== 'ov' ? '<label class="check"><input type="checkbox" data-s="rail.st"> Bahnhöfe als Symbol</label>' : '') },
+    { grp: 'stadt', id: 'cities', name: k => k === 'ov' ? 'Städte' : 'Ortsnamen', eye: 'cities.on', only: ['ov', 'mi'], keys: ['cities'],
       det: k => k === 'ov' ? `<label class="f">Schwellenwert<select data-s="cities.min" data-num>${[10000, 20000, 50000, 100000, 500000, 1000000].map(v => `<option value="${v}">ab ${v >= 1e6 ? '1 Mio.' : v.toLocaleString('de-DE')} Einwohnern</option>`).join('')}</select></label>
         <label class="check"><input type="checkbox" data-s="cities.abroad"> Auch Städte im Ausland (ab 100.000 EW)</label>`
         : `<label class="f">ab Einwohnern (in 500er-Schritten)<input type="number" data-s="cities.min" min="500" step="500"></label><p class="hint">Orte mit Einwohnerzahl aus OpenStreetMap für den sichtbaren Ausschnitt.</p>` },
-    { id: 'settle', name: () => 'Siedlungsflächen', eye: 'settle.on', col: 'settle.color', keys: ['settle'],
+    { grp: 'stadt', id: 'settle', name: () => 'Siedlungsflächen', eye: 'settle.on', col: 'settle.color', keys: ['settle'],
       det: k => k === 'ov' ? '<label class="f">Umfang<select data-s="settle.mode"><option value="shown">Um alle angezeigten Städte</option><option value="big">Nur Großstädte ab 100.000 EW</option></select></label>'
         : '<p class="hint">Bei Siedlungsflächen-Darstellung in voller Farbe, bei Einzelgebäuden aufgehellt dahinter.</p>' },
-    { id: 'bldg', name: () => 'Gebäude', eye: 'bldg.on', col: 'bldg.color', only: ['mi', 'mk'], keys: ['bldg'],
-      det: () => '<label class="check"><input type="checkbox" data-s="bldg.shadow"> Schlagschatten (ab 1:25.000, maßstabsabhängig)</label>' },
-    { id: 'trees', name: () => 'Bäume', eye: 'trees.on', col: 'trees.color', only: ['mk'], keys: ['trees'],
-      det: () => '<label class="check"><input type="checkbox" data-s="trees.shadow"> Schlagschatten</label><p class="hint">Einzelbäume aus OpenStreetMap, ab 1:15.000; Kronengröße maßstabsabhängig.</p>' },
-    { id: 'mw', name: () => 'Autobahnen', eye: 'mw.on', col: 'mw.color', w: 'mw.w', keys: ['mw'],
-      det: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="mw.lbl"> Autobahnnummern (A 8)</label>' : casingUI('mw') },
-    { id: 'road', name: k => k === 'ov' ? 'Bundesstraßen' : 'Straßen', eye: 'road.on', col: 'road.color', w: 'road.w', keys: ['road'],
-      det: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="road.lbl"> Straßennummern (B 27)</label>'
-        : casingUI('road') + (k === 'mi' ? '<label class="check"><input type="checkbox" data-s="road.tracks"> Feldwege und Zufahrten auch ab 1:50.000 zeigen</label>' : '') + '<div class="row"><label class="check"><input type="checkbox" data-s="road.lbl"> Straßennamen</label><label class="f">Größe (pt)<input type="number" data-s="road.lblSize" min="4" max="14" step="0.5"></label></div>' },
-    { id: 'rail', name: () => 'Bahn', eye: 'rail.on', col: 'rail.color', w: 'rail.w', keys: ['rail'],
-      det: k => '<label class="check"><input type="checkbox" data-s="rail.classic"> Klassisch: schwarz-weiß gestrichelt</label>' + (k !== 'ov' ? '<label class="check"><input type="checkbox" data-s="rail.st"> Bahnhöfe als Symbol</label>' : '') },
-    { id: 'border', name: () => 'Grenzen', eye: 'border.on', col: 'border.color', w: 'border.w', only: ['ov'], keys: ['border'], det: () => '' },
-    { id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', keys: ['water'],
-      det: () => '<div class="row"><label class="check"><input type="checkbox" data-s="water.lbl"> Flussnamen (kursiv)</label><label class="f">Größe (pt)<input type="number" data-s="water.lblSize" min="4" max="16" step="0.5"></label></div>' },
-    { id: 'wood', name: () => 'Wald', eye: 'wood.on', col: 'wood.color', keys: ['wood'], det: () => modeSel('wood') },
-    { id: 'field', name: () => 'Wiesen & Felder', eye: 'field.on', col: 'field.color', keys: ['field'], det: () => modeSel('field') },
-    { id: 'hill', name: () => 'Schummerung', eye: 'hill.on', keys: ['hill'],
+    { grp: 'stadt', id: 'bldg', name: () => 'Gebäude', eye: 'bldg.on', col: 'bldg.color', only: ['mi', 'mk'], keys: ['bldg'],
+      det: () => '<label class="check"><input type="checkbox" data-s="bldg.shadow"> Schlagschatten (ab 1:25.000, Länge maßstabsabhängig)</label><label class="f">Schatten-Deckkraft · <span data-out="bldg.shAlpha"></span><input type="range" data-s="bldg.shAlpha" min="5" max="60" step="5"></label>' },
+    { grp: 'stadt', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', keys: ['water'], det: () => lblUI('water', 'Flussnamen') },
+    { grp: 'stadt', id: 'wood', name: () => 'Wald', eye: 'wood.on', col: 'wood.color', keys: ['wood'], det: () => modeSel('wood') },
+    { grp: 'stadt', id: 'field', name: () => 'Wiesen & Felder', eye: 'field.on', col: 'field.color', keys: ['field'], det: () => modeSel('field') },
+    { grp: 'stadt', id: 'hill', name: () => 'Schummerung', eye: 'hill.on', keys: ['hill'],
       det: () => '<label class="f">Deckkraft · <span data-out="hill.alpha"></span><input type="range" data-s="hill.alpha" min="10" max="100" step="5"></label><p class="hint">Graue Geländeschattierung aus offenen Höhendaten (AWS Terrain Tiles, u. a. SRTM).</p>' },
-    { id: 'contour', name: () => 'Höhenlinien', eye: 'contour.on', col: 'contour.color', w: 'contour.w', keys: ['contour'],
-      det: () => `<label class="f">Abstand<select data-s="contour.step"><option value="auto">automatisch nach Maßstab</option>${[5, 10, 20, 25, 50, 100, 200, 250, 500].map(v => `<option value="${v}">${v} m</option>`).join('')}</select></label><label class="check"><input type="checkbox" data-s="contour.idx"> Jede 5. Linie kräftiger</label>` },
-    { id: 'hypso', name: () => 'Höhenstufen', eye: 'hypso.on', keys: ['hypso'],
-      det: () => '<label class="f">Deckkraft · <span data-out="hypso.alpha"></span><input type="range" data-s="hypso.alpha" min="10" max="100" step="5"></label><p class="hint">Zarte Tönung nach Höhenlage – Tal grünlich, Höhen sandfarben.</p>' },
-    { id: 'grid', name: () => 'Kartenraster', eye: 'grid.on', col: 'grid.color', w: 'grid.w', keys: ['grid'],
-      det: () => `<div class="row"><label class="f">Art<select data-s="grid.type"><option value="km">Kilometer (UTM)</option><option value="grad">Gradnetz</option><option value="blatt">Blattraster A1, B2 …</option></select></label><label class="f">Größe<select data-s="grid.size"></select></label></div>
-        <div class="row"><label class="f">Linie<select data-s="grid.dash"><option value="solid">durchgehend</option><option value="dashed">gestrichelt</option><option value="dotted">gepunktet</option></select></label><label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-s="grid.lbl"> Beschriften</label></div>` }
+    { grp: 'stadt', id: 'contour', name: () => 'Höhenlinien', eye: 'contour.on', col: 'contour.color', w: 'contour.w', keys: ['contour'],
+      det: () => `<label class="f">Abstand<select data-s="contour.step"><option value="auto">automatisch nach Maßstab</option>${[1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500].map(v => `<option value="${v}">${String(v).replace('.', ',')} m</option>`).join('')}</select></label><label class="check"><input type="checkbox" data-s="contour.idx"> Jede 5. Linie kräftiger</label>
+        <p class="hint">Die Höhendaten haben ein Raster von etwa 10–30 m. Enge Linien (1–2,5 m) sind dazwischen interpoliert: gut für die Lesbarkeit des Geländes, keine Vermessungsgrundlage.</p>` },
+    { grp: 'stadt', id: 'hypso', name: () => 'Höhenstufen', eye: 'hypso.on', keys: ['hypso'],
+      det: () => '<label class="f">Deckkraft · <span data-out="hypso.alpha"></span><input type="range" data-s="hypso.alpha" min="10" max="100" step="5"></label><p class="hint">Zarte Tönung nach Höhenlage – Tal grünlich, Höhen sandfarben.</p>' }
   ];
   const SCALES = { ov: null, mi: [25000, 50000, 75000, 100000], mk: [5000, 10000, 15000, 20000, 25000] };
   const SCALE_ID = { ov: 'ovScale', mi: 'scale', mk: 'mkScale' };
@@ -2474,14 +2526,6 @@ return maplibregl$1;
         </span></label>
       </div>
     </section>
-    <section><h2>Fokus · Umfeld hervorheben</h2>
-      <label class="check"><input type="checkbox" data-f="on"> Außerhalb des Radius in Graustufen</label>
-      <div class="row">
-        <label class="f">Radius (${kind === 'ov' ? 'km' : 'm'})<input type="number" data-f="r" min="${kind === 'ov' ? 1 : 50}" step="${kind === 'ov' ? 5 : 50}"></label>
-        <label class="f">Außen aufhellen (%)<input type="number" data-f="fade" min="0" max="80" step="5"></label>
-      </div>
-      <p class="hint">Innerhalb des Radius bleibt alles farbig und beschriftet; außerhalb grau, Orts-, Straßen- und Flussnamen entfallen.</p>
-    </section>
     </div>
     <div class="pane" data-pane="stil" hidden>
       <div class="pbar">
@@ -2489,7 +2533,7 @@ return maplibregl$1;
         <div class="row"><input type="text" data-p="name" aria-label="Name des Presets"><button data-p="new" style="flex:0 0 auto" title="aktuellen Stil als neues Preset anlegen">+ Neu</button><button data-p="del" style="flex:0 0 auto" title="Preset löschen">Löschen</button></div>
         <p class="hint pinfo"></p>
       </div>
-      <div class="layers">${LAYERS.filter(L => !L.only || L.only.includes(kind)).map(layerRow).join('')}</div>
+      <div class="layers">${GRP.map(([gid, gname]) => `<div class="lgrp">${gname}</div>` + LAYERS.filter(L => L.grp === gid && (!L.only || L.only.includes(kind))).map(layerRow).join('')).join('')}</div>
       <p class="hint">Häkchen blendet ein und aus · Farbfeld · Strichstärke in mm${kind === 'ov' ? ' bei 1:1 Mio. (kleinere Maßstäbe automatisch feiner)' : ''} · ↺ setzt die Ebene zurück.${kind !== 'ov' ? ' Flughäfen erscheinen automatisch maßstäblich.' : ''} Höhenlinien, Höhenstufen und Raster werden nach dem Verschieben neu berechnet.</p>
     </div>
     <div class="pane" data-pane="map" hidden>
@@ -2542,6 +2586,7 @@ return maplibregl$1;
     root.querySelectorAll('[data-s]').forEach(el => {
       let v = getP(T, el.dataset.s);
       if (el.dataset.near != null) v = WSTEPS.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a, WSTEPS[0]);   // nächste feste Stufe
+      if (el.dataset.mul) v = v / +el.dataset.mul;
       if (el.classList.contains('sw')) el.style.background = v; else if (el.type === 'checkbox') el.checked = !!v; else el.value = String(v);
     });
     root.querySelectorAll('[data-f]').forEach(el => { const F = S.focus[kind], key = el.dataset.f; if (el.type === 'checkbox') el.checked = !!F[key]; else el.value = key === 'r' && kind === 'ov' ? F.r / 1000 : F[key]; });
@@ -2581,7 +2626,8 @@ return maplibregl$1;
       if (el.classList.contains('sw')) { swatchBtn(el, () => getP(ST(kind), path), c => { setP(ST(kind), path, c); afterStyle(kind, path); }, el.closest('.layer') || el.closest('.row') || el, path === 'water.color' ? WATERPAL : null); return; }
       if (el.type === 'range') el.oninput = () => { const o = root.querySelector(`[data-out="${path}"]`); if (o) o.textContent = el.value + ' %'; };
       el.onchange = () => {
-        const v = el.type === 'checkbox' ? el.checked : (el.type === 'number' || el.type === 'range' || el.dataset.num != null) ? +el.value : el.value;
+        let v = el.type === 'checkbox' ? el.checked : (el.type === 'number' || el.type === 'range' || el.dataset.num != null) ? +el.value : el.value;
+        if (el.dataset.mul) v = v * +el.dataset.mul;
         setP(ST(kind), path, v); afterStyle(kind, path);
       };
     });
@@ -2742,7 +2788,7 @@ return maplibregl$1;
                     top: { dx: 0, dy: -(gap + half), al: 'center' }, bottom: { dx: 0, dy: gap + half, al: 'center' } }[pos];
     repaint();
   });
-  const opts = { ovTitle: 'ovTitle', miTitle: 'miTitle', mkTitle: 'mkTitle', optLegend: 'legend', optAttrib: 'attrib', optTransp: 'transp' };
+  const opts = { ovTitle: 'ovTitle', miTitle: 'miTitle', mkTitle: 'mkTitle', optAttrib: 'attrib', optTransp: 'transp' };
   for (const [id, key] of Object.entries(opts)) {
     $(id).checked = !!S[key];
     $(id).onchange = () => { S[key] = $(id).checked; saveS(); repaint(); };
@@ -2858,7 +2904,7 @@ return maplibregl$1;
       const g = out.getContext('2d');
       g.setTransform(Wd / ec.w, 0, 0, Hd / ec.h, 0, 0); drawBase(g, map, kind, ec.w, ec.h, !!S.transp); g.setTransform(1, 0, 0, 1, 0, 0);
       g.drawImage(map.getCanvas(), 0, 0, Wd, Hd);
-      const F = S.focus[kind];
+      const F = ST(kind).focus;
       if (F && F.on) {                     // Fokus: außerhalb des Radius Graustufen, weicher Übergang
         const sx = Wd / ec.w, q = map.project([P.lon, P.lat]), cx = q.x * sx, cy = q.y * sx, R = (+F.r || 1000) / mppOf(map) * sx, fe = Math.max(4 * sx, R * 0.06);
         const tmp = document.createElement('canvas'); tmp.width = Wd; tmp.height = Hd;

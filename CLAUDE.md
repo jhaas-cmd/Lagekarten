@@ -25,17 +25,19 @@ Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), fu
   - Seitenleiste per Ziehgriff (`#resizer`) 260–560 px breit, gespeichert unter `sidebarW`
   - 01 Projekt: *Übersicht* (Projekt verwalten mit automatischem Speichern, Ort finden, Lagekennzahlen) · *Stil* (Gestaltung für alle Karten)
   - 02 Landkarte (`ov`), 03 Makrolage (`mi`), 04 Mikrolage (`mk`): je Karte aus der Vorlage `mapUI(kind)` erzeugt,
-    mit Unterreitern (Registerlaschen-Optik) *Übersicht* (Ausgabegröße, Maßstab, Markierung, Projektpunkt/-titel, Fokus) ·
-    *Stil* (Preset + Ebenenliste `LAYERS`: Schrift, Städte/Ortsnamen, Siedlung, Gebäude, Bäume, Autobahnen, Straßen, Bahn, Grenzen,
-    Gewässer, Wald, Wiesen & Felder, Schummerung, Höhenlinien, Höhenstufen, Kartenraster) · *Mapping* (Fahrzeiten, Funktionen, POIs, freie Texte)
+    mit Unterreitern (Registerlaschen-Optik) *Übersicht* (Ausgabegröße, Maßstab, Markierung, Projektpunkt/-titel) ·
+    *Stil* (Preset + Ebenenliste `LAYERS`, gegliedert nach `GRP`: Kartendarstellung – Schrift, Fokus, Nordpfeil, Maßstabsleiste, Raster, Grenzen ·
+    Verkehr – Autobahnen, Straßen (Darstellung Linie/Fläche/Kontur/beides, Straßennamen mit eigener Schrift), Bahn ·
+    Stadt und Landschaft – Orte, Siedlung, Gebäude (Schatten), Gewässer (Flussnamen), Wald, Wiesen & Felder, Schummerung, Höhenlinien, Höhenstufen)
+    · *Mapping* (Fahrzeiten, Funktionen, POIs, freie Texte). Bäume sind vorerst ausgeblendet (OSM-Daten zu lückenhaft).
   - Abschnitte als Akkordeon (nur einer offen je Bereich); statische Hinweise hinter (i)
   - Nur die Gruppe der aktiven Karte ist sichtbar. Gemeinsame Abschnitte (`#sec_mark`, `#sec_funk`, `#sec_poi`, `#sec_note`)
     liegen in `#shared` und werden von `setTab` in die Platzhalter (`.slot[data-slot]`) der aktiven Karte gehängt.
   - Maßstäbe: Landkarte 1:500.000–1:10 Mio. (500.000er), Makrolage 1:25.000–1:100.000 (25.000er), Mikrolage 1:5.000–1:25.000 (5.000er)
 - Kartenebenen außerhalb des Vektorstils (Overlay-Canvas bzw. Grundfläche `${kind}Sc` unter der Karte):
   `drawBase` (Weiß, Höhenstufen, Siedlungsflächen der Landkarte), `drawContours`/`drawHypso` aus `DEMS` (Terrarium-Kacheln, `ensureDem`),
-  `drawGrid` (UTM/Grad/Blatt), `drawCities` (Landkarte: CITIES; Makrolage: `PLACES` per Overpass, ab 500 EW), `drawTrees` (`TREES`, Mikrolage ≤ 1:15.000),
-  `drawLineLabels` (Fluss-/Straßennamen), `drawRoadRefs`, `drawStations`. Fokus: `S.focus[kind]`, Vorschau per CSS (`.focus`), Export per Canvas-Filter.
+  `drawGrid` (Meterraster und Blattraster achsparallel zur Blattkante, Gradnetz), `drawCities` (Landkarte: CITIES; Makrolage: `PLACES` per Overpass, ab 500 EW), `drawTrees` (`TREES`, Mikrolage ≤ 1:15.000),
+  `drawLineLabels` (Fluss-/Straßennamen), `drawRoadRefs`, `drawStations`. Fokus: im Preset (`st.focus`), Vorschau per CSS (`.focus`), Export per Canvas-Filter.
 - Webschriften (Inter, Source Sans 3, IBM Plex Sans) über Google Fonts; `loadFonts()` vor dem Zeichnen/Export. Strichstärken in Stufen `WSTEPS`.
 - Presets: `S.presets[id] = { name, base, st }`, `S.use[kind]` = Preset der Karte; `ST(kind)` liefert den wirksamen Stil.
   Änderungen in der Ebenenliste wirken in allen Karten mit demselben Preset. (`S.st` nur noch Altbestand.)
