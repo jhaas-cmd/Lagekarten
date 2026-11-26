@@ -119,7 +119,7 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
   Radius in Makro-/Mikrolage per `S.kz.showR` (in `drawOverlay`, auch im Export).
 
 ## ATLAS (Nov. 2026)
-- Name ATLAS, Untertitel „axperon site information“, Logo: Globus aus fünf Querbalken (Verwandtschaft zum GIEAG-Zeichen) mit Meridian-Aussparung und Standortmarke in Orange (SVG inline in `.brand`). Farben: Dunkelblau #14284B, Kontrast Orange #F0642D (keine Pinktöne). Schrift Archivo (Wortmarke/Überschriften, 800/900), sonst Inter. Backup-Kennung `app: 'gieag-lagekarten'` bleibt (Kompatibilität).
+- Name ATLAS, Untertitel „axperon site information“, Logo nach Julius' Skizze: Kreis mit stilisiertem A (Spitze nach Norden, Querstrich vom linken Schenkel zum rechten Fuß in Orange), SVG inline in `.brand`; dieselbe Geometrie als Nordpfeil-Typ `atlas` (`drawAtlasMark`, Standard in `stDef`, `FAM_VER = 5`) und in der Dossier-Karte. Farben: Dunkelblau #14284B, Kontrast Orange #F0642D (keine Pinktöne). Schrift Archivo (Wortmarke/Überschriften, 800/900), sonst Inter. Backup-Kennung `app: 'gieag-lagekarten'` bleibt (Kompatibilität).
 - Zentrieren-Knopf `#centerBtn` nur Fadenkreuz; `.zoom button` einheitlich 34 px hoch.
 - Ladezeiten: `overpassQ` = Zwischenspeicher (20 min) + Zusammenlegen gleicher Anfragen + `overpassRace` (Server gestaffelt parallel, 2,5 s Versatz, schnellster zuerst, `ovBest`);
   `relayout` setzt den Stil nur neu, wenn sich `JSON.stringify(styleFor(...))` geändert hat (`v.sig`); Preconnect zu Kacheln/Overpass/Valhalla.
@@ -134,3 +134,4 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - Große Arbeitgeber (`loadEmployers`, Gruppe `arbg`, `P.kz.emp`): Wikidata-SPARQL (`wikibase:around`, P625 + P1128 ≥ 500) im Umkreis 10 km; Beschäftigte = Unternehmen gesamt, nur Organisationen mit eigener Koordinate.
 - Projekteinstieg (Assistent `#startCard.wiz`, `showStart`, `WZ`, `wzShow`, `wzPlan`, `wzSummary`, `wzFinish`): 1 Ort (Nominatim, Titel aus Straße) · 2 Nutzung · 3 Zweck (Expo/Steckbrief/Dossier) + Kartenstil · 4 Zusammenfassung, optional „Alles berechnen“.
   Vorgaben zentral in `START_DEF` (Radius je Nutzung Stadt/Land, Vorlage je Nutzung, Maßstäbe, Formate je Zweck); Stadt/Land über `isUrban()` (Großstadt ≥ 100.000 EW in 8 bzw. 14 km). Nutzung/Zweck je Projekt in `P.asset`/`P.use`.
+- Dossierkopf: ASSETKLASSE (orange) / PROJEKTTITEL / Straße (kleiner, `.hs2`, entfällt wenn gleich dem Titel); rechts Anschrift (fett), Stadtteil · Stadt, Hinweistext. Anschrift aus `P.addr` (`addrOf`, Nominatim mit addressdetails), sonst `addrLines()` aus `P.place`.

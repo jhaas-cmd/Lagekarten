@@ -195,6 +195,7 @@ return maplibregl$1;
   .kzrep .dhero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 34px; align-items: end; margin-bottom: 30px; }
   .kzrep .hl { font: 900 46px/.94 'Archivo', var(--font); letter-spacing: -.005em; text-transform: uppercase; color: var(--navy); margin: 0; }
   .kzrep .hl em { font-style: normal; color: var(--hi); }
+  .kzrep .hl .hs2 { display: block; font: 800 19px/1.2 'Archivo', var(--font); letter-spacing: .02em; color: var(--mid); margin-top: 8px; }
   .kzrep .lead { font-size: 12px; line-height: 1.6; color: #2A3038; } .kzrep .lead b { display: block; font-size: 13px; color: var(--navy); margin-bottom: 4px; }
   .kzrep .lead .meta { margin-top: 10px; font: 500 9px/1.6 var(--font); letter-spacing: .16em; text-transform: uppercase; color: var(--mid); }
   .kzrep .kfig { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 22px; margin: 0 0 26px; }
@@ -445,7 +446,7 @@ return maplibregl$1;
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><defs><clipPath id="lgc"><circle cx="16" cy="16" r="15.5"/></clipPath><mask id="lgm"><rect width="32" height="32" fill="#fff"/><ellipse cx="16" cy="16" rx="6.6" ry="16" fill="none" stroke="#000" stroke-width="2"/></mask></defs><g clip-path="url(#lgc)" mask="url(#lgm)" fill="#14284B"><rect y="0.5" width="32" height="4.2"/><rect y="7" width="32" height="4.2"/><rect y="13.4" width="32" height="5.2"/><rect y="20.8" width="32" height="4.2"/><rect y="27.3" width="32" height="4.2"/></g><rect x="23.6" y="13.4" width="8.4" height="5.2" fill="#F0642D" clip-path="url(#lgc)"/></svg><div><h1>ATLAS</h1><span>axperon site information</span></div><b class="draft">ENTWURF</b></div>
+    <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="14" stroke="#14284B" stroke-width="1.7"/><path d="M5.92 25.80 L16.70 2.00 L24.68 26.92" stroke="#14284B" stroke-width="2.7"/><path d="M11.80 12.71 L24.68 26.92" stroke="#F0642D" stroke-width="2.3"/></g></svg><div><h1>ATLAS</h1><span>axperon site information</span></div><b class="draft">ENTWURF</b></div>
     <button class="projline" id="projLine" title="Projekt öffnen"><b id="plName"></b><small id="plSub"></small></button>
 
     <div class="group"><span>01</span>Projekt</div>
@@ -929,7 +930,7 @@ return maplibregl$1;
     ts: kind === 'ov' ? { big: 7, mid: 5.5, small: 5 } : { big: 8, mid: 6.5, small: 5.5 },
     halo: { title: kind !== 'ov', cities: kind !== 'ov', notes: true, pois: false, legend: true },
     focus: { on: false, r: kind === 'ov' ? 60000 : kind === 'mi' ? 1500 : 300, fade: 20 },
-    north: { on: kind !== 'ov' && S.legend !== false, type: 'kreis', pos: 'br', size: 3.4, color: '#0A0A0A' },
+    north: { on: kind !== 'ov' && S.legend !== false, type: 'atlas', pos: 'br', size: 3.4, color: '#0A0A0A' },
     scalebar: { on: S.legend !== false },
     cities: { on: kind === 'ov' ? +S.cityMin > 0 : false, min: kind === 'ov' ? (+S.cityMin || 50000) : 2000, abroad: !!S.abroad },
     settle: { on: S.settle !== 'off', color: kind === 'ov' ? '#E3E5E8' : '#CFD2D6', mode: S.settle === 'big' ? 'big' : 'shown', alpha: 100 },
@@ -1423,11 +1424,24 @@ return maplibregl$1;
     return T.scalebar.on ? { x: W - mm(31) - r, y: H - mm(7.2), r } : { x: W - mm(4) - r, y: H - mm(5) - r, r };
   }
   function northBox(k, W, H, T) { const q = northPos(k, W, H, T), m = k * 0.8; return { x: q.x - q.r - m, y: q.y - q.r * 2.4 - m, w: 2 * (q.r + m), h: q.r * 3.4 + 2 * m }; }
-  // Nordpfeil-Typen: Kreis mit Pfeil · schlanker Pfeil · klassischer Halbpfeil · Kompassrose
+  // ATLAS-Zeichen: Kreis mit stilisiertem A, die Spitze zeigt nach Norden
+  function drawAtlasMark(g, cx, cy, r, col, bar) {
+    const p = (x, y) => [cx + x * r, cy + y * r];
+    g.save(); g.setLineDash([]); g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = col;
+    g.lineWidth = r * 0.12; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = r * 0.19; g.beginPath(); g.moveTo(...p(-0.72, 0.70)); g.lineTo(...p(0.05, -1)); g.lineTo(...p(0.62, 0.78)); g.stroke();
+    g.strokeStyle = bar || col; g.lineWidth = r * 0.16; g.beginPath(); g.moveTo(...p(-0.30, -0.235)); g.lineTo(...p(0.62, 0.78)); g.stroke();
+    g.restore();
+  }
+  // Nordpfeil-Typen: ATLAS (Kreis mit A) · Kreis mit Pfeil · schlanker Pfeil · klassischer Halbpfeil · Kompassrose
   function drawNorth(g, k, W, H, T) {
     const q = northPos(k, W, H, T), r = q.r, cx = q.x, cy = q.y, col = T.north.color || '#0A0A0A', type = T.north.type || 'kreis';
     if (T.halo.legend) { g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(cx, cy - r * 0.4, r * 1.9, 0, 7); g.fill(); }
     g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = Math.max(k * 0.2, r * 0.12); g.setLineDash([]); g.lineJoin = 'miter';
+    if (type === 'atlas') {
+      drawAtlasMark(g, cx, cy - r * 0.2, r * 1.15, col);
+      g.restore(); g.textAlign = 'left'; return;
+    }
     if (type === 'pfeil') {
       g.beginPath(); g.moveTo(cx, cy + r); g.lineTo(cx, cy - r * 0.55); g.stroke();
       g.beginPath(); g.moveTo(cx, cy - r); g.lineTo(cx + r * 0.38, cy - r * 0.35); g.lineTo(cx - r * 0.38, cy - r * 0.35); g.closePath(); g.fill();
@@ -3121,6 +3135,16 @@ return maplibregl$1;
   $('markClear').onclick = () => { P.site = []; P.bld = []; drawRing = []; $('drawDone').disabled = true; refreshData(); };
 
   // ---------- Suche ----------
+  const addrOf = it => { const a = it.address || {}; return { road: a.road || a.pedestrian || a.square || '', no: a.house_number || '', plz: a.postcode || '',
+    ort: a.city || a.town || a.village || a.municipality || '', teil: a.suburb || a.city_district || '' }; };
+  // Straße und Anschrift für den Dossierkopf – aus der Suche oder ersatzweise aus dem Ortstext
+  function addrLines() {
+    const A = P.addr, parts = (P.place || '').split(',').map(x => x.trim()).filter(Boolean);
+    if (A && A.road) return { street: A.road + (A.no ? ' ' + A.no : ''), line: [A.road + (A.no ? ' ' + A.no : ''), [A.plz, A.ort].filter(Boolean).join(' ')].filter(Boolean).join(', '), ort: A.ort, teil: A.teil };
+    let street = parts[0] || ''; if (/^\d+\w?$/.test(street) && parts[1]) street = parts[1] + ' ' + street;
+    const plz = parts.find(x => /^\d{4,5}$/.test(x)) || '', ort = parts.find((x, i) => i > 0 && !/\d/.test(x) && x !== street.replace(/ \d.*$/, '')) || '';
+    return { street, line: [street, [plz, ort].filter(Boolean).join(' ')].filter(Boolean).join(', '), ort, teil: '' };
+  }
   function parseCoords(s) {
     const at = s.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/); if (at) return [+at[2], +at[1]];
     const m = s.replace(/°/g, '').match(/^\s*(-?\d{1,2}[.,]\d+)\s*[,; ]\s*(-?\d{1,3}[.,]\d+)\s*$/);
@@ -3134,14 +3158,14 @@ return maplibregl$1;
     if (c) { setPoint(c[0], c[1]); status('Projektpunkt gesetzt.'); return; }
     status('Suche …');
     try {
-      const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=de,at,ch&accept-language=de&q=' + encodeURIComponent(q));
+      const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=de,at,ch&accept-language=de&q=' + encodeURIComponent(q));
       const js = await r.json();
       const box = $('results'); box.innerHTML = ''; box.hidden = !js.length;
       if (!js.length) { status('Nichts gefunden. Versuch es mit Straße und Ort oder mit Koordinaten.'); return; }
       status('');
       for (const it of js) {
         const b = document.createElement('button'); b.textContent = it.display_name;
-        b.onclick = () => { P.place = it.display_name; setPoint(+it.lon, +it.lat); box.hidden = true; status('Projektpunkt gesetzt.'); syncProjLine(); };
+        b.onclick = () => { P.place = it.display_name; P.addr = addrOf(it); setPoint(+it.lon, +it.lat); box.hidden = true; status('Projektpunkt gesetzt.'); syncProjLine(); };
         box.appendChild(b);
       }
     } catch (e) { status('Die Suche ist nicht erreichbar. Koordinaten einfügen funktioniert immer, z. B. 48.7137, 9.0034.'); }
@@ -3297,7 +3321,7 @@ return maplibregl$1;
         <label class="f">Außen aufhellen (%)<input type="number" data-s="focus.fade" min="0" max="80" step="5"></label></div>
         <p class="hint">Innerhalb des Radius farbig und beschriftet; außerhalb grau, Orts-, Straßen- und Flussnamen entfallen.</p>` },
     { grp: 'darst', id: 'north', name: () => 'Nordpfeil', eye: 'north.on', col: 'north.color', keys: ['north'],
-      opt: () => `<label class="f">Typ<select data-s="north.type"><option value="kreis">Kreis mit Pfeil</option><option value="pfeil">Schlanker Pfeil</option><option value="nadel">Klassischer Halbpfeil</option><option value="kompass">Kompassrose</option></select></label>
+      opt: () => `<label class="f">Typ<select data-s="north.type"><option value="atlas">ATLAS · Kreis mit A</option><option value="kreis">Kreis mit Pfeil</option><option value="pfeil">Schlanker Pfeil</option><option value="nadel">Klassischer Halbpfeil</option><option value="kompass">Kompassrose</option></select></label>
         <div class="row"><label class="f">Position<select data-s="north.pos"><option value="br">unten rechts</option><option value="tr">oben rechts</option><option value="tl">oben links</option><option value="bl">unten links</option></select></label>
         <label class="f">Größe (mm)<input type="number" data-s="north.size" min="2" max="12" step="0.5"></label></div>` },
     { grp: 'darst', id: 'scalebar', name: () => 'Maßstabsleiste', eye: 'scalebar.on', keys: ['scalebar'], opt: () => '<p class="hint">Unten rechts, mit Kartentitel und Maßstab.</p>' },
@@ -3682,7 +3706,7 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 4;
+  const FAM_VER = 5;
   const FAMS = {
     atlas: { name: 'ATLAS · Graustufen', desc: 'zurückhaltend: Graustufen und Schraffuren, Hervorhebungen in Dunkelblau und Orange', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B',
@@ -4226,10 +4250,11 @@ return maplibregl$1;
     const Z = P.kz, K = kzSet();
     const logo = (document.querySelector('.brand .logo') || {}).outerHTML || '';
     const pname = esc((P.name || 'Projekt').replace(/\n/g, ' '));
-    const ort = (Z && Z.city && Z.city.name) || (P.place ? P.place.split(',').map(x => x.trim()).find(x => x && !/\d/.test(x) && x !== P.name) : '') || 'Standort';
-    const head = `<div class="dtop"><div class="kick">Standortdossier</div><div class="dlogo2">${logo.replace(/id="lg/g, 'id="dl').replace(/#lg/g, '#dl')}<span><b>ATLAS</b><small>axperon site information</small></span></div></div>
-      <div class="dhero"><h1 class="hl">Standort<br><em>${ANAME[K.asset]}</em><br>${esc(ort.replace(/^(Landeshauptstadt|Stadt|Gemeinde|Markt|Große Kreisstadt)\s+/i, ''))}</h1>
-      <div class="lead"><b>${pname}</b>${P.place ? esc(P.place.split(',').slice(0, 3).join(',')) + '<br>' : ''}Strukturdaten im Radius von ${Z ? radTxt(Z.r) : '…'} um den Projektpunkt – im Vergleich mit ${Z && Z.city && Z.city.name ? esc(Z.city.name) : 'der Stadt'} und Deutschland.
+    const AD = addrLines(), street = AD.street && AD.street.toLowerCase() !== (P.name || '').trim().toLowerCase() ? AD.street : '';
+    const cityN = (Z && Z.city && Z.city.name) || AD.ort || '';
+    const head = `<div class="dtop"><div class="kick">Standortdossier</div><div class="dlogo2">${logo}<span><b>ATLAS</b><small>axperon site information</small></span></div></div>
+      <div class="dhero"><h1 class="hl"><em>${ANAME[K.asset]}</em><br>${pname}${street ? `<span class="hs2">${esc(street)}</span>` : ''}</h1>
+      <div class="lead"><b>${esc(AD.line || P.place || '')}</b>${AD.teil ? esc(AD.teil) + ' · ' : ''}${esc(cityN)}<br><br>Strukturdaten im Radius von ${Z ? radTxt(Z.r) : '…'} um den Projektpunkt – im Vergleich mit ${Z && Z.city && Z.city.name ? esc(Z.city.name) : 'der Stadt'} und Deutschland.
       <div class="meta">${ANAME[K.asset]} · Radius ${Z ? radTxt(Z.r) : '–'} · ${new Date(Z ? Z.at : Date.now()).toLocaleDateString('de-DE')}</div></div></div>`;
     if (!Z) { box.innerHTML = head + '<p class="empty">Die Kennzahlen werden automatisch berechnet, sobald ein Projektpunkt gesetzt ist. Ausgewertet werden die Zensus-Rasterdaten 2022 im Radius um den Projektpunkt – im Vergleich mit der Stadt bzw. Gemeinde und mit Deutschland.</p>'; return; }
     const C = Z.city || null, cName = C && C.name ? C.name : null;
@@ -4452,8 +4477,7 @@ return maplibregl$1;
     g.strokeStyle = NAVY; g.lineWidth = mm(0.3); g.beginPath(); g.moveTo(bx, by - mm(1)); g.lineTo(bx, by); g.lineTo(bx + len / mpp, by); g.lineTo(bx + len / mpp, by - mm(1)); g.stroke();
     g.fillStyle = NAVY; g.font = `500 ${mm(1.9)}px ${F}`; g.textAlign = 'center'; g.fillText('0', bx, by - mm(2.6)); g.fillText(len >= 1000 ? len / 1000 + ' km' : len + ' m', bx + len / mpp, by - mm(2.6));
     g.fillText('M 1:' + B.sc.toLocaleString('de-DE'), bx + len / mpp / 2, by + mm(2));
-    const nx = bx - mm(7), ny = by - mm(1.5); g.beginPath(); g.moveTo(nx, ny - mm(2.6)); g.lineTo(nx + mm(1.3), ny + mm(1.4)); g.lineTo(nx, ny + mm(0.6)); g.lineTo(nx - mm(1.3), ny + mm(1.4)); g.closePath(); g.fill();
-    g.font = `700 ${mm(1.8)}px ${FB}`; g.fillText('N', nx, ny - mm(4)); g.textAlign = 'left';
+    drawAtlasMark(g, bx - mm(6.5), by - mm(0.8), mm(2.6), NAVY); g.textAlign = 'left';
     g.fillStyle = 'rgba(60,66,74,.8)'; g.font = `400 ${mm(1.6)}px ${F}`; g.textBaseline = 'alphabetic'; g.fillText('© OpenStreetMap-Mitwirkende', mm(3), mm(4.5));
     return c.toDataURL('image/jpeg', 0.9);
   }
@@ -5398,7 +5422,7 @@ return maplibregl$1;
       for (const it of js) {
         const b = document.createElement('button'); b.textContent = it.display_name.split(',').slice(0, 4).join(',');
         b.onclick = () => {
-          P.place = it.display_name; setPoint(+it.lon, +it.lat); WZ.placed = true;
+          P.place = it.display_name; P.addr = addrOf(it); setPoint(+it.lon, +it.lat); WZ.placed = true;
           box.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
           if (!$('gsName').value.trim()) { const a = it.address || {}; const t = a.road ? a.road + (a.house_number ? ' ' + a.house_number : '') : it.name || ''; if (t) { $('gsName').value = t; $('gsName').dispatchEvent(new Event('input')); } }
           syncProjLine(); wzShow();
