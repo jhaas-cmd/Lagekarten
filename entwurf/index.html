@@ -217,6 +217,7 @@ return maplibregl$1;
   .zoom button { border-color: #C9CDD2; background: #F4F5F7; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
   .zoom button:first-child { border-radius: 7px 0 0 7px; } .zoom button:last-child { border-radius: 0 7px 7px 0; }
   .zoom button:hover { background: #fff; }
+  .zoom button:only-child { border-radius: 7px; padding: 0 12px; white-space: nowrap; }
   .subtabs { display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid #C9CDD2; padding: 0 2px; margin-bottom: -12px; }
   .subtabs button { flex: 1; border: 1px solid #C9CDD2; border-bottom: 0; border-radius: 7px 7px 0 0; background: #D7DADF; color: var(--grau);
     font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 7px 6px 8px; box-shadow: 2px -1px 4px rgba(0,0,0,.10); position: relative; margin-bottom: -1px; }
@@ -403,6 +404,7 @@ return maplibregl$1;
         <select id="barPreset" aria-label="Ausgabegröße der aktiven Karte"></select>
         <select id="barScale" aria-label="Maßstab der aktiven Karte"></select>
       </div>
+      <div class="zoom" aria-label="Ausschnitt"><button id="centerBtn" title="Aktive Karte auf den Projektpunkt zentrieren">⌖ Projekt</button></div>
       <span class="info"><b id="actScale"></b> · <span id="actSize"></span> · <span id="actHint"></span></span>
       <div class="zoom" aria-label="Rückgängig und Wiederholen">
         <button id="undoBtn" title="Rückgängig (Strg+Z)" aria-label="Rückgängig">↶</button><button id="redoBtn" title="Wiederholen (Strg+Y)" aria-label="Wiederholen">↷</button>
@@ -2749,6 +2751,12 @@ return maplibregl$1;
   }
 
   // ---------- Interaktion ----------
+  $('centerBtn').onclick = () => {
+    if (kzOn) return;
+    const c = [P.lon, P.lat];
+    if (active === 'ov') P.ov.center = c; else if (active === 'mi') P.miCenter = c; else P.mkCenter = c;
+    relayout(false); status(KNAME[active] + ' auf das Projekt zentriert.');
+  };
   function setPoint(lon, lat, recenter = true, keepOv = false) {
     P.lon = lon; P.lat = lat;
     if (recenter) { P.miCenter = [lon, lat]; P.mkCenter = [lon, lat]; if (!keepOv) P.ov.center = [lon, lat]; }
@@ -2915,15 +2923,15 @@ return maplibregl$1;
   // fertige Vegetations-Stimmungen
   const VEG_PRESETS = {
     baeume: k => ({ wood: { on: true, mode: 'green', color: '#B7C78F', alpha: 100 }, park: { on: true, mode: 'green', color: '#DFE7CB', alpha: 100 },
-      field: { on: k !== 'mk', mode: 'green', color: '#EFF3E4', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DFE7CB', alpha: 100 },
+      field: { on: true, link: true, mode: 'green', color: '#DFE7CB', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DFE7CB', alpha: 100 },
       crowns: { on: k !== 'ov', shadow: true, color: '#86A05C', alpha: 90, dens: 30, forest: 100, size: 100, vari: 30, grp: 60 } }),
     halbton: k => ({ wood: { on: true, mode: 'half-l', color: '#6F9A5A', alpha: 100 }, park: { on: true, mode: 'half-m', color: '#86A873', alpha: 100 },
-      field: { on: k !== 'mk', mode: 'half-s', color: '#A3BF92', alpha: 100 }, green: { on: k !== 'ov', mode: 'halbton', color: '#86A873', alpha: 100 },
+      field: { on: true, link: true, mode: 'half-m', color: '#86A873', alpha: 100 }, green: { on: k !== 'ov', mode: 'halbton', color: '#86A873', alpha: 100 },
       crowns: { on: false } }),
     flaeche: k => ({ wood: { on: true, mode: 'green', color: '#C6DBB4', alpha: 100 }, park: { on: true, mode: 'green', color: '#D5E6C6', alpha: 100 },
-      field: { on: k !== 'mk', mode: 'green', color: '#E4EEDB', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DCEACF', alpha: 100 }, crowns: { on: false } }),
+      field: { on: true, link: true, mode: 'green', color: '#D5E6C6', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DCEACF', alpha: 100 }, crowns: { on: false } }),
     schwarzplan: k => ({ wood: { on: true, mode: 'dots', color: '#8E9399', alpha: 100 }, park: { on: true, mode: 'dots', color: '#B4B8BD', alpha: 100 },
-      field: { on: false }, green: { on: false }, crowns: { on: false } })
+      field: { on: true, link: true, mode: 'dots', color: '#B4B8BD', alpha: 100 }, green: { on: false }, crowns: { on: false } })
   };
   const roadMode = p => `<div class="row"><label class="f">Darstellung<select data-s="${p}.mode"><option value="line">Linie</option><option value="fill">Fläche</option><option value="outline">Nur Kontur</option><option value="both">Fläche mit Kontur</option></select></label>
     </div>
@@ -2992,7 +3000,7 @@ return maplibregl$1;
         ${vegRow('wood', 'Wald', VMODES)}
         ${vegRow('park', 'Öffentliches Grün', VMODES)}
         ${k !== 'ov' ? vegRow('green', 'Private Gärten', '<option value="flaeche">Fläche</option><option value="halbton">Halbtonraster</option>') : ''}
-        ${vegRow('field', 'Landwirtschaft', VMODES)}
+        ${vegRow('field', 'Landwirtschaft', VMODES).replace('</div></div>', '</div><label class="check"><input type="checkbox" data-s="field.link"> wie öffentliches Grün (Darstellung und Farbe übernehmen)</label></div>')}
         ${k !== 'ov' ? `<div class="vcat"><div class="vhead"><label class="check"><input type="checkbox" data-s="crowns.on"> Bäume</label>
           <select data-s="crowns.src" aria-label="Quelle Bäume"><option value="auto">automatisch</option><option value="luftbild">aus Luftbild</option><option value="osm">aus OpenStreetMap</option></select></div>
           <div class="row"><label class="f">Farbe<button class="sw" data-s="crowns.color" aria-label="Farbe Bäume"></button></label>
@@ -3150,6 +3158,10 @@ return maplibregl$1;
     if (path === 'grid.type') ST(kind).grid.size = 'auto';
     if (path === 'veg.preset' && VEG_PRESETS[ST(kind).veg.preset]) { const T = ST(kind), V = VEG_PRESETS[T.veg.preset](kind); for (const [key, o] of Object.entries(V)) Object.assign(T[key], o); T.veg.on = true; }
     else if (/^(wood|park|field|green|crowns)\.(mode|color|on)$/.test(path)) ST(kind).veg.preset = 'eigen';
+    { const T = ST(kind);
+      if (/^park\.(mode|color|alpha)$/.test(path) && T.field.link !== false) { const k2 = path.split('.')[1]; T.field[k2] = T.park[k2]; }
+      if (/^field\.(mode|color|alpha)$/.test(path)) T.field.link = false;
+      if (path === 'field.link' && T.field.link) { T.field.mode = T.park.mode; T.field.color = T.park.color; T.field.alpha = T.park.alpha; } }
     if (/^crowns\.(dens|size|vari|grp|forest)$/.test(path)) repaint();
     if (/^(crowns|green|veg)\./.test(path)) { ensureGreen(active); loadTrees(); paintBase(); }
     saveS(); syncAllPresets();

@@ -54,7 +54,7 @@ Eine einzige HTML-Datei, kein Build. Läuft über GitHub Pages (siehe unten), fu
 - Rückgängig/Wiederholen (`hist`, `snap`, `undo`, `redo`): Momentaufnahmen von `{S, P}` nach jeder Änderung (`saveS`, `repaint`);
   `syncAllUI()` setzt danach alle Bedienelemente neu. `snap` speichert das Projekt zugleich automatisch (`autosave`).
 - Export-Dialog (`#expDlg`): Karten wählen, dpi, transparent, Dateinamen-Vorschau; PDF/SVG vorgesehen, noch nicht gebaut.
-- Reiterleiste: Format/Maßstab der aktiven Karte (`syncBar`), Rückgängig/Wiederholen, Zoom; Tasten 1/2/3, 0, +/−, Strg+Z/Y.
+- Reiterleiste: Format/Maßstab der aktiven Karte (`syncBar`), „⌖ Projekt“ (`centerBtn`, zentriert die aktive Karte), Rückgängig/Wiederholen, Zoom; Tasten 1/2/3, 0, +/−, Strg+Z/Y.
 - Luftbild (`st.photo`, `photoLayers` in `styleFor`): Rasterebene unter allem; Quelle auto = amtliches DOP20 des Bundeslands (`DOP.BY`/`DOP.BW`, WMS mit {bbox-epsg-3857}),
   sonst Sentinel-2 cloudless 2016 (`SAT`); Bundesland per Nominatim-Reverse in `P.region`/`P.regionAt`; Ebenennamen aus GetCapabilities in `store 'photoL'`.
   Grün aus Luftbild (`st.green`, `ensureGreen`, `greenMask`, `drawGreen` in `drawBase`): Vegetationsindex aus Bayern-CIR, Maske unter der Karte; Export lädt Maske in Druckauflösung (`GREEN_EXP`). Quellenvermerk über `photoLic`.
@@ -92,7 +92,7 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 
 ## Stand Etappe 1 (umgesetzt)
 - Luftbild unter Kartendarstellung. Straßen: `mw` Autobahnen · `road` Haupt-/Nebenstraßen (sec/pri) · `minor` Wohn-/Anliegerstraßen (min; Migration aus road).
-- Vegetation (`veg` + `wood`, `park`, `green` (Gärten, Bayern-CIR, sonst Wohngebiets-Tönung `garden`), `field`, `crowns`): Stimmungen `VEG_PRESETS` (baeume, halbton, flaeche, schwarzplan); Bäume ohne Stamm/Kontur mit Dichte `crowns.dens`, Größe `crowns.size`, Varianz `crowns.vari`, Bündeln zu Baumgruppen `crowns.grp` (`groupTrees`: Zufallsfeld ~75 m, nur in größeren Grünflächen); Kronendach im Wald `crowns.forest` (`woodPolys`, ortsfestes Raster ~5 m), Tonvariation je Krone; Palette mit Sand · Braun; Farbpalette `PALROWS` (Blau, Grün, Signal) + Grau;
+- Vegetation (`veg` + `wood`, `park`, `green` (Gärten, Bayern-CIR, sonst Wohngebiets-Tönung `garden`), `field`, `crowns`): Stimmungen `VEG_PRESETS` (baeume, halbton, flaeche, schwarzplan); Bäume ohne Stamm/Kontur mit Dichte `crowns.dens`, Größe `crowns.size`, Varianz `crowns.vari`, Bündeln zu Baumgruppen `crowns.grp` (`groupTrees`: Zufallsfeld ~75 m, nur in größeren Grünflächen); Landwirtschaft folgt öffentlichem Grün (`field.link`); Kronendach im Wald `crowns.forest` (`woodPolys`, ortsfestes Raster ~5 m), Tonvariation je Krone; Palette mit Sand · Braun; Farbpalette `PALROWS` (Blau, Grün, Signal) + Grau;
   Halbtonmuster `half-s/m/l`; Baumkronen `drawCrowns` aus CIR (`findCrowns`, experimentell) oder OSM (`loadTrees`).
 - Hervorheben und POIs je Karte (`inK`, `hidK`, `takeOver`, `dropK`): Liste zeigt nur Elemente der aktiven Karte; „Aus anderen Karten übernehmen“.
 
