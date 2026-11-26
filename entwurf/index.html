@@ -423,6 +423,11 @@ return maplibregl$1;
   .wiz .wz-sum > * { padding: 8px 4px; border-bottom: 1px solid #E3E7EC; font-size: 12px; } .wiz .wz-sum dt { font: 600 9px/1.8 var(--font); letter-spacing: .16em; text-transform: uppercase; color: #5A6B85; }
   .wiz .wz-sum dd { margin: 0; color: #1A1F26; } .wiz .wz-sum dd small { color: #5A6B85; }
   .wiz .wz-foot { display: flex; gap: 10px; padding: 14px 22px 18px; } .wiz .wz-foot .spacer { flex: 1; }
+  .famgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .famgrid button { display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 7px 8px 8px; border-radius: 9px; text-align: left; white-space: normal; height: auto; background: #F6F7F9; border: 1.5px solid transparent; box-shadow: none; }
+  .famgrid button .sw4 { display: flex; height: 14px; border-radius: 4px; overflow: hidden; } .famgrid button .sw4 i { flex: 1; }
+  .famgrid button b { font-size: 11px; font-weight: 600; line-height: 1.25; color: #14284B; }
+  .famgrid button.on { border-color: #14284B; background: #fff; } .famgrid button:hover { background: #EEF1F5; }
   .helpgrid { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; font-size: 12px; } .helpgrid kbd { font: 11px/1 var(--font); border: 1px solid #C9CDD2; border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; background: #F7F8FA; }
   .bar .info b { color: var(--ink); }
   .zoom { display: flex; padding-bottom: 8px; }
@@ -446,7 +451,7 @@ return maplibregl$1;
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="14" stroke="#14284B" stroke-width="1.7"/><path d="M5.92 25.80 L16.70 2.00 L24.68 26.92" stroke="#14284B" stroke-width="2.7"/><path d="M11.80 12.71 L24.68 26.92" stroke="#F0642D" stroke-width="2.3"/></g></svg><div><h1>ATLAS</h1><span>axperon site information</span></div><b class="draft">ENTWURF</b></div>
+    <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><defs><clipPath id="lgc"><circle cx="16" cy="16" r="14"/></clipPath></defs><circle cx="16" cy="16" r="14" fill="none" stroke="#14284B" stroke-width="1.5"/><g clip-path="url(#lgc)" fill="none"><path d="M7.25 31.16 L16.00 1.40 L24.75 31.16" stroke="#14284B" stroke-width="3" stroke-linejoin="miter" stroke-miterlimit="20"/><path d="M12.15 16.37 L27.82 25.23" stroke="#F0642D" stroke-width="2"/></g></svg><div><h1>ATLAS</h1><span>axperon site information</span></div><b class="draft">ENTWURF</b></div>
     <button class="projline" id="projLine" title="Projekt öffnen"><b id="plName"></b><small id="plSub"></small></button>
 
     <div class="group"><span>01</span>Projekt</div>
@@ -469,6 +474,12 @@ return maplibregl$1;
       </div>
       <p class="hint" id="backupInfo"></p>
       <p class="hint">Änderungen werden automatisch gespeichert. „Sichern“ schreibt alle Projekte, Vorlagen und Einstellungen in eine Datei – zum Umziehen in eine andere Version oder einen anderen Browser.</p>
+    </section>
+
+    <section>
+      <h2>Kartenstil · alle Karten</h2>
+      <div class="famgrid" id="famGrid"></div>
+      <p class="hint">Stellt Landkarte, Makro- und Mikrolage auf die gewählte GIEAG-Vorlage um. Feinheiten danach im Reiter Stil der jeweiligen Karte.</p>
     </section>
 
     <section>
@@ -1026,7 +1037,8 @@ return maplibregl$1;
   const DEM = { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], encoding: 'terrarium', tileSize: 256, maxzoom: 14 };
   const hillLayer = kind => { const a = Math.min(1, (+ST(kind).hill.alpha || 55) / 100) * 0.85;
     return { id: 'hill', type: 'hillshade', source: 'dem', paint: { 'hillshade-exaggeration': 0.3 + a * 0.45, 'hillshade-illumination-direction': 315,
-      'hillshade-shadow-color': `rgba(70,74,78,${a})`, 'hillshade-highlight-color': 'rgba(255,255,255,0)', 'hillshade-accent-color': `rgba(110,114,118,${a * 0.5})` } }; };
+      'hillshade-shadow-color': ST(kind).hill.tone === 'braun' ? `rgba(92,74,50,${a})` : `rgba(70,74,78,${a})`, 'hillshade-highlight-color': ST(kind).hill.tone === 'braun' ? `rgba(255,250,235,${a * 0.35})` : 'rgba(255,255,255,0)',
+      'hillshade-accent-color': ST(kind).hill.tone === 'braun' ? `rgba(120,100,70,${a * 0.5})` : `rgba(110,114,118,${a * 0.5})` } }; };
   // ---------- Luftbild (amtliche DOP20 Bayern / BW, sonst Sentinel-2 2016) ----------
   const DOP = {
     BY: { url: 'https://geoservices.bayern.de/od/wms/dop/v1/dop20', rgb: /rgb|farb|dop20c|^by_dop20$/i, cir: /cir|infrarot/i, lic: '© Bayerische Vermessungsverwaltung (CC BY 4.0)' },
@@ -1450,11 +1462,14 @@ return maplibregl$1;
   function northBox(k, W, H, T) { const q = northPos(k, W, H, T), m = k * 0.8; return { x: q.x - q.r - m, y: q.y - q.r * 2.4 - m, w: 2 * (q.r + m), h: q.r * 3.4 + 2 * m }; }
   // ATLAS-Zeichen: Kreis mit stilisiertem A, die Spitze zeigt nach Norden
   function drawAtlasMark(g, cx, cy, r, col, bar) {
-    const p = (x, y) => [cx + x * r, cy + y * r];
-    g.save(); g.setLineDash([]); g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = col;
-    g.lineWidth = r * 0.12; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
-    g.lineWidth = r * 0.19; g.beginPath(); g.moveTo(...p(-0.72, 0.70)); g.lineTo(...p(0.05, -1)); g.lineTo(...p(0.62, 0.78)); g.stroke();
-    g.strokeStyle = bar || col; g.lineWidth = r * 0.16; g.beginPath(); g.moveTo(...p(-0.30, -0.235)); g.lineTo(...p(0.62, 0.78)); g.stroke();
+    // gleiche Geometrie wie das Logo: Winkel ab Nord im Uhrzeigersinn, Schenkel am Kreis beschnitten
+    const p = (deg, f) => { const a = deg * Math.PI / 180; return [cx + Math.sin(a) * r * f, cy - Math.cos(a) * r * f]; };
+    const lp = (A, B, t) => [A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t];
+    g.save(); g.setLineDash([]); g.lineCap = 'butt'; g.lineJoin = 'miter'; g.miterLimit = 20; g.strokeStyle = col;
+    g.lineWidth = r * 0.107; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
+    g.lineWidth = r * 0.214; g.beginPath(); g.moveTo(...p(210, 1.25)); g.lineTo(...p(0, 1.043)); g.lineTo(...p(150, 1.25)); g.stroke();
+    g.strokeStyle = bar || col; g.lineWidth = r * 0.143; g.beginPath(); g.moveTo(...lp(p(0, 1), p(210, 1), 0.55)); g.lineTo(...p(128, 1.07)); g.stroke();
     g.restore();
   }
   // Nordpfeil-Typen: ATLAS (Kreis mit A) · Kreis mit Pfeil · schlanker Pfeil · klassischer Halbpfeil · Kompassrose
@@ -2798,15 +2813,18 @@ return maplibregl$1;
     g.restore();
   }
   // Höhenstufen: zarte Tönung von Grünlich (Tal) über Sand bis Hellgrau (Hochgebirge)
+  const HYPSO_GB = [[0, [198, 216, 170]], [250, [214, 226, 178]], [500, [226, 226, 180]], [800, [222, 206, 160]], [1200, [204, 180, 140]], [1800, [184, 160, 128]], [2500, [236, 232, 226]]];
   const HYPSO = [[0, [236, 242, 228]], [300, [242, 244, 230]], [600, [242, 239, 222]], [1000, [238, 230, 212]], [1500, [232, 222, 206]], [2200, [244, 242, 239]]];
   function drawHypso(g, map, kind) {
     const d = DEMS[kind]; if (!d) return;
+    const ramp = ST(kind).hypso.ramp === 'gruenbraun' ? HYPSO_GB : HYPSO;
+    if (d.tintRamp !== ramp) { d.tint = null; d.tintRamp = ramp; }
     if (!d.tint) {
       const c = document.createElement('canvas'); c.width = d.W; c.height = d.H;
       const cx = c.getContext('2d'), im = cx.createImageData(d.W, d.H);
       for (let i = 0; i < d.el.length; i++) {
-        const e = d.el[i]; let s = 1; while (s < HYPSO.length - 1 && HYPSO[s][0] < e) s++;
-        const [e0, c0] = HYPSO[s - 1], [e1, c1] = HYPSO[s], t = Math.max(0, Math.min(1, (e - e0) / (e1 - e0)));
+        const e = d.el[i]; let s = 1; while (s < ramp.length - 1 && ramp[s][0] < e) s++;
+        const [e0, c0] = ramp[s - 1], [e1, c1] = ramp[s], t = Math.max(0, Math.min(1, (e - e0) / (e1 - e0)));
         im.data[i * 4] = c0[0] + (c1[0] - c0[0]) * t; im.data[i * 4 + 1] = c0[1] + (c1[1] - c0[1]) * t; im.data[i * 4 + 2] = c0[2] + (c1[2] - c0[2]) * t; im.data[i * 4 + 3] = 255;
       }
       cx.putImageData(im, 0, 0); d.tint = c;
@@ -3312,8 +3330,8 @@ return maplibregl$1;
     pastell: k => ({ wood: { on: true, mode: 'green', color: '#B5C79A', alpha: 100 }, park: { on: true, mode: 'green', color: '#D7E3BF', alpha: 100 },
       field: { on: true, link: true, mode: 'green', color: '#D7E3BF', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#E1EAD0', alpha: 100 },
       crowns: { on: k !== 'ov', shadow: true, color: '#7E9A5C', alpha: 85, dens: 30, forest: 100, size: 100, vari: 35, grp: 60 } }),
-    landschaft: k => ({ wood: { on: true, mode: 'green', color: '#7F9660', alpha: 100 }, park: { on: true, mode: 'green', color: '#B9CB94', alpha: 100 },
-      field: { on: true, link: false, mode: 'green', color: '#DDE4C3', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#D3DFB6', alpha: 100 },
+    landschaft: k => ({ wood: { on: k !== 'ov', mode: 'green', color: '#7F9660', alpha: 100 }, park: { on: k !== 'ov', mode: 'green', color: '#B9CB94', alpha: 100 },
+      field: { on: k !== 'ov', link: false, mode: 'green', color: '#DDE4C3', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#D3DFB6', alpha: 100 },
       crowns: { on: k === 'mk', shadow: true, color: '#5E7A41', alpha: 85, dens: 25, forest: 100, size: 100, vari: 30, grp: 60 } }),
     grau: k => ({ wood: { on: true, mode: 'half-l', color: '#9EA3A8', alpha: 100 }, park: { on: true, mode: 'half-m', color: '#B1B5BA', alpha: 100 },
       field: { on: true, link: true, mode: 'half-s', color: '#BFC3C7', alpha: 100 }, green: { on: false }, crowns: { on: false } }),
@@ -3525,7 +3543,7 @@ return maplibregl$1;
     const root = $('ui_' + kind), T = ST(kind);
     const sel = root.querySelector('[data-p=sel]');
     const fit = ([id, pr]) => id === S.use[kind] || !pr.base || pr.base === kind;
-    const own = Object.entries(S.presets).filter(e => fit(e) && !e[1].fixed), fixed = Object.entries(S.presets).filter(e => fit(e) && e[1].fixed);
+    const own = Object.entries(S.presets).filter(e => fit(e) && !e[1].fixed), fixed = Object.entries(S.presets).filter(e => fit(e) && e[1].fixed && (!e[1].hide || e[0] === S.use[kind]));
     sel.innerHTML = (fixed.length ? '<optgroup label="GIEAG-Vorlagen">' + fixed.map(([id]) => `<option value="${id}"></option>`).join('') + '</optgroup>' : '')
       + '<optgroup label="Eigene Vorlagen">' + own.map(([id]) => `<option value="${id}"></option>`).join('') + '</optgroup>';
     [...sel.options].forEach(o => { const p0 = S.presets[o.value]; o.textContent = p0.fixed ? (p0.famName || p0.name) : p0.name; });     // Namen als Text, nie als Markup
@@ -3556,7 +3574,7 @@ return maplibregl$1;
     root.querySelector('[data-p=name]').disabled = !!pr.fixed; root.querySelector('[data-p=del]').disabled = !!pr.fixed;
     root.querySelector('.pinfo').textContent = (pr.fixed ? 'GIEAG-Vorlage (geschützt) – Änderungen landen automatisch in einer eigenen Kopie. ' : '') + root.querySelector('.pinfo').textContent;
   }
-  const syncAllPresets = () => KINDS.forEach(syncStyleUI);
+  const syncAllPresets = () => { KINDS.forEach(syncStyleUI); try { renderFamGrid(); } catch (e) {} };
   function afterStyle(kind, path) {
     if (path === 'grid.type') ST(kind).grid.size = 'auto';
     if (path === 'veg.preset' && VEG_PRESETS[ST(kind).veg.preset]) { const T = ST(kind), V = VEG_PRESETS[T.veg.preset](kind); for (const [key, o] of Object.entries(V)) Object.assign(T[key], o); T.veg.on = true; }
@@ -3737,7 +3755,7 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 6;
+  const FAM_VER = 7;
   const FAMS = {
     kontrast: { name: 'ATLAS · Kontrast Dunkelblau/Orange', desc: 'weißes Land, dunkelblaues Wasser, orange Hauptstraßen, dunkle Gebäude', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B', hi: '#F0642D', north: { color: '#14284B' },
@@ -3766,32 +3784,33 @@ return maplibregl$1;
         rail: { color: '#A3A39C', classic: false }, water: { color: '#6F8F88', inner: k === 'ov' ? 0 : 40, lblColor: '#4D615C' }, border: { color: '#B8B7B0' }, hill: { on: k === 'ov', alpha: 25 } }) },
     landschaft: { name: 'Landschaft', desc: 'kräftige Grüntöne für Wald, Wiesen und Felder, dunkles Wasser – für Stadtrand und Region', veg: 'landschaft',
       st: k => ({ font: 'source', weight: 400, caps: true, tcol: '#24301F', hi: '#F2B705', north: { color: '#24301F' },
+        hypso: { on: k === 'ov', alpha: 75, ramp: 'gruenbraun' },
         settle: { on: true, color: k === 'ov' ? '#E5E3DC' : '#EEEDE8' }, bldg: { on: true, color: '#C4C1B8', shadow: k === 'mk', shAlpha: 20 },
         mw: { color: '#9A988F', w: k === 'ov' ? 0.3 : 0.6 }, road: { color: '#B6B4AB' }, minor: { color: '#D2D0C8' },
-        rail: { color: '#6E6C64', classic: false }, water: { color: '#24395A', inner: k === 'ov' ? 0 : 40 }, border: { color: '#9A988F' }, hill: { on: k !== 'mk', alpha: 30 } }) },
-    atlas: { name: 'ATLAS · Graustufen', desc: 'zurückhaltend: Graustufen und Schraffuren, Hervorhebungen in Dunkelblau und Orange', veg: 'grau',
+        rail: { color: '#6E6C64', classic: false }, water: { color: '#24395A', inner: k === 'ov' ? 0 : 40 }, border: { color: '#9A988F' }, hill: { on: k !== 'mk', alpha: k === 'ov' ? 45 : 30, tone: 'braun' } }) },
+    atlas: { hide: true, name: 'ATLAS · Graustufen', desc: 'zurückhaltend: Graustufen und Schraffuren, Hervorhebungen in Dunkelblau und Orange', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B',
         settle: { on: true, color: k === 'ov' ? '#E4E6E9' : '#EDEEF0' }, bldg: { on: true, color: k === 'mk' ? '#C9CCD0' : '#D2D5D9', shadow: false },
         mw: { color: '#8E949A' }, road: { color: '#B8BCC1' }, minor: { color: k === 'mk' ? '#CDD0D4' : '#DDDFE2' }, rail: { color: '#6E747A', classic: false },
         water: { color: '#D3D8DE' }, border: { color: '#A3A8AE' }, hill: { on: false } }) },
-    schwarz: { name: 'Schwarzplan', desc: 'klassisch, grafisch, für Architektur und Wettbewerb', veg: 'schwarzplan',
+    schwarz: { hide: true, name: 'Schwarzplan', desc: 'klassisch, grafisch, für Architektur und Wettbewerb', veg: 'schwarzplan',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#0A0A0A',
         settle: { on: true, color: k === 'ov' ? '#D5D8DC' : '#CDD0D4' }, bldg: { on: true, color: '#1E1E1E', shadow: false },
         mw: { color: '#6E747A' }, road: { color: '#9EA3A8' }, minor: { color: k === 'mk' ? '#AEB3B8' : '#CFD2D6' }, rail: { color: '#3C4044' },
         water: { color: '#AEB9C3' }, border: { color: '#8E9399' }, hill: { on: false } }) },
-    investor: { name: 'Investor · institutionell', desc: 'sachlich, Erreichbarkeit und Infrastruktur im Vordergrund', veg: 'flaeche',
+    investor: { hide: true, name: 'Investor · institutionell', desc: 'sachlich, Erreichbarkeit und Infrastruktur im Vordergrund', veg: 'flaeche',
       st: k => ({ font: 'inter', weight: 400, caps: true, tcol: '#1E1E1E',
         settle: { on: true, color: k === 'ov' ? '#E3E5E8' : '#E6E8EB' }, bldg: { on: true, color: '#BFC4C9', shadow: k === 'mk', shAlpha: 20 },
         mw: { color: '#4A4F55', w: k === 'ov' ? 0.35 : 0.7, lbl: k !== 'mk' }, road: { color: '#AEB3B8' }, minor: { color: k === 'mk' ? '#C4C7CB' : '#DADDE0' },
         rail: { color: '#1D4278', w: k === 'ov' ? 0.25 : 0.5, st: k !== 'ov', classic: false }, water: { color: '#C4DCEF' }, hill: { on: k === 'ov', alpha: 35 },
         wood: { color: '#DCE3CF' }, park: { color: '#E6ECDC' } }) },
-    buero: { name: 'Büro · Mietinteressent', desc: 'Anbindung und Umfeld: ÖPNV, Straßen, Nachbarschaft', veg: 'flaeche',
+    buero: { hide: true, name: 'Büro · Mietinteressent', desc: 'Anbindung und Umfeld: ÖPNV, Straßen, Nachbarschaft', veg: 'flaeche',
       st: k => ({ font: 'source', weight: 400, caps: false, tcol: '#13315C',
         settle: { on: true, color: '#EEF0F2' }, bldg: { on: true, color: '#D3D6DA', shadow: k === 'mk', shAlpha: 18 },
         mw: { color: '#6E747A', w: k === 'ov' ? 0.3 : 0.6 }, road: { color: '#A3A9AE', lbl: k === 'mk' }, minor: { color: k === 'mk' ? '#BFC4C9' : '#D5D8DC' },
         rail: { color: '#255AA8', w: k === 'ov' ? 0.25 : 0.55, st: k !== 'ov', classic: false }, water: { color: '#AFC6EA' },
         wood: { color: '#D3DDC2' }, park: { color: '#DFE7CB' } }) },
-    wohnen: { name: 'Wohnen · Käufer', desc: 'warm und freundlich: Grün, Wasser, Nachbarschaft', veg: 'baeume',
+    wohnen: { hide: true, name: 'Wohnen · Käufer', desc: 'warm und freundlich: Grün, Wasser, Nachbarschaft', veg: 'baeume',
       st: k => ({ font: 'source', weight: 400, caps: false, tcol: '#3A3530',
         settle: { on: true, color: '#F4EAD9' }, bldg: { on: true, color: k === 'mk' ? '#D4B994' : '#E2CCAA', shadow: k === 'mk', shAlpha: 22 },
         mw: { color: '#B4A58E' }, road: { color: k === 'mk' ? '#D4C3A8' : '#D9CBB3', lbl: k === 'mk' }, minor: { color: k === 'mk' ? '#E2D5BF' : '#E8DDCB' },
@@ -3804,12 +3823,29 @@ return maplibregl$1;
       const st = dm(stDef(kk), F.st(kk));
       const V = VEG_PRESETS[F.veg] ? VEG_PRESETS[F.veg](kk) : {}; for (const [key, o] of Object.entries(V)) st[key] = Object.assign({}, st[key], o);
       st.veg = { on: true, preset: F.veg };
-      S.presets[id] = { name: 'GIEAG · ' + F.name + ' · ' + KNAME[kk], famName: 'GIEAG · ' + F.name, fam, base: kk, fixed: true, ver: FAM_VER, desc: F.desc, st };
+      S.presets[id] = { name: 'GIEAG · ' + F.name + ' · ' + KNAME[kk], famName: 'GIEAG · ' + F.name, fam, base: kk, fixed: true, ver: FAM_VER, desc: F.desc, hide: !!F.hide, st };
     }
     saveS();
   }
   ensureFamilies();
+  // Kartenstil-Wahl unter 01 Projekt: je sichtbarer GIEAG-Vorlage eine Kachel mit Farbstreifen (Siedlung · Gebäude · Wasser · Straße · Signal)
+  function renderFamGrid() {
+    const box = $('famGrid'); if (!box) return;
+    const escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const cur = (S.presets[S.use.mi] || {}).fam;
+    box.innerHTML = Object.entries(FAMS).filter(([, F]) => !F.hide).map(([fam, F]) => {
+      const st = (S.presets['gieag_' + fam + '_mk'] || {}).st || {};
+      const cols = [st.settle && st.settle.color, st.wood && st.wood.on && st.wood.mode === 'green' ? st.wood.color : st.bldg && st.bldg.color, st.water && st.water.color, st.mw && st.mw.color, st.hi || '#F0642D'].filter(Boolean);
+      return `<button data-fam="${fam}" class="${fam === cur ? 'on' : ''}" title="${escH(F.desc || '')}"><span class="sw4">${cols.map(c => `<i style="background:${c}"></i>`).join('')}</span><b>${escH(F.name)}</b></button>`;
+    }).join('');
+    box.querySelectorAll('button').forEach(b => b.onclick = () => {
+      for (const kk of KINDS) { const id = 'gieag_' + b.dataset.fam + '_' + kk; if (S.presets[id]) S.use[kk] = id; }
+      saveS(); syncAllPresets(); relayout(true); renderFamGrid(); snap();
+      status('Kartenstil „' + FAMS[b.dataset.fam].name + '“ für alle Karten gesetzt.');
+    });
+  }
   for (const kk of KINDS) $('ui_' + kk).innerHTML = mapUI(kk);
+  renderFamGrid();
   document.querySelectorAll('select.preset').forEach(sel => { for (const [v, t] of PRESETS) { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); } });
   for (const kind of KINDS) {
     $(kind + 'Preset').value = S[kind + 'Preset']; $(kind + 'Cw').value = S[kind + 'Cw']; $(kind + 'Ch').value = S[kind + 'Ch'];
@@ -4313,7 +4349,7 @@ return maplibregl$1;
     const pname = esc((P.name || 'Projekt').replace(/\n/g, ' '));
     const AD = addrLines(), street = AD.street && AD.street.toLowerCase() !== (P.name || '').trim().toLowerCase() ? AD.street : '';
     const cityN = (Z && Z.city && Z.city.name) || AD.ort || '';
-    const head = `<div class="dtop"><div class="kick">Standortdossier</div><div class="dlogo2">${logo}<span><b>ATLAS</b><small>axperon site information</small></span></div></div>
+    const head = `<div class="dtop"><div class="kick">Standortdossier</div><div class="dlogo2">${logo.replace(/lgc/g, 'dlc')}<span><b>ATLAS</b><small>axperon site information</small></span></div></div>
       <div class="dhero"><h1 class="hl"><em>${ANAME[K.asset]}</em><br>${pname}${street ? `<span class="hs2">${esc(street)}</span>` : ''}</h1>
       <div class="lead"><b>${esc(AD.line || P.place || '')}</b>${AD.teil ? esc(AD.teil) + ' · ' : ''}${esc(cityN)}<br><br>Strukturdaten im Radius von ${Z ? radTxt(Z.r) : '…'} um den Projektpunkt – im Vergleich mit ${Z && Z.city && Z.city.name ? esc(Z.city.name) : 'der Stadt'} und Deutschland.
       <div class="meta">${ANAME[K.asset]} · Radius ${Z ? radTxt(Z.r) : '–'} · ${new Date(Z ? Z.at : Date.now()).toLocaleDateString('de-DE')}</div></div></div>`;
@@ -5410,7 +5446,7 @@ return maplibregl$1;
     // Radius der Kennzahlen je Nutzung: Stadt / Land
     radius: { wohnen: [1000, 2000], buero: [1000, 3000], light: [5000, 5000], logistik: [10000, 10000] },
     // empfohlene Vorlage je Nutzung
-    fam: { wohnen: 'wohnen', buero: 'buero', light: 'investor', logistik: 'investor' },
+    fam: { wohnen: 'pastell', buero: 'kontrast', light: 'signal', logistik: 'signal' },
     // Maßstäbe Makro-/Mikrolage: Stadt / Land
     scale: { mi: [25000, 50000], mk: [10000, 15000] },
     // Formate je Zweck (Schlüssel aus PRESETS)
@@ -5431,7 +5467,7 @@ return maplibregl$1;
     fillFam(); wzShow(); setTimeout(() => $('gsQ').focus(), 50);
   }
   function fillFam() {
-    const fams = {}; for (const pr of Object.values(S.presets)) if (pr.fam && !fams[pr.fam]) fams[pr.fam] = pr.famName || pr.name;
+    const fams = {}; for (const pr of Object.values(S.presets)) if (pr.fam && !pr.hide && !fams[pr.fam]) fams[pr.fam] = pr.famName || pr.name;
     $('gsFam').innerHTML = '<option value="">aktuelle Vorlagen beibehalten</option>' + Object.entries(fams).map(([f, n]) => `<option value="${f}">${esc(n)}</option>`).join('');
   }
   function wzShow() {
