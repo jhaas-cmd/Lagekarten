@@ -90,8 +90,11 @@ return maplibregl$1;
   .brand h1 { font-size: 18px; letter-spacing: .02em; margin: 0; font-weight: 700; text-transform: uppercase; color: var(--ink); }
   .brand span { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--grau); }
   section { display: flex; flex-direction: column; gap: 8px; }
-  aside section > h2 { cursor: pointer; user-select: none; }
-  aside section > h2::before { content: '▾'; display: inline-block; width: 14px; transition: transform .15s; }
+  aside section > h2 { cursor: pointer; user-select: none; font-size: 12.5px; letter-spacing: .01em; text-transform: none; color: var(--ink); font-weight: 600;
+    padding: 9px 0 8px; border-bottom: 1px solid #D5D8DC; display: flex; align-items: center; gap: 4px; }
+  aside section > h2:hover { color: var(--blau); }
+  aside section > h2::before { content: '▾'; display: inline-block; width: 16px; font-size: 12px; color: var(--grau); transition: transform .15s; }
+  aside section:not(.closed) > h2 { border-bottom-color: var(--ink); }
   aside section.closed > h2::before { transform: rotate(-90deg); }
   aside section.closed > :not(h2) { display: none !important; }
   aside section.closed { gap: 0; }
@@ -236,8 +239,12 @@ return maplibregl$1;
   .layer .lname::before { content: none; }
   .chip { width: 20px; height: 14px; border: 1px solid rgba(0,0,0,.15); border-radius: 2px; }
   .chip.ghost { background: repeating-linear-gradient(45deg, #fff 0 3px, #D5D8DC 3px 6px); }
-  .inspector { position: sticky; bottom: 62px; z-index: 4; background: #fff; border: 1px solid #BFC4CA; border-radius: 9px 9px 0 0;
-    box-shadow: 0 -4px 14px rgba(0,0,0,.14), 2px -1px 4px rgba(0,0,0,.08); max-height: 34vh; overflow-y: auto; margin-top: -8px; }
+  .inspector { position: static; background: #fff; border: 1px solid #BFC4CA; border-radius: 9px; scroll-margin-top: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.10), 0 1px 3px rgba(0,0,0,.06); margin-top: 2px; }
+  .ihead { border-radius: 9px 9px 0 0 !important; }
+  .layer.inact .lname { color: #9A9EA3; } .lnote { grid-column: 2 / -1; font-size: 10px; color: #B7791F; margin: -4px 0 4px; }
+  .inote { margin: 8px 12px 0; padding: 6px 8px; font-size: 11px; color: #7A5A12; background: #FFF6E0; border-radius: 6px; }
+  .pbar .fixed { font-size: 10.5px; color: var(--blau); }
   .ihead { font-size: 11px; letter-spacing: .04em; font-weight: 700; color: var(--ink); background: linear-gradient(#EEF0F2, #DCDFE3);
     border-bottom: 1px solid #C9CDD2; border-radius: 9px 9px 0 0; padding: 7px 12px; position: sticky; top: 0; z-index: 1; }
   .board { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
@@ -277,7 +284,31 @@ return maplibregl$1;
   .tabs button[aria-selected=true] { background: var(--flaeche); color: var(--ink); font-weight: 700; padding-bottom: 10px; z-index: 3;
     box-shadow: 0 -3px 10px rgba(0,0,0,.16); border-color: #BFC4CA; }
   .tabs button[aria-selected=true]::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--flaeche); }
-  .bar .info { font-size: 11px; color: var(--grau); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 10px; }
+  .bar .info { display: none; }
+  .bar { flex-wrap: nowrap !important; gap: 10px !important; }
+  .bar .spacer { flex: 1; }
+  .quick select { max-width: 150px !important; }
+  .actbox { display: flex; align-items: center; gap: 7px; padding: 5px 11px; margin-bottom: 8px; border-radius: 14px; background: #fff; border: 1px solid #C9CDD2;
+    font-size: 11px; color: var(--blau); box-shadow: 0 1px 3px rgba(0,0,0,.08); max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .actbox .spin { width: 11px; height: 11px; border: 2px solid #C9D6EA; border-top-color: var(--blau); border-radius: 50%; flex: none; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .modebar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 16px;
+    background: var(--blau); color: #fff; border-radius: 20px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.18); white-space: nowrap; }
+  .modebar button { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.5); border-radius: 14px; padding: 4px 10px; font-size: 11px; }
+  .modebar button:hover { background: rgba(255,255,255,.3); }
+  .ctx { position: fixed; z-index: 50; background: #fff; border: 1px solid #C9CDD2; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 5px; display: flex; flex-direction: column; min-width: 230px; }
+  .ctx button { border: 0; text-align: left; padding: 7px 10px; border-radius: 5px; font-size: 12px; }
+  .ctx button:hover { background: #EEF2F8; }
+  .ctx hr { border: 0; border-top: 1px solid #EDEFF1; margin: 4px 0; }
+  .projline { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; text-align: left; border: 1px solid #D5D8DC; border-radius: 8px; padding: 7px 10px; background: #F7F8FA; white-space: normal; }
+  .projline b { font-size: 13px; color: var(--ink); } .projline small { font-size: 10.5px; color: var(--grau); }
+  .startcard { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); z-index: 7; width: min(520px, 90%); background: #fff; border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.22); padding: 26px 28px; display: flex; flex-direction: column; gap: 14px; }
+  .startcard h3 { margin: 0; font-size: 18px; } .startcard p { margin: 0; color: var(--grau); font-size: 12px; }
+  .startcard .step { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; }
+  .startcard .step > b { width: 24px; height: 24px; border-radius: 50%; background: var(--blau); color: #fff; display: grid; place-items: center; font-size: 12px; }
+  .startcard .step label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; }
+  .helpgrid { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; font-size: 12px; } .helpgrid kbd { font: 11px/1 var(--font); border: 1px solid #C9CDD2; border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; background: #F7F8FA; }
   .bar .info b { color: var(--ink); }
   .zoom { display: flex; padding-bottom: 8px; }
   .zoom button { border-radius: 0; min-width: 36px; font-variant-numeric: tabular-nums; }
@@ -301,6 +332,7 @@ return maplibregl$1;
 <div class="app">
   <aside>
     <div class="brand"><h1>Lagekarten</h1><span>GIEAG · Expo Real · <b style="color:#c0392b">ENTWURF</b></span></div>
+    <button class="projline" id="projLine" title="Projekt öffnen"><b id="plName"></b><small id="plSub"></small></button>
 
     <div class="group"><span>01</span>Projekt</div>
     <div class="sub">Übersicht</div>
@@ -320,7 +352,8 @@ return maplibregl$1;
         <button id="dataImp" title="Gesicherte Projekte und Stilvorlagen einlesen">Einlesen (Import)</button>
         <input type="file" id="dataFile" accept=".json,application/json" hidden>
       </div>
-      <p class="hint">Änderungen werden automatisch gespeichert. „Sichern“ schreibt alle Projekte, Presets und Einstellungen in eine Datei – zum Umziehen in eine andere Version oder einen anderen Browser.</p>
+      <p class="hint" id="backupInfo"></p>
+      <p class="hint">Änderungen werden automatisch gespeichert. „Sichern“ schreibt alle Projekte, Vorlagen und Einstellungen in eine Datei – zum Umziehen in eine andere Version oder einen anderen Browser.</p>
     </section>
 
     <section>
@@ -342,16 +375,14 @@ return maplibregl$1;
     </section>
 
     <section id="sec_srcTest">
-      <h2>Luftbild &amp; Satellit · Test</h2>
+      <h2>Hilfe &amp; Diagnose · Datenquellen prüfen</h2>
       <button id="srcTestGo">Datenquellen am Projektort prüfen</button>
       <div id="srcTestOut" class="srctest"></div>
       <p class="hint">Prüft, welche freien Luftbild- und Satellitendienste in diesem Browser laden und sich in die Karte übernehmen lassen. Gezeigt wird je ein Ausschnitt von ca. 400 × 400 m um den Projektpunkt. Grün = nutzbar, Rot = gesperrt oder kein Bild.</p>
     </section>
 
-    <div class="sub">Stil</div>
-
-    <section>
-      <h2>Gestaltung · alle Karten</h2>
+    <section id="sec_glob">
+      <h2>Gestaltung · gilt für alle Karten</h2>
       <label class="f">Akzentfarbe (Projektpunkt, Baufeld, markierte Gebäude)</label>
       <div class="swatches" id="swatches" role="radiogroup" aria-label="Akzentfarbe">
         <button class="swatch on" data-c="#255AA8" style="background:#255AA8" title="GIEAG Blau" aria-label="GIEAG Blau"></button>
@@ -362,7 +393,7 @@ return maplibregl$1;
       <label class="check"><input type="checkbox" id="optAttrib"> Quellenangabe OpenStreetMap</label>
       <label class="check"><input type="checkbox" id="optTransp"> Hintergrund transparent (PNG für farbige Folien)</label>
       <p class="hint">Kartendaten © OpenStreetMap-Mitwirkende (ODbL), Kacheln OpenFreeMap. Die Quellenangabe sollte auf der Folie sichtbar bleiben.</p>
-      <p class="hint">Titel lassen sich in der Vorschau auch direkt mit der Maus verschieben. Die Kartengestaltung liegt in den Presets der einzelnen Karten (Reiter „Stil“).</p>
+      <p class="hint">Titel lassen sich in der Vorschau auch direkt mit der Maus verschieben.</p>
     </section>
 
     <div class="group" data-tab="ov"><span>02</span>Landkarte</div>
@@ -412,6 +443,9 @@ return maplibregl$1;
       <div class="zoom" aria-label="Ansicht vergrößern">
         <button id="zOut" title="Ansicht verkleinern">−</button><button id="zFit" title="Einpassen">100 %</button><button id="zIn" title="Ansicht vergrößern">+</button>
       </div>
+      <span class="spacer"></span>
+      <div class="actbox" id="actBox" hidden title="Läuft im Hintergrund – du kannst normal weiterarbeiten"><span class="spin"></span><span id="actTxt"></span></div>
+      <div class="zoom"><button id="helpBtn" title="Tastenkürzel und Hilfe" aria-label="Hilfe">?</button></div>
     </nav>
     <div class="stage" id="stage">
       <div class="panel" data-kind="ov"><div class="frame" id="ovFrame"><canvas class="ov" id="ovSc"></canvas><div class="map" id="ovMap"></div><div class="focus" id="ovFocus" hidden></div><canvas class="ov" id="ovCanvas"></canvas></div></div>
@@ -420,22 +454,31 @@ return maplibregl$1;
       <div class="panel" data-kind="mk"><div class="frame" id="mkFrame"><canvas class="ov" id="mkSc"></canvas><div class="map" id="mkMap"></div><div class="focus" id="mkFocus" hidden></div><canvas class="ov" id="mkCanvas"></canvas></div></div>
     </div>
     <div class="statusbar" id="status" aria-live="polite"></div>
+    <div class="modebar" id="modeBar" hidden><span id="modeTxt"></span><button id="modeEnd">Beenden (Esc)</button></div>
+    <div class="startcard" id="startCard" hidden>
+      <h3>Neues Projekt in drei Schritten</h3>
+      <p>Danach stehen Landkarte, Makrolage und Mikrolage fertig gestaltet bereit – du verfeinerst nur noch.</p>
+      <div class="step"><b>1</b><label>Wo liegt das Projekt?<span class="row"><input type="text" id="gsQ" placeholder="Adresse, Ort oder Koordinaten"><button id="gsGo" class="primary" style="flex:0 0 auto">Suchen</button></span><span class="hint" id="gsHint">Treffer erscheinen links unter „Ort finden“ – einen anklicken.</span></label></div>
+      <div class="step"><b>2</b><label>Projekttitel<input type="text" id="gsName" placeholder="z. B. Kwartier Works"></label></div>
+      <div class="step"><b>3</b><label>Für wen ist die Karte?<select id="gsFam"><option value="">Vorlage beibehalten</option></select></label></div>
+      <div class="row"><button id="gsLater">Später</button><button id="gsDone" class="primary">Fertig – zur Makrolage</button></div>
+    </div>
   </main>
   <div class="resizer" id="resizer" title="Ziehen ändert die Breite · Doppelklick: Standardbreite"></div>
   <div id="shared" hidden>
     <section id="sec_mark">
       <h2>Markierung</h2>
       <div class="modes">
-        <button data-mode="point" class="on">Punkt setzen</button>
+        <button data-mode="point">Punkt versetzen</button>
         <button data-mode="draw">Baufeld zeichnen</button>
-        <button data-mode="bld">Gebäude wählen</button>
-        <button data-mode="pan">Nur verschieben</button>
+        <button data-mode="bld">Gebäude markieren</button>
+        <button data-mode="pan" class="on">Nur ansehen</button>
       </div>
       <div class="row">
         <button id="drawDone" disabled>Baufeld schließen</button>
         <button id="markClear">Markierung löschen</button>
       </div>
-      <p class="hint" id="modeHint">Klick in Makro- oder Mikrolage setzt den Projektpunkt.</p>
+      <p class="hint" id="modeHint">Klicks in die Karte ändern nichts. Zum Bearbeiten einen Modus wählen – oder Rechtsklick in die Karte.</p>
     </section>
     <section id="sec_funk">
       <h2>Funktionen · Nutzungsmapping</h2>
@@ -494,6 +537,25 @@ return maplibregl$1;
       <div id="noteList" class="notes"></div>
       <p class="hint" id="noteHint">„+ Text setzen“ wählen, dann die Stelle in der Karte anklicken. Der Text lässt sich mit der Maus verschieben; ab 3 mm Abstand erscheint eine feine Hinweislinie.</p>
     </section>
+  </div>
+</div>
+
+<div class="dlg-bg" id="helpDlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <h3 id="helpTitle">Bedienung</h3>
+    <div class="helpgrid">
+      <span><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></span><span>Landkarte · Makrolage · Mikrolage · Kennzahlen</span>
+      <span><kbd>Strg</kbd>+<kbd>Z</kbd> / <kbd>Strg</kbd>+<kbd>Y</kbd></span><span>Rückgängig / Wiederholen</span>
+      <span><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd> · Mausrad</span><span>Ansicht vergrößern, verkleinern, einpassen (der Maßstab bleibt)</span>
+      <span><kbd>Leertaste</kbd> + Ziehen</span><span>Blatt in der Ansicht verschieben</span>
+      <span>Ziehen in der Karte</span><span>Kartenausschnitt verschieben</span>
+      <span>Rechtsklick in die Karte</span><span>Projektpunkt setzen, POI, Text, Element hervorheben, hier zentrieren</span>
+      <span>Titel, POIs, Texte</span><span>mit der Maus verschieben</span>
+      <span><kbd>Esc</kbd></span><span>beendet jeden Klick-Modus (blauer Balken über der Karte)</span>
+      <span>⌖ Projekt</span><span>aktive Karte auf den Projektpunkt zentrieren</span>
+    </div>
+    <p class="hint">Alles wird automatisch gespeichert. Vor größeren Umbauten: 01 Projekt → „Sichern (Export)“.</p>
+    <div class="row dlgbtns"><button id="helpClose" class="primary">Schließen</button></div>
   </div>
 </div>
 
@@ -615,6 +677,23 @@ return maplibregl$1;
   ];
 
 
+  // ---------- Hintergrund-Aktivität: was gerade lädt oder rechnet, steht oben rechts – ohne die Bearbeitung zu blockieren ----------
+  const BUSY = new Map(); let busyT = 0;
+  function paintBusy() {
+    clearTimeout(busyT);
+    busyT = setTimeout(() => {
+      const labels = [...new Set([...BUSY.values()].filter(x => x.n > 0).map(x => x.label))];
+      const box = document.getElementById('actBox'); if (!box) return;
+      box.hidden = !labels.length; document.getElementById('actTxt').textContent = labels.slice(0, 3).join(' · ') + (labels.length > 3 ? ' …' : '');
+    }, labels0() ? 350 : 150);
+  }
+  const labels0 = () => [...BUSY.values()].some(x => x.n > 0);
+  function track(label, fn) {
+    return async function (...a) {
+      const b = BUSY.get(label) || { label, n: 0 }; b.n++; BUSY.set(label, b); paintBusy();
+      try { return await fn.apply(this, a); } finally { b.n--; paintBusy(); }
+    };
+  }
   // ---------- Zustand ----------
   const store = {
     get(k, d) { try { const v = localStorage.getItem('gieag-lk-' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
@@ -776,7 +855,7 @@ return maplibregl$1;
   // Fokus: Radius um den Projektpunkt farbig, außerhalb Graustufen
   S.focus = S.focus || {};
   for (const kk of KINDS) S.focus[kk] = Object.assign({ on: false, r: kk === 'ov' ? 60000 : kk === 'mi' ? 1500 : 300, fade: 20 }, S.focus[kk]);
-  let mode = 'point', drawRing = [];
+  let mode = 'pan', drawRing = [];
 
   const fmt = kind => {
     if (S[kind + 'Preset'] === 'custom') return { w: +S[kind + 'Cw'] || 15, h: +S[kind + 'Ch'] || 10 };
@@ -2680,6 +2759,7 @@ return maplibregl$1;
       onClick(v, e);
     });
     map.on('dblclick', e => { if (kind !== 'ov' && mode === 'draw') { e.preventDefault(); finishDraw(); } });
+    map.on('contextmenu', e => { e.preventDefault(); openCtx(v, e); });
     return v;
   }
   function applySize(v) {
@@ -2750,6 +2830,42 @@ return maplibregl$1;
     repaint();
   }
 
+  // ---------- Rechtsklick-Menü in der Karte ----------
+  let ctxEl = null;
+  function closeCtx() { if (!ctxEl) return false; ctxEl.remove(); ctxEl = null; return true; }
+  function openCtx(v, e) {
+    closeCtx(); endModes();
+    const ll = e.lngLat, kind = v.kind, oe = e.originalEvent;
+    const items = [
+      ['⌖  Projektpunkt hierher setzen', () => { if (kind === 'ov') setPoint(ll.lng, ll.lat, true, true); else setPoint(ll.lng, ll.lat, false); status('Projektpunkt versetzt.'); }],
+      ['●  POI hier setzen', () => { P.pois = P.pois || []; const o = Object.assign({}, POI_DEF, { id: 'poi' + Date.now(), lon: ll.lng, lat: ll.lat, ov: false, mi: false, mk: false, [kind]: true });
+        P.pois.push(o); renderPois(o.id); repaint(); const inp = document.querySelector(`.prow[data-id="${o.id}"] input[type=text]`); if (inp) inp.focus(); status('POI gesetzt – Namen links eingeben (Mapping → Eigene POIs).'); }],
+      ['T  Text hier setzen', () => addNote(kind, ll)],
+      null,
+      ['▬  Straße, Gleis oder Gebäude hervorheben', () => pickHl(v, e)],
+      null,
+      ['✥  Karte hier zentrieren', () => { const c = [ll.lng, ll.lat]; if (kind === 'ov') P.ov.center = c; else if (kind === 'mi') P.miCenter = c; else P.mkCenter = c; relayout(false); }]
+    ];
+    ctxEl = document.createElement('div'); ctxEl.className = 'ctx';
+    for (const it of items) {
+      if (!it) { ctxEl.appendChild(document.createElement('hr')); continue; }
+      const b = document.createElement('button'); b.textContent = it[0]; b.onclick = () => { closeCtx(); it[1](); }; ctxEl.appendChild(b);
+    }
+    document.body.appendChild(ctxEl);
+    const r = ctxEl.getBoundingClientRect();
+    ctxEl.style.left = Math.min(oe.clientX, innerWidth - r.width - 8) + 'px'; ctxEl.style.top = Math.min(oe.clientY, innerHeight - r.height - 8) + 'px';
+  }
+  document.addEventListener('mousedown', e => { if (ctxEl && !ctxEl.contains(e.target)) closeCtx(); });
+  // ---------- Einheitlicher Klick-Modus: blauer Balken über der Karte, Esc beendet ----------
+  const MODES = {};
+  function modeBar(key, text, end) {
+    if (text) { for (const [k, m] of Object.entries(MODES)) if (k !== key) { delete MODES[k]; m.end(); } MODES[key] = { text, end }; }
+    else delete MODES[key];
+    const cur = Object.values(MODES)[0];
+    $('modeBar').hidden = !cur; if (cur) $('modeTxt').textContent = cur.text;
+  }
+  function endModes() { for (const [k, m] of Object.entries(MODES)) { delete MODES[k]; m.end(); } $('modeBar').hidden = true; }
+  $('modeEnd').onclick = endModes;
   // ---------- Interaktion ----------
   $('centerBtn').onclick = () => {
     if (kzOn) return;
@@ -2765,8 +2881,8 @@ return maplibregl$1;
   }
   function onClick(v, e) {
     const { lng, lat } = e.lngLat;
-    if (v.kind === 'ov') { setPoint(lng, lat, true, true); return; }
-    if (mode === 'point') setPoint(lng, lat, false);
+    if (v.kind === 'ov') return;                 // Landkarte: Projektpunkt per Rechtsklick
+    if (mode === 'point') { setPoint(lng, lat, false); setMode('pan'); status('Projektpunkt versetzt.'); }
     else if (mode === 'draw') { drawRing.push([lng, lat]); $('drawDone').disabled = drawRing.length < 3; refreshData(); }
     else if (mode === 'bld') {
       if (!v.map.getLayer('building')) { status('Einzelgebäude sind nur bei „Bebauung: Einzelgebäude“ wählbar.'); return; }
@@ -2782,18 +2898,21 @@ return maplibregl$1;
     if (drawRing.length >= 3) P.site.push(drawRing.slice());
     drawRing = []; $('drawDone').disabled = true; refreshData();
   }
-  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
-    if (mode === 'draw' && b.dataset.mode !== 'draw') finishDraw();
-    mode = b.dataset.mode;
-    document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
-    for (const kk of ['mi', 'mk']) $(kk + 'Frame').classList.toggle('drawing', mode === 'draw' || mode === 'bld');
-    $('modeHint').textContent = {
-      point: 'Klick in Makro- oder Mikrolage setzt den Projektpunkt.',
-      draw: 'Eckpunkte des Baufelds anklicken. Doppelklick oder „Baufeld schließen“ beendet die Fläche.',
-      bld: 'Gebäude anklicken, um sie farbig zu markieren. Erneuter Klick hebt die Markierung auf.',
-      pan: 'Karte verschieben, ohne etwas zu ändern.'
-    }[mode];
-  }));
+  function setMode(m) {
+    if (mode === 'draw' && m !== 'draw') finishDraw();
+    mode = m;
+    document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === m));
+    for (const kk of ['mi', 'mk']) $(kk + 'Frame').classList.toggle('drawing', m !== 'pan');
+    const T = {
+      point: 'Projektpunkt versetzen: neue Stelle in der Karte anklicken.',
+      draw: 'Baufeld zeichnen: Eckpunkte anklicken, Doppelklick schließt die Fläche.',
+      bld: 'Gebäude markieren: Gebäude anklicken, erneuter Klick hebt die Markierung auf.',
+      pan: 'Klicks in die Karte ändern nichts. Zum Bearbeiten einen Modus wählen – oder Rechtsklick in die Karte.'
+    };
+    $('modeHint').textContent = T[m];
+    modeBar('mark', m === 'pan' ? null : T[m], () => setMode('pan'));
+  }
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode === mode && mode !== 'pan' ? 'pan' : b.dataset.mode)));
   $('drawDone').onclick = finishDraw;
   $('markClear').onclick = () => { P.site = []; P.bld = []; drawRing = []; $('drawDone').disabled = true; refreshData(); };
 
@@ -2818,7 +2937,7 @@ return maplibregl$1;
       status('');
       for (const it of js) {
         const b = document.createElement('button'); b.textContent = it.display_name;
-        b.onclick = () => { setPoint(+it.lon, +it.lat); box.hidden = true; status('Projektpunkt gesetzt.'); };
+        b.onclick = () => { P.place = it.display_name; setPoint(+it.lon, +it.lat); box.hidden = true; status('Projektpunkt gesetzt.'); syncProjLine(); };
         box.appendChild(b);
       }
     } catch (e) { status('Die Suche ist nicht erreichbar. Koordinaten einfügen funktioniert immer, z. B. 48.7137, 9.0034.'); }
@@ -2836,7 +2955,7 @@ return maplibregl$1;
     P = JSON.parse(JSON.stringify(p)); drawRing = []; store.set('current', P.id); if (kzOn) { syncKzUI(); renderKz(); }
     $('projName').value = P.name || ''; $('kpiOut').value = P.kpi || ''; renderNotes(); renderPois(); renderHl(); relayout(false); refreshData();
   };
-  $('projName').addEventListener('input', () => { P.name = $('projName').value; repaint(); });
+  $('projName').addEventListener('input', () => { P.name = $('projName').value; repaint(); if (typeof syncProjLine === 'function') syncProjLine(); });
   // automatisch speichern: das aktuelle Projekt wird nach jeder Änderung in die Projektliste geschrieben
   function autosave() {
     const i = projects.findIndex(x => x.id === P.id), copy = JSON.parse(JSON.stringify(P));
@@ -2847,6 +2966,7 @@ return maplibregl$1;
     $('saveState').textContent = 'gespeichert ✓'; $('saveState').classList.remove('dirty');
   }
   $('projNew').onclick = () => {
+    setTimeout(() => showStart(true), 0);
     P = { id: 'p' + Date.now(), name: '', lon: P.lon, lat: P.lat, site: [], bld: [], ov: { center: [P.lon, P.lat], zE: P.ov.zE }, miCenter: [P.lon, P.lat], mkCenter: [P.lon, P.lat] };
     drawRing = []; autosave(); fillProjects(); renderHl(); $('projName').value = ''; $('projName').focus(); refreshData(); relayout(false);
   };
@@ -2888,7 +3008,14 @@ return maplibregl$1;
   const saveS = () => { store.set('settings-v3', S); snap(); };
 
   // ---------- Sichern / Einlesen ----------
-  $('dataExp').onclick = () => {
+  $('helpBtn').onclick = () => { $('helpDlg').hidden = false; }; $('helpClose').onclick = () => { $('helpDlg').hidden = true; };
+  $('helpDlg').addEventListener('mousedown', e => { if (e.target === $('helpDlg')) $('helpDlg').hidden = true; });
+  function backupInfo() {
+    const d = store.get('lastBackup', null), days = d ? Math.floor((Date.now() - new Date(d)) / 864e5) : null;
+    $('backupInfo').textContent = d ? 'Zuletzt gesichert am ' + new Date(d).toLocaleDateString('de-DE') + (days > 14 ? ' – eine neue Sicherung wäre gut.' : '.') : 'Noch nicht gesichert – vor größeren Änderungen empfohlen.';
+    $('backupInfo').style.color = !d || days > 14 ? '#B7791F' : '';
+  }
+  $('dataExp').onclick = () => { store.set('lastBackup', new Date().toISOString()); setTimeout(backupInfo, 0);
     const data = { app: 'gieag-lagekarten', exportiert: new Date().toISOString(),
       projects: store.get('projects', []), styles: store.get('styles', {}), settings: store.get('settings-v3', {}) };
     const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
@@ -2991,10 +3118,10 @@ return maplibregl$1;
     { grp: 'stadt', id: 'settle', name: () => 'Siedlungsflächen', eye: 'settle.on', col: 'settle.color', alpha: 'settle.alpha', keys: ['settle'],
       opt: k => k === 'ov' ? '<label class="f">Umfang<select data-s="settle.mode"><option value="shown">Um alle angezeigten Städte</option><option value="big">Nur Großstädte ab 100.000 EW</option></select></label>'
         : '<p class="hint">Bei Siedlungsflächen-Darstellung in voller Farbe, bei Einzelgebäuden aufgehellt dahinter.</p>' },
-    { grp: 'stadt', id: 'bldg', name: () => 'Gebäude', eye: 'bldg.on', col: 'bldg.color', alpha: 'bldg.alpha', only: ['mi', 'mk'], keys: ['bldg'],
+    { grp: 'stadt', id: 'bldg', inact: k => k === 'mi' && builtMode('mi') === 'flaeche' ? 'Bei diesem Maßstab als Siedlungsfläche – Einzelgebäude bis 1:50.000.' : null, name: () => 'Gebäude', eye: 'bldg.on', col: 'bldg.color', alpha: 'bldg.alpha', only: ['mi', 'mk'], keys: ['bldg'],
       opt: () => '<label class="check"><input type="checkbox" data-s="bldg.shadow"> Schlagschatten (ab 1:25.000, Länge maßstabsabhängig)</label><label class="f">Schatten-Deckkraft · <span data-out="bldg.shAlpha"></span><input type="range" data-s="bldg.shAlpha" min="5" max="60" step="5"></label>' },
     { grp: 'stadt', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', alpha: 'water.alpha', keys: ['water'], lbl: () => lblUI('water', 'Flussnamen') },
-    { grp: 'stadt', id: 'veg', name: () => 'Vegetation', eye: 'veg.on', col: 'park.color', nofarbe: true, keys: ['veg', 'wood', 'park', 'green', 'field', 'crowns'],
+    { grp: 'stadt', id: 'veg', inact: k => k !== 'ov' && ST(k).crowns.on && k === 'mi' && scaleOf('mi') > 25000 ? 'Bäume erscheinen erst ab 1:25.000.' : null, name: () => 'Vegetation', eye: 'veg.on', col: 'park.color', nofarbe: true, keys: ['veg', 'wood', 'park', 'green', 'field', 'crowns'],
       opt: k => `<label class="f">Stimmung<select data-s="veg.preset"><option value="eigen">eigene Einstellung</option><option value="baeume">Bäume mit Schatten auf zarter Fläche</option><option value="halbton">Halbtonraster</option><option value="flaeche">Grün zart (Flächen)</option><option value="schwarzplan">Schwarzplan (Punktraster grau)</option></select></label>
         <div class="vlist">
         ${vegRow('wood', 'Wald', VMODES)}
@@ -3084,9 +3211,11 @@ return maplibregl$1;
     </section>
     </div>
     <div class="pane" data-pane="stil" hidden>
+      <div class="slot" data-slot="glob"></div>
       <div class="pbar">
-        <label class="f">Preset<select data-p="sel" aria-label="Preset dieser Karte"></select></label>
-        <div class="row"><input type="text" data-p="name" aria-label="Name des Presets"><button data-p="new" style="flex:0 0 auto" title="aktuellen Stil als neues Preset anlegen">+ Neu</button><button data-p="del" style="flex:0 0 auto" title="Preset löschen">Löschen</button></div>
+        <label class="f">Vorlage<select data-p="sel" aria-label="Vorlage dieser Karte"></select></label>
+        <div class="row"><input type="text" data-p="name" aria-label="Name der Vorlage"><button data-p="new" style="flex:0 0 auto" title="aktuellen Stil als neue Vorlage speichern">Speichern unter …</button><button data-p="del" style="flex:0 0 auto" title="Vorlage löschen">Löschen</button></div>
+        <button data-p="all" title="Dieselbe Vorlage bzw. Vorlagenfamilie in Landkarte, Makro- und Mikrolage verwenden">Für alle Karten übernehmen</button>
         <p class="hint pinfo"></p>
       </div>
       <div class="layers">${GRP.map(([gid, gname]) => `<div class="lgrp">${gname}</div>` + LAYERS.filter(L => L.grp === gid && (!L.only || L.only.includes(kind))).map(layerRow).join('')).join('')}</div>
@@ -3134,8 +3263,11 @@ return maplibregl$1;
   function syncStyleUI(kind) {
     const root = $('ui_' + kind), T = ST(kind);
     const sel = root.querySelector('[data-p=sel]');
-    sel.innerHTML = Object.entries(S.presets).map(([id, pr]) => `<option value="${id}"></option>`).join('');
-    [...sel.options].forEach(o => { o.textContent = S.presets[o.value].name; });     // Namen als Text, nie als Markup
+    const fit = ([id, pr]) => id === S.use[kind] || !pr.base || pr.base === kind;
+    const own = Object.entries(S.presets).filter(e => fit(e) && !e[1].fixed), fixed = Object.entries(S.presets).filter(e => fit(e) && e[1].fixed);
+    sel.innerHTML = (fixed.length ? '<optgroup label="GIEAG-Vorlagen">' + fixed.map(([id]) => `<option value="${id}"></option>`).join('') + '</optgroup>' : '')
+      + '<optgroup label="Eigene Vorlagen">' + own.map(([id]) => `<option value="${id}"></option>`).join('') + '</optgroup>';
+    [...sel.options].forEach(o => { const p0 = S.presets[o.value]; o.textContent = p0.fixed ? (p0.famName || p0.name) : p0.name; });     // Namen als Text, nie als Markup
     sel.value = S.use[kind];
     root.querySelector('[data-p=name]').value = S.presets[S.use[kind]].name;
     const us = usersOf(S.use[kind]);
@@ -3151,7 +3283,17 @@ return maplibregl$1;
     root.querySelectorAll('[data-f]').forEach(el => { const F = S.focus[kind], key = el.dataset.f; if (el.type === 'checkbox') el.checked = !!F[key]; else el.value = key === 'r' && kind === 'ov' ? F.r / 1000 : F[key]; });
     root.querySelectorAll('[data-out]').forEach(o => { o.textContent = getP(T, o.dataset.out) + ' %'; });
     root.querySelectorAll('[data-chip]').forEach(c => { c.style.background = getP(T, c.dataset.chip); });
-    root.querySelectorAll('.layer').forEach(r => { const cb = r.querySelector('input'); r.classList.toggle('off', !cb.checked); });
+    root.querySelectorAll('.layer').forEach(r => {
+      const cb = r.querySelector('input'); r.classList.toggle('off', !cb.checked);
+      const L = LAYERS.find(x => x.id === r.dataset.layer), why = L && L.inact && cb.checked ? L.inact(kind) : null;
+      r.classList.toggle('inact', !!why); let n = r.querySelector('.lnote');
+      if (why && !n) { n = document.createElement('span'); n.className = 'lnote'; r.appendChild(n); } if (n) { n.textContent = why || ''; n.hidden = !why; }
+      const b = root.querySelector(`.board[data-board="${r.dataset.layer}"]`); if (b) { let bn = b.querySelector('.inote'); if (why && !bn) { bn = document.createElement('p'); bn.className = 'inote'; b.prepend(bn); } if (bn) { bn.textContent = why || ''; bn.hidden = !why; } }
+    });
+    // Vorlagen: GIEAG-Vorlagen sind geschützt, Liste zeigt die passenden Vorlagen dieser Karte
+    const pr = S.presets[S.use[kind]];
+    root.querySelector('[data-p=name]').disabled = !!pr.fixed; root.querySelector('[data-p=del]').disabled = !!pr.fixed;
+    root.querySelector('.pinfo').textContent = (pr.fixed ? 'GIEAG-Vorlage (geschützt) – Änderungen landen automatisch in einer eigenen Kopie. ' : '') + root.querySelector('.pinfo').textContent;
   }
   const syncAllPresets = () => KINDS.forEach(syncStyleUI);
   function afterStyle(kind, path) {
@@ -3187,6 +3329,12 @@ return maplibregl$1;
     root.querySelectorAll('.pane').forEach(x => { x.hidden = x.dataset.pane !== pn; });
     panes[kind] = pn; store.set('panes', panes);
   }
+  function guardFixed(kind) {
+    const id = S.use[kind], pr = S.presets[id]; if (!pr || !pr.fixed) return;
+    const nid = 'p' + Date.now() + kind, name = (pr.famName || pr.name) + ' · ' + KNAME[kind] + ' (eigene)';
+    S.presets[nid] = { name, base: pr.base || kind, st: JSON.parse(JSON.stringify(pr.st)) };
+    S.use[kind] = nid; status('GIEAG-Vorlagen sind geschützt – deine Änderung steht in der eigenen Kopie „' + name + '“.');
+  }
   function bindMapUI(kind) {
     const root = $('ui_' + kind);
     root.querySelectorAll('.subtabs [data-pane]').forEach(b => b.onclick = () => setPane(kind, b.dataset.pane));
@@ -3194,22 +3342,24 @@ return maplibregl$1;
     // Stil-Ebenen: Änderungen gehen in das Preset dieser Karte
     root.querySelectorAll('[data-s]').forEach(el => {
       const path = el.dataset.s;
-      if (el.classList.contains('sw')) { swatchBtn(el, () => getP(ST(kind), path), c => { setP(ST(kind), path, c); afterStyle(kind, path); }, el.closest('.layer') || el.closest('.row') || el, path === 'water.color' ? WATERPAL : null); return; }
+      if (el.classList.contains('sw')) { swatchBtn(el, () => getP(ST(kind), path), c => { guardFixed(kind); setP(ST(kind), path, c); afterStyle(kind, path); }, el.closest('.layer') || el.closest('.row') || el, path === 'water.color' ? WATERPAL : null); return; }
       if (el.type === 'range') el.oninput = () => { const o = root.querySelector(`[data-out="${path}"]`); if (o) o.textContent = el.value + ' %'; };
       el.onchange = () => {
         let v = el.type === 'checkbox' ? el.checked : (el.type === 'number' || el.type === 'range' || el.dataset.num != null) ? +el.value : el.value;
         if (el.dataset.mul) v = v * +el.dataset.mul;
-        setP(ST(kind), path, v); afterStyle(kind, path);
+        guardFixed(kind); setP(ST(kind), path, v); afterStyle(kind, path);
       };
     });
     const selLayer = id => {
       root.querySelectorAll('.layer').forEach(x => x.classList.toggle('sel', x.dataset.layer === id));
       root.querySelectorAll('.board').forEach(x => { x.hidden = x.dataset.board !== id; });
+      const ins = root.querySelector('.inspector'); if (ins && root.offsetParent) setTimeout(() => ins.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 30);
       selected[kind] = id; store.set('selLayer', selected);
     };
     root.querySelectorAll('.lname').forEach(b => b.onclick = () => selLayer(b.closest('.layer').dataset.layer));
     selLayer(root.querySelector(`.layer[data-layer="${selected[kind]}"]`) ? selected[kind] : 'txt');
     root.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => {
+      guardFixed(kind);
       const L = LAYERS.find(x => x.id === b.dataset.reset), pr = S.presets[S.use[kind]], def = stDef(pr.base || kind);
       for (const k of L.keys) pr.st[k] = JSON.parse(JSON.stringify(def[k]));
       afterStyle(kind, L.keys[0] + '.');
@@ -3223,15 +3373,20 @@ return maplibregl$1;
       const src = S.presets[S.use[kind]], id = 'p' + Date.now();
       S.presets[id] = { name: src.name + ' Kopie', base: src.base || kind, st: JSON.parse(JSON.stringify(src.st)) };
       S.use[kind] = id; saveS(); syncAllPresets(); nm.focus(); nm.select();
-      status('Neues Preset angelegt – Name oben ändern.');
+      status('Neue Vorlage angelegt – Name oben ändern.');
+    };
+    root.querySelector('[data-p=all]').onclick = () => {
+      const id = S.use[kind], fam = S.presets[id].fam;
+      for (const kk of KINDS) { const f = fam && Object.keys(S.presets).find(i => S.presets[i].fam === fam && S.presets[i].base === kk); S.use[kk] = f || id; }
+      saveS(); syncAllPresets(); relayout(); status(fam ? 'Vorlagenfamilie „' + (S.presets[id].famName || S.presets[id].name) + '“ gilt jetzt für alle Karten.' : 'Vorlage gilt jetzt für alle Karten.');
     };
     root.querySelector('[data-p=del]').onclick = () => {
       const id = S.use[kind];
-      if (Object.keys(S.presets).length < 2) { status('Das letzte Preset kann nicht gelöscht werden.'); return; }
+      if (Object.keys(S.presets).length < 2) { status('Die letzte Vorlage kann nicht gelöscht werden.'); return; }
       const name = S.presets[id].name; delete S.presets[id];
       const first = Object.keys(S.presets)[0];
       for (const kk of KINDS) if (S.use[kk] === id) S.use[kk] = first;
-      saveS(); syncAllPresets(); relayout(); status('Preset „' + name + '“ gelöscht.');
+      saveS(); syncAllPresets(); relayout(); status('Vorlage „' + name + '“ gelöscht.');
     };
     // Fokus
     root.querySelectorAll('[data-f]').forEach(el => {
@@ -3306,12 +3461,58 @@ return maplibregl$1;
   function syncBar() {
     const bp = $('barPreset'), bs = $('barScale'), sp = $(active + 'Preset'), ss = $(SCALE_ID[active]);
     if (!sp || !ss) return;
-    if (bp.dataset.k !== active) { bp.innerHTML = sp.innerHTML; bs.innerHTML = ss.innerHTML; bp.dataset.k = active; }
+    if (bp.dataset.k !== active) {
+      bp.innerHTML = sp.innerHTML; bs.innerHTML = ss.innerHTML; bp.dataset.k = active;
+      [...bp.options].forEach(o => { const full = o.textContent, m = full.match(/\(([^)]+)\)/); o.title = full; o.textContent = full.split(' · ')[0].replace(/\s*\(.*$/, '') + (m ? ' · ' + m[1].replace(/\s/g, '') : ''); });
+    }
     bp.value = sp.value; bs.value = ss.value;
   }
   $('barPreset').onchange = () => { const x = $(active + 'Preset'); x.value = $('barPreset').value; x.onchange(); };
   $('barScale').onchange = () => { const x = $(SCALE_ID[active]); x.value = $('barScale').value; x.onchange(); };
 
+  // Hintergrund-Rechner mit Aktivitätsanzeige versehen (vor der ersten Verwendung)
+  overpassQ = track('OpenStreetMap-Daten', overpassQ); fetchIso = track('Erreichbarkeit', fetchIso); computeKpi = track('Entfernungen und Fahrzeiten', computeKpi);
+  ensureDem = track('Höhendaten', ensureDem); ensureGreen = track('Grün aus Luftbild', ensureGreen); loadTrees = track('Bäume', loadTrees);
+  ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic);
+  loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
+  // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
+  const FAM_VER = 3;
+  const FAMS = {
+    schwarz: { name: 'Schwarzplan', desc: 'klassisch, grafisch, für Architektur und Wettbewerb', veg: 'schwarzplan',
+      st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#0A0A0A',
+        settle: { on: true, color: k === 'ov' ? '#D5D8DC' : '#CDD0D4' }, bldg: { on: true, color: '#1E1E1E', shadow: false },
+        mw: { color: '#6E747A' }, road: { color: '#9EA3A8' }, minor: { color: k === 'mk' ? '#AEB3B8' : '#CFD2D6' }, rail: { color: '#3C4044' },
+        water: { color: '#AEB9C3' }, border: { color: '#8E9399' }, hill: { on: false } }) },
+    investor: { name: 'Investor · institutionell', desc: 'sachlich, Erreichbarkeit und Infrastruktur im Vordergrund', veg: 'flaeche',
+      st: k => ({ font: 'inter', weight: 400, caps: true, tcol: '#1E1E1E',
+        settle: { on: true, color: k === 'ov' ? '#E3E5E8' : '#E6E8EB' }, bldg: { on: true, color: '#BFC4C9', shadow: k === 'mk', shAlpha: 20 },
+        mw: { color: '#4A4F55', w: k === 'ov' ? 0.35 : 0.7, lbl: k !== 'mk' }, road: { color: '#AEB3B8' }, minor: { color: k === 'mk' ? '#C4C7CB' : '#DADDE0' },
+        rail: { color: '#1D4278', w: k === 'ov' ? 0.25 : 0.5, st: k !== 'ov', classic: false }, water: { color: '#C4DCEF' }, hill: { on: k === 'ov', alpha: 35 },
+        wood: { color: '#DCE3CF' }, park: { color: '#E6ECDC' } }) },
+    buero: { name: 'Büro · Mietinteressent', desc: 'Anbindung und Umfeld: ÖPNV, Straßen, Nachbarschaft', veg: 'flaeche',
+      st: k => ({ font: 'source', weight: 400, caps: false, tcol: '#13315C',
+        settle: { on: true, color: '#EEF0F2' }, bldg: { on: true, color: '#D3D6DA', shadow: k === 'mk', shAlpha: 18 },
+        mw: { color: '#6E747A', w: k === 'ov' ? 0.3 : 0.6 }, road: { color: '#A3A9AE', lbl: k === 'mk' }, minor: { color: k === 'mk' ? '#BFC4C9' : '#D5D8DC' },
+        rail: { color: '#255AA8', w: k === 'ov' ? 0.25 : 0.55, st: k !== 'ov', classic: false }, water: { color: '#AFC6EA' },
+        wood: { color: '#D3DDC2' }, park: { color: '#DFE7CB' } }) },
+    wohnen: { name: 'Wohnen · Käufer', desc: 'warm und freundlich: Grün, Wasser, Nachbarschaft', veg: 'baeume',
+      st: k => ({ font: 'source', weight: 400, caps: false, tcol: '#3A3530',
+        settle: { on: true, color: '#F4EAD9' }, bldg: { on: true, color: k === 'mk' ? '#D4B994' : '#E2CCAA', shadow: k === 'mk', shAlpha: 22 },
+        mw: { color: '#B4A58E' }, road: { color: k === 'mk' ? '#D4C3A8' : '#D9CBB3', lbl: k === 'mk' }, minor: { color: k === 'mk' ? '#E2D5BF' : '#E8DDCB' },
+        rail: { color: '#8B6A47', classic: true }, water: { color: '#AFC6EA', lbl: k !== 'ov' }, border: { color: '#C2A27A' } }) }
+  };
+  function ensureFamilies() {
+    for (const [fam, F] of Object.entries(FAMS)) for (const kk of KINDS) {
+      const id = 'gieag_' + fam + '_' + kk;
+      if (S.presets[id] && S.presets[id].ver === FAM_VER) continue;
+      const st = dm(stDef(kk), F.st(kk));
+      const V = VEG_PRESETS[F.veg] ? VEG_PRESETS[F.veg](kk) : {}; for (const [key, o] of Object.entries(V)) st[key] = Object.assign({}, st[key], o);
+      st.veg = { on: true, preset: F.veg };
+      S.presets[id] = { name: 'GIEAG · ' + F.name + ' · ' + KNAME[kk], famName: 'GIEAG · ' + F.name, fam, base: kk, fixed: true, ver: FAM_VER, desc: F.desc, st };
+    }
+    saveS();
+  }
+  ensureFamilies();
   for (const kk of KINDS) $('ui_' + kk).innerHTML = mapUI(kk);
   document.querySelectorAll('select.preset').forEach(sel => { for (const [v, t] of PRESETS) { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); } });
   for (const kind of KINDS) {
@@ -3370,6 +3571,7 @@ return maplibregl$1;
   // ---------- Beschriftungen ----------
   function setNoteMode(on) {
     noteMode = on ? active : null;
+    modeBar('note', noteMode ? 'Text setzen: Stelle in der Karte anklicken.' : null, () => setNoteMode(false));
     $('noteAdd').classList.toggle('on', !!noteMode);
     $('noteHint').textContent = noteMode ? 'Jetzt die Stelle in der ' + KNAME[noteMode] + ' anklicken.'
       : '„+ Text setzen“ wählen, dann die Stelle in der Karte anklicken. Der Text lässt sich mit der Maus verschieben; ab 3 mm Abstand erscheint eine feine Hinweislinie.';
@@ -3860,6 +4062,7 @@ return maplibregl$1;
   const hlMsg = t => { $('hlHint').textContent = t || HL_HINT; };
   function setHlPick(on) {
     hlPick = !!on; $('hlPick').classList.toggle('on', hlPick);
+    modeBar('hl', hlPick ? 'Hervorheben: Straße, Gleis oder Gebäude anklicken.' : null, () => setHlPick(false));
     $('hlPick').textContent = hlPick ? 'Auswahl beenden (Esc)' : '+ In der Karte anklicken';
     if (on) { setPoiPlace(null); if (noteMode) setNoteMode(false); }
     hlMsg(hlPick ? 'Jetzt Straße, Gleis oder Gebäude in der ' + KNAME[active] + ' anklicken.' : '');
@@ -4057,6 +4260,7 @@ return maplibregl$1;
   // ---------- Eigene POIs ----------
   function setPoiPlace(id) {
     poiPlace = id;
+    modeBar('poi', id ? 'POI platzieren: Stelle in der Karte anklicken.' : null, () => setPoiPlace(null));
     $('poiHint').textContent = id ? 'Jetzt die Stelle in der aktiven Karte anklicken.'
       : 'Neue POIs erscheinen in der Mitte der aktiven Karte. Punkt mit der Maus an die richtige Stelle ziehen, den Namen ebenso. Häkchen blendet ein und aus, ▾ öffnet die Gestaltung. Mit „//“ beginnt eine neue Zeile.';
   }
@@ -4108,7 +4312,8 @@ return maplibregl$1;
   document.addEventListener('mousedown', e => { const pal = document.querySelector('.pal'); if (pal && !pal.contains(e.target) && !e.target.classList.contains('sw')) pal.remove(); });
 
   // ---------- Export ----------
-  function status(t) { $('status').textContent = t; }
+  let statusT = 0;
+  function status(t, keep) { $('status').textContent = t || ''; clearTimeout(statusT); if (t && !keep) statusT = setTimeout(() => { $('status').textContent = ''; }, 7000); }
   async function exportPng(kind) {
     const f = fmt(kind), ec = exportCss(kind), pr = S.dpi / DPI[kind], k = DPI[kind] / 25.4;
     const Wd = Math.round(ec.w * pr), Hd = Math.round(ec.h * pr);
@@ -4228,6 +4433,7 @@ return maplibregl$1;
   }
 
   // ---------- Reiter: immer nur eine Karte offen; die Seitenleiste klappt die passende Gruppe auf ----------
+  $('shared').appendChild($('sec_glob'));
   const groupState = store.get('groups', {});
   const groups = [...document.querySelectorAll('aside .group')].map(gh => {
     const body = document.createElement('div'); body.className = 'gbody';
@@ -4247,19 +4453,28 @@ return maplibregl$1;
   // Reiter „Kennzahlen“: eigene Bühne, die zuletzt aktive Karte bleibt im Hintergrund aktiv
   let kzOn = false;
   function showKz() {
+    endModes(); foldProject();
     kzOn = true; document.body.classList.add('kzmode'); store.set('tab', 'kz');
     document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === 'kz')));
     document.querySelectorAll('.stage .panel').forEach(p => { p.hidden = p.dataset.kind !== 'kz'; });
     for (const g of groups) if (g.tabs.length) { const on = g.tabs.includes('kz'); g.gh.hidden = !on; if (on) g.set(!!groupState['map']); else g.body.hidden = true; g.gh.classList.toggle('act', on); }
     syncKzUI(); renderKz();
   }
+  const projGroup = () => groups.find(g => !g.tabs.length);
+  function foldProject() { const g = projGroup(); if (g && $('startCard').hidden) g.set(true); syncProjLine(); }
+  function syncProjLine() {
+    $('plName').textContent = (P.name || 'Neues Projekt').replace(/\s*\n\s*/g, ' ');
+    $('plSub').textContent = (P.place ? P.place.split(',').slice(0, 2).join(',') : P.lat.toFixed(4) + ', ' + P.lon.toFixed(4)) + ' · Projekt öffnen';
+  }
+  $('projLine').onclick = () => { const g = projGroup(); if (!g) return; const open = g.gh.classList.contains('closed'); g.set(!open); if (open) document.querySelector('aside').scrollTop = 0; };
   function setTab(kind) {
+    endModes(); foldProject();
     kzOn = false; document.body.classList.remove('kzmode');
     active = kind; store.set('tab', kind);
     document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === kind)));
     document.querySelectorAll('.stage .panel').forEach(p => { p.hidden = p.dataset.kind !== kind; });
     for (const g of groups) if (g.tabs.length) { const on = g.tabs.includes(kind); g.gh.hidden = !on; if (on) g.set(!!groupState['map']); else g.body.hidden = true; g.gh.classList.toggle('act', on); }
-    const SHARED = { mark: ['mi', 'mk'], funk: ['mi', 'mk'], zg: ['mi', 'mk'], hl: KINDS, poi: KINDS, note: KINDS };
+    const SHARED = { glob: KINDS, mark: ['mi', 'mk'], funk: ['mi', 'mk'], zg: ['mi', 'mk'], hl: KINDS, poi: KINDS, note: KINDS };
     for (const [name, ks] of Object.entries(SHARED)) {
       const sec = $('sec_' + name), slot = ks.includes(kind) && $('ui_' + kind).querySelector(`[data-slot=${name}]`);
       (slot || $('shared')).appendChild(sec);
@@ -4344,7 +4559,10 @@ return maplibregl$1;
     }
     if (e.altKey) return;
     if (e.key === 'Escape' && !$('expDlg').hidden) { $('expDlg').hidden = true; return; }
-    if (e.key === 'Escape' && hlPick) { setHlPick(false); return; }
+    if (e.key === 'Escape' && !$('helpDlg').hidden) { $('helpDlg').hidden = true; return; }
+    if (e.key === 'Escape' && closeCtx()) return;
+    if (e.key === 'Escape' && !$('modeBar').hidden) { endModes(); return; }
+    if (e.key === '?') { $('helpDlg').hidden = false; return; }
     if (!$('expDlg').hidden) return;
     if (['1', '2', '3'].includes(e.key)) { const kk = KINDS[+e.key - 1]; if (kk !== active || kzOn) setTab(kk); }
     else if (e.key === '4') { if (!kzOn) showKz(); }
@@ -4367,8 +4585,38 @@ return maplibregl$1;
     });
     rz.addEventListener('dblclick', () => { store.set('sidebarW', setW(320)); relayout(); });
   }
+  // Geführter Start: Ort, Titel, Zielgruppe
+  function showStart(on) {
+    $('startCard').hidden = !on;
+    if (on) { $('gsQ').value = ''; $('gsName').value = P.name || ''; $('gsHint').textContent = 'Adresse eingeben und „Suchen“ – dann einen Treffer wählen.'; fillFam(); setTimeout(() => $('gsQ').focus(), 50); }
+  }
+  function fillFam() {
+    const fams = {}; for (const pr of Object.values(S.presets)) if (pr.fam && !fams[pr.fam]) fams[pr.fam] = pr.famName || pr.name;
+    $('gsFam').innerHTML = '<option value="">Vorlagen beibehalten</option>' + Object.entries(fams).map(([f, n]) => `<option value="${f}">${esc(n)}</option>`).join('');
+  }
+  $('gsGo').onclick = async () => {
+    const q = $('gsQ').value.trim(); if (!q) return;
+    const c = parseCoords(q); if (c) { setPoint(c[0], c[1]); $('gsHint').textContent = '✓ Projektpunkt gesetzt.'; return; }
+    $('gsHint').textContent = 'Suche …';
+    try {
+      const js = await (await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=de,at,ch&accept-language=de&q=' + encodeURIComponent(q))).json();
+      const h = $('gsHint'); h.innerHTML = js.length ? '' : 'Nichts gefunden – Straße und Ort oder Koordinaten versuchen.';
+      for (const it of js) { const b = document.createElement('button'); b.textContent = it.display_name.split(',').slice(0, 3).join(','); b.style.cssText = 'display:block;width:100%;text-align:left;margin-top:4px;white-space:normal';
+        b.onclick = () => { P.place = it.display_name; setPoint(+it.lon, +it.lat); h.textContent = '✓ ' + it.display_name.split(',').slice(0, 2).join(','); syncProjLine(); }; h.appendChild(b); }
+    } catch (e) { $('gsHint').textContent = 'Suche nicht erreichbar – Koordinaten eingeben, z. B. 48.7137, 9.0034.'; }
+  };
+  $('gsQ').addEventListener('keydown', e => { if (e.key === 'Enter') $('gsGo').click(); });
+  $('gsName').addEventListener('input', () => { P.name = $('gsName').value; $('projName').value = P.name; syncProjLine(); repaint(); });
+  $('gsLater').onclick = () => { P.started = true; showStart(false); snap(); };
+  $('gsDone').onclick = () => {
+    const fam = $('gsFam').value;
+    if (fam) for (const kk of KINDS) { const id = Object.keys(S.presets).find(i => S.presets[i].fam === fam && S.presets[i].base === kk); if (id) S.use[kk] = id; }
+    P.started = true; showStart(false); saveS(); syncAllPresets(); snap(); setTab('mi');
+    status('Projekt angelegt. Feinheiten unter Stil und Mapping – alles wird automatisch gespeichert.');
+  };
   const wasKz = store.get('tab') === 'kz';
   setTab(active); if (wasKz) showKz();
+  backupInfo(); syncProjLine(); if (!P.name && !P.started) showStart(true);
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => relayout(), 200); });
   loadCities().then(src => { if (src === 'osm') status('Städteliste aktualisiert: ' + CITIES.length + ' Städte aus OpenStreetMap.'); repaint(); })
     .catch(() => { status('OSM-Städteabfrage gerade nicht erreichbar – es wird die eingebaute Städteliste verwendet (' + CITIES.length + ' Städte).'); repaint(); });
