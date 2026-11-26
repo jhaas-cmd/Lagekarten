@@ -415,7 +415,7 @@ return maplibregl$1;
       <div id="hlChoice" class="hlchoice" hidden></div>
       <div id="hlList" class="pois"></div>
       <p class="hint" id="hlHint"></p>
-      <p class="hint">Straße anklicken: die ganze Straße wird markiert. Gleis anklicken: die dort fahrenden Linien stehen zur Wahl. Gebäude anklicken: der Baukörper wird markiert. Die Beschriftung lässt sich mit der Maus verschieben; ▾ öffnet Farbe, Strichstärke, Deckkraft und Schild.</p>
+      <p class="hint">Straße: genau auf die Straßenlinie klicken, die ganze Straße wird markiert. Gleis: anklicken, die dort fahrenden Linien stehen zur Wahl. Gebäude: in die Gebäudefläche klicken, der Baukörper wird markiert. Die Beschriftung lässt sich mit der Maus verschieben; ▾ öffnet Farbe, Strichstärke, Deckkraft und Schild.</p>
     </section>
     <section id="sec_poi">
       <h2>Eigene POIs</h2>
@@ -3063,20 +3063,21 @@ return maplibregl$1;
   // Klick in die Karte: Gleis → Linienauswahl, Straße → ganze Straße, Gebäude → Baukörper
   async function pickHl(v, e) {
     const { lng, lat } = e.lngLat, pt = e.point, m = v.map;
-    const near = r => { try { return m.queryRenderedFeatures([[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]); } catch (x) { return []; } };
+    const near = r => { try { return r ? m.queryRenderedFeatures([[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]) : m.queryRenderedFeatures([pt.x, pt.y]); } catch (x) { return []; } };
     const isRail = f => f.sourceLayer === 'transportation' && /^(rail|transit)$/.test(f.properties.class);
     const isRoad = f => f.sourceLayer === 'transportation' && !isRail(f) && !/^(ferry|aerialway)$/.test(f.properties.class);
     const isBld = f => f.sourceLayer === 'building';
-    const r6 = near(6), r0 = near(0);
-    let what = r6.some(isRail) ? 'rail' : r6.some(isRoad) ? 'road' : r0.some(isBld) ? 'bld' : null;
-    if (!what) { const r14 = near(14); what = r14.some(isRail) ? 'rail' : r14.some(isRoad) ? 'road' : null; }
+    const r3 = near(3), r0 = near(0);
+    let what = r3.some(isRail) ? 'rail' : r3.some(isRoad) ? 'road' : r0.some(isBld) ? 'bld' : null;
+    if (!what) { const r12 = near(12); what = r12.some(isRail) ? 'rail' : r12.some(isRoad) ? 'road' : null; }
     try {
       if (what === 'bld' || !what) {
         const f = r0.find(isBld);
         if (f) { const gm = f.geometry; addHl({ kind: 'gebaeude', name: 'Gebäude', lbl: '', polys: gm.type === 'Polygon' ? [gm.coordinates] : gm.coordinates, w: 0.25, alpha: 100, lst: 'text', at: [lng, lat], dx: 3, dy: -3 }); return; }
         hlMsg('Suche Gebäude …');
-        const els = await overpassQ(`[out:json][timeout:25];is_in(${lat},${lng})->.a;way(pivot.a)["building"];out geom;`);
-        const w = els.find(x => x.type === 'way');
+        const els = (await overpassQ(`[out:json][timeout:25];way(around:40,${lat},${lng})["building"];out tags geom;`)).filter(x => x.type === 'way' && x.geometry);
+        const inside = g => { let c = false; for (let i = 0, j = g.length - 1; i < g.length; j = i++) { const [xi, yi] = g[i], [xj, yj] = g[j]; if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) c = !c; } return c; };
+        const w = els.find(x => inside(geomOf(x))) || els.map(x => ({ x, d: distTo(geomOf(x), lng, lat) })).filter(o => o.d < 8).sort((a, b) => a.d - b.d).map(o => o.x)[0];
         if (w) { addHl({ kind: 'gebaeude', name: (w.tags && w.tags.name) || 'Gebäude', lbl: '', polys: [[geomOf(w)]], w: 0.25, alpha: 100, lst: 'text', at: [lng, lat], dx: 3, dy: -3 }); return; }
         if (!what) { hlMsg('Hier liegt weder Straße noch Gleis noch Gebäude. Bitte genauer auf die Linie bzw. Fläche klicken.'); return; }
       }
@@ -3101,10 +3102,11 @@ return maplibregl$1;
       }
       // Straße: nächstgelegene Straße, dann alle zusammenhängenden Abschnitte gleichen Namens
       hlMsg('Suche Straße …');
-      const els = await overpassQ(`[out:json][timeout:25];way(around:25,${lat},${lng})["highway"];out tags geom;`);
+      const els = await overpassQ(`[out:json][timeout:25];way(around:30,${lat},${lng})["highway"]["highway"!~"^(footway|cycleway|path|steps|corridor|elevator|platform|bus_stop|construction|proposed|bridleway)$"]["area"!="yes"];out tags geom;`);
       const ws = els.filter(x => x.type === 'way' && x.geometry);
       if (!ws.length) { hlMsg('Hier wurde keine Straße gefunden. Bitte genauer auf die Straße klicken.'); return; }
-      const w0 = ws.map(w => ({ w, d: distTo(geomOf(w), lng, lat) })).sort((a, b) => a.d - b.d)[0].w, nm = w0.tags && w0.tags.name;
+      const pen = w => (w.tags && w.tags.name ? 0 : 12) + (/^(service|track)$/.test(w.tags && w.tags.highway) ? 8 : 0);
+      const w0 = ws.map(w => ({ w, d: distTo(geomOf(w), lng, lat) + pen(w) })).sort((a, b) => a.d - b.d)[0].w, nm = w0.tags && w0.tags.name;
       let lines = [geomOf(w0)];
       if (nm) {
         hlMsg('Lade „' + nm + '“ …');
