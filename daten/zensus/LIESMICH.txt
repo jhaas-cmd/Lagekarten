@@ -1,0 +1,6 @@
+Zensus 2022 (und Einwohner 2011) im 100-m-Raster, aufbereitet in Kacheln zu 10 x 10 km (EPSG:3035, Dateiname = x_y in 10-km-Einheiten).
+Quelle: Statistische Ämter des Bundes und der Länder, Zensus 2022 / Zensus 2011; Gitter © GeoBasis-DE / BKG; Datenlizenz Deutschland – Namensnennung – 2.0.
+Aufbereitung über das Datenrepository z22data (github.com/jslth/z22data).
+Spalten: i = Zelle (Zeile*100+Spalte), p = Einwohner 2022, q = Einwohner 2011, r = Nettokaltmiete €/m² x100, u = Anteil unter 18 % x10, o = Anteil ab 65 % x10,
+a = Durchschnittsalter x10, h = Haushaltsgröße x100, n = Haushalte, d = Wohnungen, v = marktaktiver Leerstand % x10, e = Eigentümerquote % x10,
+s = Wohnfläche je Einwohner m² x10, b1..b8 = Gebäude nach Baujahr (vor 1919, 1919–48, 1949–78, 1979–90, 1991–2000, 2001–10, 2011–19, ab 2020). -1 = kein Wert.
