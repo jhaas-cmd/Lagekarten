@@ -3943,7 +3943,7 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 13;
+  const FAM_VER = 14;
   const FAMS = {
     // Drei GIEAG-Vorlagen als Reihe vom Abstrakten zum Bildhaften; Julius' Feintuning kommt später als tuned:{ov,mi,mk} hinzu
     abstrakt: { name: '1 · Abstrakt', desc: 'Schema wie ein Netzplan: weißes Blatt, nur Hauptachsen in einer Farbe, keine Vegetation, kaum Schrift – Lagebeziehungen, Radien und Fahrzeiten (Investor, Büro, Logistik)', veg: 'eigen',
@@ -3957,7 +3957,9 @@ return maplibregl$1;
         rail: { color: '#8A94A6', w: k === 'ov' ? 0.2 : 0.35, classic: false, st: false },
         water: { color: '#DCE4ED', inner: 0, lbl: false, lake: false, lStream: false },
         border: { color: '#C3C9D1', dash: 'solid' }, hill: { on: false }, contour: { on: false },
-        wood: { on: false }, park: { on: false }, field: { on: false }, green: { on: false }, crowns: { on: false } }) },
+        wood: { on: false }, park: { on: false }, field: { on: false }, green: { on: false }, crowns: { on: false } }),
+      // Feintuning Julius, 27.11.2026 (Export „ATLAS_Vorlagen_2026-11-27“)
+      tuned: {"ov": {"ct": {"small": {"on": true}}, "north": {"on": true}, "scalebar": {"on": true}, "cities": {"min": 20000}, "settle": {"color": "#A3A9AE"}}, "mi": {"ptitle": {"lines": "zwei"}, "ct": {"mid": {"col": "#1E1E1E"}}, "cities": {"on": true}, "settle": {"color": "#A3A9AE"}, "mw": {"w": 0.7}, "road": {"w": 0.15}, "rail": {"color": "#1E1E1E", "w": 0.25}, "water": {"on": false, "color": "#8FB8DE"}, "veg": {"on": false}}, "mk": {"font": "aptos", "weight": 300, "ptitle": {"lines": "zwei"}, "bldg": {"color": "#C4C7CB"}, "rail": {"color": "#3C4044", "w": 0.15}}} },
     diagramm: { name: '2 · Diagrammatisch', desc: 'Schwarzplan-Denken in Graustufen: Gebäude als dunkle Körnung, Straßen hell, Grün als Punktraster, eigenes Grundstück in Signalfarbe (Städtebau, Gemeinde, Wettbewerb)', veg: 'schwarzplan',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#1E1E1E', hi: '#F0642D', north: { color: '#1E1E1E' },
         ct: { small: { on: k !== 'ov' } }, cities: k === 'ov' ? { on: true, min: 50000 } : {},
