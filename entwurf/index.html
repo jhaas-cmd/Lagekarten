@@ -2510,14 +2510,14 @@ return maplibregl$1;
   // Overpass: Server gestaffelt parallel (nächster startet nach 2,5 s oder sofort bei Fehler), schnellste Antwort gewinnt;
   // gleiche Abfragen laufen nur einmal, Ergebnisse bleiben 20 Minuten im Speicher; der zuletzt schnellste Server kommt zuerst
   const OVQ = new Map(); let ovBest = 0;
-  function overpassQ(q) {
+  function overpassQ(q, ok) {
     const hit = OVQ.get(q);
     if (hit && (hit.p || Date.now() - hit.t < 20 * 60e3)) return hit.p || Promise.resolve(hit.v);
-    const p = overpassRace(q).then(v => { OVQ.set(q, { v, t: Date.now() }); if (OVQ.size > 60) OVQ.delete(OVQ.keys().next().value); return v; },
+    const p = overpassRace(q, ok).then(v => { OVQ.set(q, { v, t: Date.now() }); if (OVQ.size > 60) OVQ.delete(OVQ.keys().next().value); return v; },
       e => { OVQ.delete(q); throw e; });
     OVQ.set(q, { p }); return p;
   }
-  function overpassRace(q) {
+  function overpassRace(q, ok) {
     const order = MIRRORS.map((_, i) => (i + ovBest) % MIRRORS.length), ctls = [];
     return new Promise((res, rej) => {
       let next = 0, open = 0, done = false, last, timer;
@@ -2531,6 +2531,7 @@ return maplibregl$1;
             if (!r.ok) throw new Error(url + ' ' + r.status);
             const js = await r.json();
             if (js.remark && /timed out|out of memory|rate_limited/i.test(js.remark)) throw new Error(js.remark);
+            if (ok && !ok(js.elements || [])) throw new Error(url + ' ohne Ergebnis');
             if (done) return; done = true; ovBest = i; clearTimeout(timer); ctls.forEach(c => c !== ctl && c.abort()); res(js.elements || []);
           })
           .catch(e => { if (!done && e.name !== 'AbortError') last = e; else if (!done) last = last || new Error('Zeitüberschreitung'); })
@@ -4172,18 +4173,56 @@ return maplibregl$1;
     for (const k in W) out[k] = A.w[k][1] ? A.w[k][0] / A.w[k][1] : null;
     return out;
   }
-  // Stadt- bzw. Gemeindegebiet am Projektpunkt: Grenze aus OpenStreetMap, als Zeilen-Intervalle im 100-m-Raster
-  async function cityArea(lon, lat) {
-    const els = await overpassQ(`[out:json][timeout:60];is_in(${lat.toFixed(5)},${lon.toFixed(5)})->.a;rel(pivot.a)["boundary"="administrative"]["admin_level"~"^(6|8)$"];out tags geom;`);
+  // Stadt- bzw. Gemeindegebiet am Projektpunkt. Grenze aus drei Quellen nacheinander, die erste brauchbare zählt:
+  // 1) Nominatim (Gemeindefläche direkt als Umriss), 2) Overpass (nur Server mit Flächendaten), 3) Regionalatlas (amtliche Gemeindegrenze)
+  // Ergebnis: Linienzüge [[lon,lat], …]; gerasterte Prüfung je 100-m-Zeile (gerade/ungerade-Regel, Löcher inklusive)
+  const geoRings = g => !g ? [] : g.type === 'Polygon' ? g.coordinates : g.type === 'MultiPolygon' ? g.coordinates.flat() : [];
+  async function cityNominatim(lon, lat) {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&polygon_geojson=1&polygon_threshold=0.0002&accept-language=de&lat=${lat}&lon=${lon}`);
+    if (!r.ok) throw new Error('Nominatim ' + r.status);
+    const js = await r.json(), lines = geoRings(js.geojson);
+    if (!lines.length) throw new Error('Nominatim ohne Umriss');
+    const at = js.addresstype || js.type || '';
+    if (/^(state|county|country|region|state_district)$/.test(at)) throw new Error('Nominatim: nur ' + at);
+    return { lines, name: js.name || (js.address || {}).city || (js.address || {}).town || 'Gemeinde',
+      kind: /^(city|town|borough)$/.test(at) ? 'Stadt' : 'Gemeinde', src: 'OpenStreetMap (Nominatim)' };
+  }
+  async function cityOverpass(lon, lat) {
+    const has = els => els.some(e => e.type === 'relation' && e.members && e.tags && /^(6|8)$/.test(e.tags.admin_level));
+    const els = await overpassQ(`[out:json][timeout:60];is_in(${lat.toFixed(5)},${lon.toFixed(5)})->.a;rel(pivot.a)["boundary"="administrative"]["admin_level"~"^(6|8)$"];out tags geom;`, has);
     const rels = els.filter(e => e.type === 'relation' && e.members);
     const rel = rels.find(e => e.tags.admin_level === '8') || rels.find(e => e.tags.admin_level === '6');
-    if (!rel) throw new Error('keine Gemeindegrenze gefunden');
+    if (!rel) throw new Error('Overpass ohne Gemeindegrenze');
+    const lines = rel.members.filter(m => m.type === 'way' && m.geometry && (!m.role || /^(outer|inner)$/.test(m.role))).map(m => m.geometry.map(p => [p.lon, p.lat]));
+    const t = rel.tags, lvl = t.admin_level, name = t['name:de'] || t.name || 'Gemeinde';
+    return { lines, name, kind: lvl === '8' ? (/stadt/i.test(t['de:place'] || '') || /city|town/.test(t.place || '') ? 'Stadt' : 'Gemeinde') : (/kreis/i.test(name) ? 'Landkreis' : 'Stadt'), src: 'OpenStreetMap (Overpass)' };
+  }
+  async function cityRA(lon, lat) {
+    const layer = { source: { dataSource: { geometryType: 'esriGeometryPolygon', workspaceId: 'gdb', oidFields: 'id', spatialReference: { wkid: 25832 }, type: 'queryTable',
+      query: 'SELECT * FROM verwaltungsgrenzen_gesamt WHERE typ = 5' }, type: 'dataLayer' } };
+    const q = new URLSearchParams({ layer: JSON.stringify(layer), geometry: JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } }), geometryType: 'esriGeometryPoint',
+      inSR: '4326', outSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: '*', returnGeometry: 'true', maxAllowableOffset: '0.0002', f: 'json' });
+    const r = await fetch(RA_URL + '?' + q.toString()); if (!r.ok) throw new Error('Regionalatlas ' + r.status);
+    const js = await r.json(); if (js.error) throw new Error(js.error.message || 'Regionalatlas');
+    const get = (a, key) => { const k = Object.keys(a).find(x => x.toLowerCase() === key || x.toLowerCase().endsWith('.' + key)); return k ? a[k] : undefined; };
+    let best = null;
+    for (const f of js.features || []) { const j = +(get(f.attributes || {}, 'jahr') || 0); if (f.geometry && f.geometry.rings && (!best || j > best.j)) best = { f, j }; }
+    if (!best) throw new Error('Regionalatlas ohne Gemeinde');
+    const nm = get(best.f.attributes, 'gen') || get(best.f.attributes, 'name') || 'Gemeinde', bez = get(best.f.attributes, 'bez') || '';
+    return { lines: best.f.geometry.rings, name: nm, kind: /stadt/i.test(bez) ? 'Stadt' : 'Gemeinde', src: 'Regionalatlas (amtliche Grenze)' };
+  }
+  async function cityArea(lon, lat) {
+    const errs = []; let G = null;
+    for (const fn of [cityNominatim, cityOverpass, cityRA]) {
+      try { G = await fn(lon, lat); if (G.lines.reduce((n, l) => n + l.length, 0) >= 4) break; G = null; errs.push(fn.name + ': zu wenig Punkte'); }
+      catch (e) { errs.push(e.message); console.warn('Gemeindegrenze', fn.name, e.message); }
+    }
+    if (!G) { console.warn('Gemeindegrenze: alle Quellen ohne Ergebnis', errs); throw new Error('keine Gemeindegrenze gefunden – Dienste gerade nicht erreichbar'); }
     const segs = []; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const m of rel.members) {
-      if (m.type !== 'way' || !m.geometry || (m.role && !/^(outer|inner)$/.test(m.role))) continue;
+    for (const line of G.lines) {
       let prev = null;
-      for (const p of m.geometry) {
-        const q = laea(p.lon, p.lat);
+      for (const p of line) {
+        const q = laea(p[0], p[1]);
         if (prev) segs.push([prev[0], prev[1], q[0], q[1]]);
         prev = q; x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]);
       }
@@ -4206,9 +4245,9 @@ return maplibregl$1;
       const xs = rows.get(Math.round((y - 50) / 100)); if (!xs) return false;
       let n = 0; for (const v of xs) { if (v > x) break; n++; } return n % 2 === 1;
     };
-    const t = rel.tags, lvl = t.admin_level;
-    const name = t['name:de'] || t.name || 'Gemeinde';
-    return { name, lvl, kind: lvl === '8' ? (/stadt/i.test(t['de:place'] || '') || /city|town/.test(t.place || '') ? 'Stadt' : 'Gemeinde') : (/kreis/i.test(name) ? 'Landkreis' : 'Stadt'), bb: [x0, y0, x1, y1], test, km2 };
+    if (km2 < 0.2) throw new Error('Gemeindefläche unplausibel');
+    if (!test(...laea(lon, lat))) console.warn('Gemeindegrenze: Projektpunkt liegt nicht innerhalb', G.src);
+    return { name: G.name, kind: G.kind, src: G.src, bb: [x0, y0, x1, y1], test, km2 };
   }
   // Infrastruktur im Umgriff: Anzahl im Radius, sonst Entfernung zur nächsten; good/ok = Schwellen in Metern für die Einschätzung
   const INFRA = [
@@ -4442,7 +4481,7 @@ return maplibregl$1;
       const A = await cityArea(P.lon, P.lat);
       const s = await zSum(A.bb, A.test, A.km2);
       if (P.kz !== Z) return;
-      Z.city = { name: A.name, kind: A.kind, s, at: Date.now() };
+      Z.city = { name: A.name, kind: A.kind, src: A.src, s, at: Date.now() };
     } catch (e) { console.warn('Stadtvergleich', e.message); if (P.kz === Z) Z.city = { err: e.message }; }
     renderKz(); syncKzUI(); snap();
   }
