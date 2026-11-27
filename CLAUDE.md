@@ -176,3 +176,7 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 ## Aufgeräumt (27.11.2026)
 - `FAMS` enthält nur noch `abstrakt`, `diagramm`, `karto` (+ `atlas` ausgeblendet für die Dossier-Karte); alle übrigen Familien werden nach der Definition gelöscht (`karto.st` = früheres `pastell.st`).
 - Einmaliges Aufräumen beim Laden (`S.presetClean1`): Sicherung aller Presets in store `presetsBackup1`, Karten mit entfallendem Stil vorher als `mein_karto_*` gesichert, danach bleiben nur `gieag_*`/`mein_*` der verbliebenen Familien.
+## Schonender Umgang mit OSM-Diensten, Mieten nach Assetklasse (27.11.2026)
+- `DBC` = Zwischenspeicher in IndexedDB (`atlas-cache`, Einträge {t, v}, `prune(90)` beim Start). `nomJson(url, days)`: alle Nominatim-Abfragen über eine Warteschlange (≥ 1,1 s Abstand), Ergebnis gemerkt (Suche 30 Tage, Bundesland 365, Gemeindegrenze 180); bei 429/403/509 zehn Minuten Pause mit Hinweis. `overpassQ`: zusätzlich 24 h dauerhaft gemerkt (`'ovp:' + q`); `overpassRace` fragt den nächsten Server erst nach 7 s (vorher 2,5 s).
+- Mieten: Zensus-Zeile nur noch bei Wohnen (Anzeige „Wohnmiete Bestand“, Quelle „alle laufenden Mietverträge – keine Marktmiete“). Neue Zeile „Marktmiete <Assetklasse>“ (`KZK` mit `mm: true`) aus manueller Eingabe je Assetklasse `P.mm[asset] = {v, v2, art, d, src, t}` (`MMART`, `mmSync`, `mmSet`, Felder `#mmV/#mmV2/#mmA/#mmD/#mmS/#mmT`); Gruppe `miete` jetzt auch bei Light Industrial und Logistik.
+- Offen: Angebotsmieten Wohnen je Kreis aus BBSR/INKAR (frei nutzbar) als Datei einbauen.

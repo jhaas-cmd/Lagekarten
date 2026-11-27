@@ -557,6 +557,13 @@ return maplibregl$1;
         <label class="f">Radius um den Projektpunkt<select id="kzR"><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option><option value="3000">3 km</option><option value="5000">5 km</option><option value="10000">10 km</option><option value="20000">20 km</option></select></label>
         <label class="cb"><input type="checkbox" id="kzShowR"> Radius in Makro- und Mikrolage einzeichnen</label>
         <button id="kzGo" class="primary">Neu berechnen</button>
+        <div class="tier"><b>Marktmiete</b> <span class="hint" id="mmFor"></span>
+          <div class="row"><label class="f">€/m² von<input type="number" id="mmV" min="0" step="0.5"></label><label class="f">bis<input type="number" id="mmV2" min="0" step="0.5"></label></div>
+          <div class="row"><label class="f">Art<select id="mmA"><option value="neu">Neuvermietung Ø</option><option value="erst">Neubau Erstbezug</option><option value="spitze">Spitzenmiete</option><option value="spanne">Marktspanne</option><option value="spiegel">Mietspiegel</option></select></label>
+            <label class="f">Stand<input type="text" id="mmD" placeholder="Q3/2026"></label></div>
+          <label class="f">Quelle<input type="text" id="mmS" placeholder="z. B. BNP Paribas RE, Marktbericht Q3/2026"></label>
+          <label class="f">oder Freitext<input type="text" id="mmT" placeholder="z. B. Marktmiete wird über Makler eingeholt"></label>
+          <p class="hint">Gilt nur für die oben gewählte Assetklasse – je Assetklasse ein eigener Wert. Für Wohnen zeigt ATLAS zusätzlich die Zensus-Bestandsmiete (alle laufenden Verträge, daher niedriger als der Markt). Frei abrufbare Marktmieten für Büro, Light Industrial und Logistik gibt es nicht; Quelle bitte angeben.</p></div>
         <div class="tier"><b>Bodenrichtwert</b>
           <div class="row"><label class="f">€/m²<input type="number" id="brwV" min="0" step="10"></label><label class="f">Stichtag<input type="text" id="brwD" placeholder="01.01.2024"></label></div>
           <div class="row"><label class="f">Nutzung<select id="brwA"><option value="W">Wohnen</option><option value="M">gemischt</option><option value="G">Gewerbe</option><option value="S">Sonstiges</option></select></label>
@@ -1085,13 +1092,42 @@ return maplibregl$1;
     store.set('photoL', photoL); photoBusy = false;
     relayout(); ensureGreen(active);
   }
+  // ---------- Schonender Umgang mit den OpenStreetMap-Diensten ----------
+  // Dauerhafter Zwischenspeicher im Browser (IndexedDB, unabhängig von den Einstellungen im localStorage)
+  const DBC = (() => {
+    let dbp;
+    const open = () => dbp || (dbp = new Promise((res, rej) => { try { const r = indexedDB.open('atlas-cache', 1); r.onupgradeneeded = () => r.result.createObjectStore('c'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }));
+    const get = async k => { try { const db = await open(); return await new Promise(res => { const t = db.transaction('c').objectStore('c').get(k); t.onsuccess = () => res(t.result); t.onerror = () => res(undefined); }); } catch (e) { return undefined; } };
+    const set = async (k, v) => { try { const db = await open(); db.transaction('c', 'readwrite').objectStore('c').put(v, k); } catch (e) {} };
+    // alte Einträge (älter als maxDays) entfernen
+    const prune = async maxDays => { try { const db = await open(), st = db.transaction('c', 'readwrite').objectStore('c'), lim = Date.now() - maxDays * 864e5;
+      st.openCursor().onsuccess = e => { const c = e.target.result; if (!c) return; if (!c.value || !(c.value.t > lim)) c.delete(); c.continue(); }; } catch (e) {} };
+    return { get, set, prune };
+  })();
+  setTimeout(() => DBC.prune(90), 5000);
+  // Ortssuche (Nominatim): höchstens eine Anfrage je 1,1 s, Ergebnisse gemerkt; bei Sperre 10 min Pause statt weiterer Anfragen
+  let nomLast = 0, nomQ = Promise.resolve(), nomBlockUntil = 0;
+  async function nomJson(url, days = 30) {
+    const key = 'nom:' + url, hit = await DBC.get(key);
+    if (hit && Date.now() - hit.t < days * 864e5) return hit.v;
+    if (Date.now() < nomBlockUntil) throw new Error('Die Ortssuche von OpenStreetMap bremst gerade (zu viele Anfragen) – bitte in einigen Minuten erneut versuchen.');
+    const run = nomQ.then(async () => {
+      const wait = nomLast + 1100 - Date.now(); if (wait > 0) await new Promise(r => setTimeout(r, wait));
+      nomLast = Date.now();
+      const r = await fetch(url);
+      if (r.status === 429 || r.status === 403 || r.status === 509) { nomBlockUntil = Date.now() + 10 * 60e3; throw new Error('Die Ortssuche von OpenStreetMap bremst gerade (zu viele Anfragen) – bitte in etwa 10 Minuten erneut versuchen.'); }
+      if (!r.ok) throw new Error('Ortssuche nicht erreichbar (' + r.status + ')');
+      return r.json();
+    });
+    nomQ = run.catch(() => {});
+    const v = await run; DBC.set(key, { t: Date.now(), v }); return v;
+  }
   // Bundesland des Projektorts (für die passende Luftbildquelle), einmal je Projektort
   const regionKey = () => P.lon.toFixed(3) + ',' + P.lat.toFixed(3);
   async function ensureRegion() {
     if (P.regionAt === regionKey() || regionBusy) return; regionBusy = true;
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=5&accept-language=de&lat=${P.lat}&lon=${P.lon}`);
-      const st = ((await r.json()).address || {}).state || '';
+      const st = ((await nomJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=5&accept-language=de&lat=${(+P.lat).toFixed(3)}&lon=${(+P.lon).toFixed(3)}`, 365)).address || {}).state || '';
       P.region = /Bayern/.test(st) ? 'BY' : /Baden-Württemberg/.test(st) ? 'BW' : 'X'; P.regionAt = regionKey();
     } catch (e) { P.region = 'X'; }
     regionBusy = false; relayout(); ensureGreen(active);
@@ -2543,8 +2579,12 @@ return maplibregl$1;
   function overpassQ(q, ok) {
     const hit = OVQ.get(q);
     if (hit && (hit.p || Date.now() - hit.t < 20 * 60e3)) return hit.p || Promise.resolve(hit.v);
-    const p = overpassRace(q, ok).then(v => { OVQ.set(q, { v, t: Date.now() }); if (OVQ.size > 60) OVQ.delete(OVQ.keys().next().value); return v; },
-      e => { OVQ.delete(q); throw e; });
+    // erst im dauerhaften Zwischenspeicher (24 h) nachsehen, dann erst die Server fragen
+    const key = 'ovp:' + q;
+    const p = DBC.get(key).then(c => c && Date.now() - c.t < 24 * 36e5 && (!ok || ok(c.v)) ? c.v
+      : overpassRace(q, ok).then(v => { DBC.set(key, { t: Date.now(), v }); return v; }))
+      .then(v => { OVQ.set(q, { v, t: Date.now() }); if (OVQ.size > 60) OVQ.delete(OVQ.keys().next().value); return v; },
+        e => { OVQ.delete(q); throw e; });
     OVQ.set(q, { p }); return p;
   }
   function overpassRace(q, ok) {
@@ -2555,7 +2595,7 @@ return maplibregl$1;
         clearTimeout(timer); if (done || next >= order.length) { if (!open && !done) rej(last || new Error('kein Server erreichbar')); return; }
         const i = order[next++], url = MIRRORS[i], ctl = new AbortController(); ctls.push(ctl); open++;
         const to = setTimeout(() => ctl.abort(), 45000);
-        timer = setTimeout(launch, 2500);
+        timer = setTimeout(launch, 7000);         // nächster Server erst nach 7 s ohne Antwort (schont die Server)
         fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(q), signal: ctl.signal, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
           .then(async r => {
             if (!r.ok) throw new Error(url + ' ' + r.status);
@@ -3325,8 +3365,7 @@ return maplibregl$1;
     if (c) { setPoint(c[0], c[1]); status('Projektpunkt gesetzt.'); return; }
     status('Suche …');
     try {
-      const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=de,at,ch&accept-language=de&q=' + encodeURIComponent(q));
-      const js = await r.json();
+      const js = await nomJson('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=de,at,ch&accept-language=de&q=' + encodeURIComponent(q), 30);
       const box = $('results'); box.innerHTML = ''; box.hidden = !js.length;
       if (!js.length) { status('Nichts gefunden. Versuch es mit Straße und Ort oder mit Koordinaten.'); return; }
       status('');
@@ -3335,7 +3374,7 @@ return maplibregl$1;
         b.onclick = () => { P.place = it.display_name; P.addr = addrOf(it); setPoint(+it.lon, +it.lat); box.hidden = true; autoScale(); syncProjLine(); };
         box.appendChild(b);
       }
-    } catch (e) { status('Die Suche ist nicht erreichbar. Koordinaten einfügen funktioniert immer, z. B. 48.7137, 9.0034.'); }
+    } catch (e) { status((/bremst/.test(e.message) ? e.message : 'Die Suche ist nicht erreichbar.') + ' Koordinaten einfügen funktioniert immer, z. B. 48.7137, 9.0034.'); }
   }
   $('qGo').onclick = search; $('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
 
@@ -4339,9 +4378,7 @@ return maplibregl$1;
   // Ergebnis: Linienzüge [[lon,lat], …]; gerasterte Prüfung je 100-m-Zeile (gerade/ungerade-Regel, Löcher inklusive)
   const geoRings = g => !g ? [] : g.type === 'Polygon' ? g.coordinates : g.type === 'MultiPolygon' ? g.coordinates.flat() : [];
   async function cityNominatim(lon, lat) {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&polygon_geojson=1&polygon_threshold=0.0002&accept-language=de&lat=${lat}&lon=${lon}`);
-    if (!r.ok) throw new Error('Nominatim ' + r.status);
-    const js = await r.json(), lines = geoRings(js.geojson);
+    const js = await nomJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&polygon_geojson=1&polygon_threshold=0.0002&accept-language=de&lat=${(+lat).toFixed(4)}&lon=${(+lon).toFixed(4)}`, 180), lines = geoRings(js.geojson);
     if (!lines.length) throw new Error('Nominatim ohne Umriss');
     const at = js.addresstype || js.type || '';
     if (/^(state|county|country|region|state_district)$/.test(at)) throw new Error('Nominatim: nur ' + at);
@@ -4493,7 +4530,8 @@ return maplibregl$1;
   const bShare = (s, from, to) => { const t = s.b.reduce((a, v) => a + v, 0); return t ? s.b.slice(from, to).reduce((a, v) => a + v, 0) / t * 100 : null; };
   // Kennzahlen: Gruppe, Rechenregel, ob Summe (dann kein Vergleich), Assetklassen-Reihenfolge
   const KZK = [
-    { g: 'miete', n: 'Ø Nettokaltmiete (Bestand)', u: '€/m²', d: 2, f: s => s.r == null ? null : s.r / 100, src: 'Zensus 2022' },
+    { g: 'miete', n: 'Marktmiete', mm: true },
+    { g: 'miete', n: 'Ø Nettokaltmiete (Bestand)', assets: ['wohnen'], u: '€/m²', d: 2, f: s => s.r == null ? null : s.r / 100, src: 'Zensus 2022 · Wohnen, alle laufenden Mietverträge – keine Marktmiete' },
     { g: 'miete', n: 'Mietentwicklung (Angebotsmieten)', ext: 'Kreisebene · folgt' },
     { g: 'bev', n: 'Einwohner im Radius', u: '', d: 0, sum: true, f: s => s.p, src: 'Zensus 2022' },
     { g: 'bev', n: 'Einwohnerdichte', u: 'EW/km²', d: 0, f: s => s.p / s.km2, src: 'Zensus 2022' },
@@ -4564,7 +4602,7 @@ return maplibregl$1;
     fue: ['Hochschulen', 'Forschungseinrichtungen', 'Verkehrsflughafen', 'ÖPNV']
   };
   const SHORT = {
-    'Ø Nettokaltmiete (Bestand)': 'Ø Nettokaltmiete', 'Entwicklung 2011–2022': 'Bevölkerung 2011–2022', 'Einwohner im Umkreis 25 km': 'Einwohner 25 km',
+    'Ø Nettokaltmiete (Bestand)': 'Wohnmiete Bestand', 'Entwicklung 2011–2022': 'Bevölkerung 2011–2022', 'Einwohner im Umkreis 25 km': 'Einwohner 25 km',
     'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)': 'Arbeitsplatzdichte je 1.000 EW', 'Fertiggestellte Wohnungen je 1.000 Einwohner': 'Fertigstellungen je 1.000 EW',
     'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)': 'Bevölkerung je 10.000 EW / Jahr', 'Verfügbares Einkommen je Einwohner': 'Verfügb. Einkommen je EW',
     'Einkünfte je Steuerpflichtigen': 'Einkünfte je Steuerpflichtigem', 'Einzelhandel gesamt (Geschäfte)': 'Geschäfte gesamt', 'Autobahn-Anschlussstelle': 'Autobahn',
@@ -4576,8 +4614,8 @@ return maplibregl$1;
   const KZORDER = {
     wohnen: ['miete', 'infra', 'bev', 'bau', 'kk', 'anb', 'arbg', 'hh', 'alter', 'bestand', 'pend', 'boden'],
     buero: ['anb', 'infra', 'arbg', 'bev', 'arbeit', 'kk', 'bau', 'miete', 'alter', 'pend', 'boden'],
-    light: ['anb', 'arbg', 'verkehr', 'bev', 'arbeit', 'kk', 'pend', 'boden'],
-    logistik: ['anb', 'arbg', 'verkehr', 'bev', 'arbeit', 'pend', 'boden'],
+    light: ['anb', 'arbg', 'verkehr', 'bev', 'arbeit', 'kk', 'miete', 'pend', 'boden'],
+    logistik: ['anb', 'arbg', 'verkehr', 'bev', 'arbeit', 'miete', 'pend', 'boden'],
     fue: ['wiss', 'anb', 'arbg', 'infra', 'bev', 'arbeit', 'kk', 'bau', 'miete', 'pend', 'boden']
   };
   const ANAME = { wohnen: 'Wohnen', buero: 'Büro', light: 'Light Industrial', logistik: 'Logistik', fue: 'Forschung & Entwicklung' };
@@ -4596,6 +4634,7 @@ return maplibregl$1;
     const K = kzSet();
     $('kzAsset').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === K.asset));
     $('kzR').value = String(K.r); $('kzShowR').checked = !!K.showR;
+    try { mmSync(); } catch (e) {}
     $('brwV').value = P.brw && P.brw.v ? P.brw.v : ''; $('brwT').value = P.brw ? P.brw.t || '' : ''; $('brwD').value = P.brw ? P.brw.d || '' : ''; $('brwA').value = P.brw ? P.brw.art || 'W' : 'W';
     $('kzHint').textContent = !P.kz ? 'Wird beim Öffnen automatisch berechnet.' : kzStale() ? 'Projektpunkt oder Radius geändert – wird neu berechnet.'
       : 'Berechnet am ' + new Date(P.kz.at).toLocaleDateString('de-DE') + ' für ' + radTxt(P.kz.r) + (P.kz.city && P.kz.city.name ? ' · Vergleich: ' + P.kz.city.name : '') + '.';
@@ -4603,6 +4642,14 @@ return maplibregl$1;
   }
   $('kzAsset').querySelectorAll('button').forEach(b => b.onclick = () => { kzSet().asset = b.dataset.a; P.asset = b.dataset.a; if (b.dataset.a === 'logistik' && kzSet().r < 5000) kzSet().r = 10000; saveS(); syncKzUI(); renderKz(); if (kzOn && kzStale()) runKz(); });
   $('kzR').onchange = () => { kzSet().r = +$('kzR').value; saveS(); syncKzUI(); repaint(); if (kzOn) runKz(); };
+  // Marktmiete je Assetklasse (P.mm[asset] = {v, v2, art, d, src, t})
+  const MMART = { neu: 'Neuvermietung Ø', erst: 'Neubau Erstbezug', spitze: 'Spitzenmiete', spanne: 'Marktspanne', spiegel: 'Mietspiegel' };
+  const mmSync = () => { const a = kzSet().asset, M = (P.mm || {})[a] || {}; $('mmFor').textContent = '· ' + ANAME[a];
+    $('mmV').value = M.v || ''; $('mmV2').value = M.v2 || ''; $('mmA').value = M.art || 'neu'; $('mmD').value = M.d || ''; $('mmS').value = M.src || ''; $('mmT').value = M.t || ''; };
+  const mmSet = () => { const a = kzSet().asset, v = +$('mmV').value, t = $('mmT').value.trim(); P.mm = P.mm || {};
+    if (v > 0 || t) P.mm[a] = { v: v > 0 ? v : null, v2: +$('mmV2').value || null, art: $('mmA').value, d: $('mmD').value.trim(), src: $('mmS').value.trim(), t }; else delete P.mm[a];
+    renderKz(); snap(); };
+  ['mmV', 'mmV2', 'mmA', 'mmD', 'mmS', 'mmT'].forEach(id => $(id).onchange = mmSet);
   const brwSet = () => { const v = +$('brwV').value, t = $('brwT').value.trim();
     P.brw = v > 0 || t ? { v: v > 0 ? v : null, t, d: $('brwD').value.trim(), art: $('brwA').value, src: P.region === 'BY' ? 'BORIS-Bayern' : P.region === 'BW' ? 'BORIS-BW' : 'BORIS' } : null; renderKz(); snap(); };
   ['brwV', 'brwD', 'brwA', 'brwT'].forEach(id => $(id).onchange = brwSet);
@@ -4656,6 +4703,7 @@ return maplibregl$1;
       if (k.txt) { const t = k.txt(); out.push({ g, k, txt: t }); continue; }
       if (k.wl) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.wl] : undefined; out.push({ g, k, wl: I || null, c: INFRA.find(c => c.id === k.wl) }); continue; }
       if (k.brw) { out.push({ g, k, brw: P.brw && (+P.brw.v > 0 || P.brw.t) ? P.brw : null }); continue; }
+      if (k.mm) { const M = (P.mm || {})[kzSet().asset]; out.push({ g, k, mm: M && (+M.v > 0 || M.t) ? M : null }); continue; }
       if (k.emp) { const E = Z.emp && samePt(Z.emp) ? Z.emp : null; if (E && E.list) E.list.forEach(e => out.push({ g, k, empItem: e })); else out.push({ g, k, empItem: null, empErr: E && E.err }); continue; }
       if (k.inf) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.inf] : undefined;
         if (I === undefined && Z.infra) continue;
@@ -4680,7 +4728,7 @@ return maplibregl$1;
       const p = polOf(r.k); if (!p) continue;
       let dv = null;
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null && r.raw.land != null) dv = devOf(r.k, r.raw.v, r.raw.land); }
-      else if (!r.ext && r.txt == null && r.traffic === undefined && r.empItem === undefined && r.brw === undefined && r.wl === undefined && !r.k.sum) dv = devOf(r.k, r.v, r.um);
+      else if (!r.ext && r.txt == null && r.traffic === undefined && r.empItem === undefined && r.brw === undefined && r.mm === undefined && r.wl === undefined && !r.k.sum) dv = devOf(r.k, r.v, r.um);
       if (dv == null) continue;
       const c = Math.max(-0.5, Math.min(0.5, dv)) * Math.sign(p);
       sw += Math.abs(p); sv += c * Math.abs(p); items.push({ n: r.k.n, c, raw: r.raw !== undefined });
@@ -4779,6 +4827,14 @@ return maplibregl$1;
         if (!I || !I.list) { html += `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="4" class="c" style="text-align:left">${Z.infraErr ? 'OpenStreetMap gerade nicht erreichbar' : I ? 'keine im Umkreis von ' + fmtD(c.far) : 'wird geladen …'}</td></tr>`; continue; }
         if (!I.list.length) { html += `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="4" class="c" style="text-align:left">keine im Umkreis von ${fmtD(c.far)}</td></tr>`; continue; }
         html += I.list.map((x, i) => `<tr><td class="nm" title="${esc(x.nm)}">${i ? '' : `<b style="font-weight:600">${r.k.n}</b> · `}${esc(x.nm)}</td><td class="v">${fmtD(x.d)}</td><td class="vs">${i ? '' : I.n + ' im Radius'}</td><td></td><td class="e">${i ? '' : evDist(distEv(x.d, c.good, c.ok), ['weiter entfernt', 'gut erreichbar', 'in der Nähe'])}</td></tr>`).join('');
+        continue;
+      }
+      if (r.mm !== undefined) {
+        const M = r.mm, nm = 'Marktmiete ' + ANAME[kzSet().asset], ART = MMART;
+        const val = M && +M.v > 0 ? fmtN(+M.v, 2, '') + (+M.v2 > +M.v ? ' – ' + fmtN(+M.v2, 2, '') : '') + ' €/m²' : '';
+        html += M && val ? `<tr><td class="nm">${esc(nm)}</td><td class="v">${val}</td><td class="vs">${esc([ART[M.art] || '', M.d ? 'Stand ' + M.d : ''].filter(Boolean).join(' · '))}</td><td colspan="2" class="c" style="text-align:left">${esc(M.src || M.t || '')}</td></tr>`
+          : M && M.t ? `<tr><td class="nm">${esc(nm)}</td><td colspan="4" style="text-align:left;color:#2A3038">${esc(M.t)}</td></tr>`
+          : `<tr class="ext"><td class="nm">${esc(nm)}</td><td colspan="4" class="c" style="text-align:left">links unter „Marktmiete“ eintragen (z. B. aus Maklerbericht oder Mietspiegel)</td></tr>`;
         continue;
       }
       if (r.brw !== undefined) {
@@ -5080,6 +5136,7 @@ return maplibregl$1;
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null) lines.push(`${r.k.n}: ${fmtN(r.raw.v, r.k.d, r.k.u, r.k.sign)} (${r.raw.where || ''}${r.raw.land != null ? ', Land ' + fmtN(r.raw.land, r.k.d, r.k.u, r.k.sign) : ''})`); continue; }
       if (r.traffic !== undefined) { if (r.traffic && r.traffic.list) r.traffic.list.forEach(t => lines.push(`Verkehr ${t.name}: ${fmtN(t.dtv, 0, 'Kfz/24 h')} (${fmtN(t.dist / 1000, 1, 'km')} entfernt)`)); continue; }
       if (r.wl !== undefined) { if (r.wl && r.wl.list) r.wl.list.slice(0, 3).forEach(x => lines.push(`${r.k.n}: ${x.nm}, ${fmtD(x.d)}`)); continue; }
+      if (r.mm !== undefined) { const M = r.mm; if (M) lines.push('Marktmiete ' + ANAME[kzSet().asset] + ': ' + (+M.v > 0 ? fmtN(+M.v, 2, '') + (+M.v2 > +M.v ? '–' + fmtN(+M.v2, 2, '') : '') + ' €/m²' + (MMART[M.art] ? ' (' + MMART[M.art] + ')' : '') + (M.src ? ', Quelle: ' + M.src : '') + (M.d ? ', Stand ' + M.d : '') : M.t)); continue; }
       if (r.brw !== undefined) { if (r.brw) lines.push('Bodenrichtwert: ' + (+r.brw.v > 0 ? `${fmtN(+r.brw.v, 0, '€/m²')}${r.brw.d ? ' (Stichtag ' + r.brw.d + ')' : ''}` : r.brw.t)); continue; }
       if (r.empItem !== undefined) { if (r.empItem) lines.push(`Arbeitgeber ${r.empItem.n}: ${r.empItem.emp.toLocaleString('de-DE')} Beschäftigte (gesamt), ${fmtD(r.empItem.d)}`); continue; }
       if (r.inf !== undefined) { if (r.inf) lines.push(`${r.k.n}: ${r.inf.n} im Radius` + (r.c.count ? '' : `, nächste ${fmtD(r.inf.d)}${r.inf.nm ? ' (' + r.inf.nm + ')' : ''}`)); continue; }
@@ -5096,7 +5153,7 @@ return maplibregl$1;
   $('kzPng').onclick = async () => {
     const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst berechnen.'; return; }
     await loadFonts();
-    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.raw === undefined && r.traffic === undefined && r.inf === undefined && r.anb === undefined && r.empItem === undefined && r.brw === undefined && r.wl === undefined && r.v != null).slice(0, 6);
+    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.raw === undefined && r.traffic === undefined && r.inf === undefined && r.anb === undefined && r.empItem === undefined && r.brw === undefined && r.mm === undefined && r.wl === undefined && r.v != null).slice(0, 6);
     const W = 1800, H = 1000, c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d'), F = famOf(ST(active).font, 400), FB = famOf(ST(active).font, 700);
     g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
@@ -5918,7 +5975,7 @@ return maplibregl$1;
     if (c) { setPoint(c[0], c[1]); WZ.placed = true; box.innerHTML = '<div class="wz-ok">✓ Projektpunkt gesetzt.</div>'; wzShow(); return; }
     box.innerHTML = '<div class="hint">Suche …</div>';
     try {
-      const js = await (await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=de,at,ch&accept-language=de&q=' + encodeURIComponent(q))).json();
+      const js = await nomJson('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=de,at,ch&accept-language=de&q=' + encodeURIComponent(q), 30);
       box.innerHTML = js.length ? '' : '<div class="hint">Nichts gefunden – Straße und Ort oder Koordinaten versuchen.</div>';
       for (const it of js) {
         const b = document.createElement('button'); b.textContent = it.display_name.split(',').slice(0, 4).join(',');
