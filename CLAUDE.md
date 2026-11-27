@@ -163,3 +163,4 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - Geplant (Schritt 3): projektspezifische Optik – Stil je Projekt statt je Browser, Vorlage nur als Ausgangspunkt.
 - Maßstäbe nach Lage (`START_DEF.scale`, `scalesByLage`, `autoScale` bei jedem gesuchten Ort und im Assistenten): städtisch Landkarte 1:500.000 · Makro 1:50.000 · Mikro 1:15.000 (in Großstadt ab 500.000 EW, 8 km: 1:10.000); ländlich 1:1 Mio. · 1:100.000 · 1:25.000. `isUrban`: Großstadt ≥ 500.000 in 18 km, ≥ 100.000 in 8 km, oder Stadt ≥ 40.000 in 3 km.
 - Seen-Namen (`drawLakeNames`): nur Seen/Stauseen, keine Kneippanlagen, Denkmäler, Becken usw. (Namensfilter `NOT`), und nur Wasserflächen ab ca. 25 mm² auf dem Blatt (Fläche aus Kachelebene `water`).
+- Zwei Zooms: Bildzoom (`vzoom`, Mausrad, − / 100 % / +, Maßstab bleibt) und Maßstabszoom (`stepScale`, Lupen `#sOut`/`#sIn` um `#barScale`, Umschalt + Mausrad; nächster Wert der Maßstabsauswahl der aktiven Karte).
