@@ -330,6 +330,10 @@ return maplibregl$1;
   .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
   .lgrp { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--blau); font-weight: 700; padding: 14px 0 5px; border-bottom: 1px solid var(--ink); }
   .lgrp:first-child { padding-top: 2px; }
+  .lgrp[data-g] { cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: baseline; }
+  .lgrp[data-g]::after { content: '▾'; font-size: 11px; color: var(--grau); transition: transform .15s; } .lgrp.closed::after { transform: rotate(-90deg); }
+  .lgb.closed { display: none; }
+  .tier { padding: 6px 0 4px; border-bottom: 1px dashed var(--linie); } .tier b { font-size: 11px; font-weight: 600; }
   .layer { display: grid; grid-template-columns: 18px 1fr 22px; gap: 6px; align-items: center; padding: 2px 4px 2px 0; border-bottom: 1px solid var(--linie); }
   .layer.sel { background: #E8EEF7; box-shadow: inset 3px 0 0 var(--blau); }
   .layer.off .lname { color: #9A9EA3; }
@@ -939,6 +943,8 @@ return maplibregl$1;
   const stDef = kind => ({
     font: 'aptos', weight: 300, italic: false, caps: true, txt: true, tcol: '#0A0A0A', hi: '',
     ts: kind === 'ov' ? { big: 7, mid: 5.5, small: 5 } : { big: 8, mid: 6.5, small: 5.5 },
+    ct: { big: { col: '', w: '', caps: true }, mid: { col: '', w: '', caps: false }, small: { col: '', w: '', caps: false } },
+    dist: { on: kind !== 'ov', color: '#6E747A', size: kind === 'mk' ? 6 : 5.5, w: 600, caps: true },
     halo: { title: kind !== 'ov', cities: kind !== 'ov', notes: true, pois: false, legend: true },
     focus: { on: false, r: kind === 'ov' ? 60000 : kind === 'mi' ? 1500 : 300, fade: 20 },
     north: { on: kind !== 'ov' && S.legend !== false, type: 'atlas', pos: 'br', size: 3.4, color: '#0A0A0A' },
@@ -961,7 +967,7 @@ return maplibregl$1;
     veg: { on: true, preset: 'eigen' },
     park: { on: false, mode: 'green', color: '#D5E6C6', alpha: 100 },
     crowns: { on: false, src: 'auto', color: '#86A05C', alpha: 85, shadow: true, size: 100, dens: 100, vari: 30, grp: 0, forest: 0 },
-    hill: { on: !!(S.hill && S.hill[kind]), alpha: HILLA[(S.hill && S.hill.strength) || 'mittel'] || 55 },
+    hill: { on: !!(S.hill && S.hill[kind]), alpha: HILLA[(S.hill && S.hill.strength) || 'mittel'] || 55, tone: 'grau' },
     contour: { on: false, step: 'auto', color: '#B5A58C', w: 0.1, idx: true, alpha: 100 },
     hypso: { on: false, alpha: 70 },
     photo: { on: false, src: 'auto', alpha: 100, gray: 0, light: 0 },
@@ -1037,8 +1043,10 @@ return maplibregl$1;
   const DEM = { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], encoding: 'terrarium', tileSize: 256, maxzoom: 14 };
   const hillLayer = kind => { const a = Math.min(1, (+ST(kind).hill.alpha || 55) / 100) * 0.85;
     return { id: 'hill', type: 'hillshade', source: 'dem', paint: { 'hillshade-exaggeration': 0.3 + a * 0.45, 'hillshade-illumination-direction': 315,
-      'hillshade-shadow-color': ST(kind).hill.tone === 'braun' ? `rgba(92,74,50,${a})` : `rgba(70,74,78,${a})`, 'hillshade-highlight-color': ST(kind).hill.tone === 'braun' ? `rgba(255,250,235,${a * 0.35})` : 'rgba(255,255,255,0)',
-      'hillshade-accent-color': ST(kind).hill.tone === 'braun' ? `rgba(120,100,70,${a * 0.5})` : `rgba(110,114,118,${a * 0.5})` } }; };
+      'hillshade-shadow-color': `rgba(${HTONE(kind).sh},${a})`, 'hillshade-highlight-color': `rgba(255,252,242,${HTONE(kind).hl ? a * 0.35 : 0})`,
+      'hillshade-accent-color': `rgba(${HTONE(kind).ac},${a * 0.5})` } }; };
+  // Farbton der Schummerung: Schatten, Akzent, aufgehellte Sonnenseite
+  const HTONE = kind => ({ grau: { sh: '70,74,78', ac: '110,114,118', hl: false }, braun: { sh: '96,72,44', ac: '128,100,66', hl: true }, gruen: { sh: '58,78,50', ac: '92,112,80', hl: true } })[ST(kind).hill.tone] || { sh: '70,74,78', ac: '110,114,118', hl: false };
   // ---------- Luftbild (amtliche DOP20 Bayern / BW, sonst Sentinel-2 2016) ----------
   const DOP = {
     BY: { url: 'https://geoservices.bayern.de/od/wms/dop/v1/dop20', rgb: /rgb|farb|dop20c|^by_dop20$/i, cir: /cir|infrarot/i, lic: '© Bayerische Vermessungsverwaltung (CC BY 4.0)' },
@@ -1428,6 +1436,7 @@ return maplibregl$1;
       else if (T.road.on && T.road.lbl) drawRoadNames(g, map, k, W, H, obst, T, inF, kind);
     }
     if (kind !== 'mk' && T.cities.on) drawCities(g, map, k, W, H, proj, T, obst, box0, kind, inF);
+    if (kind !== 'ov' && T.dist && T.dist.on && T.txt && scaleOf(kind) <= 50000) drawDistricts(g, map, k, W, H, T, obst, inF);
     if (kind === 'ov' || (!P.site.length && !P.bld.length)) drawDot(g, proj.x, proj.y, k, { color: pp.color || A, r: +pp.r || 1.2, ring: pp.ring, shadow: pp.shadow });
     const box = titleOn ? projectLabel(g, kind, k, proj, fsT, plate) : null;
     if (kind !== 'ov' && drawRing.length) {
@@ -1443,7 +1452,7 @@ return maplibregl$1;
     if (view) { view.lblBox = box; view.noteBoxes = nb; }
     if (S.attrib) {
       g.font = font(400, 5); g.textBaseline = 'alphabetic';
-      const atxt = '© OpenStreetMap-Mitwirkende' + (T.hill.on || T.contour.on || T.hypso.on ? ' · Höhen: AWS Terrain Tiles' : '') + photoLic(kind);
+      const atxt = '© OpenStreetMap-Mitwirkende' + (T.hill.on || T.contour.on ? ' · Höhen: AWS Terrain Tiles' : '') + photoLic(kind);
       const aw = g.measureText(atxt).width;
       if (T.halo.legend) { g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(mm(2), H - mm(5.2), aw + mm(2), mm(3.2)); }
       g.fillStyle = '#8A8F94';
@@ -1506,8 +1515,10 @@ return maplibregl$1;
   // Großstädte auf Wunsch in Versalien mit leichter Sperrung; Namen weichen einander aus
   function drawCities(g, map, k, W, H, proj, T, obst, titleBox, kind, inF) {
     const mm = v => v * k, pt = v => v * 0.3528 * k, dots = kind === 'ov';
-    const TIER = { 1: { r: 0.65, dot: '#1E1E1E', size: +T.ts.big || 7, col: TCOL }, 2: { r: 0.42, dot: '#7A7F84', size: +T.ts.mid || 5.5, col: mix(TCOL, '#FFFFFF', 0.3) },
-                   4: { r: 0.3, dot: '#9A9EA3', size: +T.ts.small || 5, col: mix(TCOL, '#FFFFFF', 0.42) } };
+    const CT = T.ct || {}, ct = n => CT[n] || {};
+    const TIER = { 1: { r: 0.65, dot: '#1E1E1E', size: +T.ts.big || 7, col: ct('big').col || TCOL, w: ct('big').w, caps: ct('big').caps !== undefined ? ct('big').caps : T.caps },
+                   2: { r: 0.42, dot: '#7A7F84', size: +T.ts.mid || 5.5, col: ct('mid').col || mix(TCOL, '#FFFFFF', 0.3), w: ct('mid').w, caps: !!ct('mid').caps },
+                   4: { r: 0.3, dot: '#9A9EA3', size: +T.ts.small || 5, col: ct('small').col || mix(TCOL, '#FFFFFF', 0.42), w: ct('small').w, caps: !!ct('small').caps } };
     TIER[3] = TIER[1];
     const min = +T.cities.min || 0;
     const fam = famOf(T.font, T.weight), wgt = +T.weight || 300, ital = T.italic ? 'italic ' : '';
@@ -1528,8 +1539,8 @@ return maplibregl$1;
     const dotRect = c => { const r = mm(c.st.r + 0.3); return { x: c.p.x - r, y: c.p.y - r, w: 2 * r, h: 2 * r, own: c }; };
     const place = c => {
       if (!T.txt) return;
-      const caps = T.caps && (c.t === 1 || c.t === 3), txt = caps ? c.n.toUpperCase() : c.n;
-      g.font = `${ital}${caps ? Math.max(wgt, 400) : wgt} ${pt(c.st.size)}px ${caps ? famOf(T.font, Math.max(wgt, 400)) : fam}`;
+      const caps = !!c.st.caps, txt = caps ? c.n.toUpperCase() : c.n, cw = +c.st.w || (caps ? Math.max(wgt, 400) : wgt);
+      g.font = `${ital}${cw} ${pt(c.st.size)}px ${famOf(T.font, cw)}`;
       try { g.letterSpacing = caps ? (pt(c.st.size) * 0.08).toFixed(2) + 'px' : '0px'; } catch (e) {}
       const tw = g.measureText(txt).width, th = pt(c.st.size) * 1.2, gap = c.near ? mm(2.4) : mm(c.st.r + 0.7);
       const cands = dots ? [
@@ -1557,18 +1568,54 @@ return maplibregl$1;
       for (const c of set) place(c);
     }
   }
+  // Stadtteile und Stadtbezirke aus den Kartenkacheln – nur in der Nähe einer Großstadt (ab 100.000 EW)
+  function drawDistricts(g, map, k, W, H, T, obst, inF) {
+    const D = T.dist, mm = v => v * k, size = 0.3528 * k * (+D.size || 5.5), w = +D.w || 600;
+    let fs = []; try { fs = map.querySourceFeatures('omt', { sourceLayer: 'place' }); } catch (e) { return; }
+    const big = CITIES.filter(c => c[4] >= 100000), seen = new Set();
+    g.font = `${w} ${size}px ${famOf(T.font, w)}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    try { g.letterSpacing = D.caps ? (size * 0.1).toFixed(2) + 'px' : '0px'; } catch (e) {}
+    for (const f of fs) {
+      const pr = f.properties || {}; if (!/^(suburb|quarter|borough)$/.test(pr.class || '') || f.geometry.type !== 'Point') continue;
+      const name = pr['name:de'] || pr.name_de || pr.name; if (!name || seen.has(name)) continue;
+      const ll = f.geometry.coordinates; if (!big.some(c => crow(ll, [c[1], c[2]]) < (c[4] >= 500000 ? 16 : 9))) continue;
+      const p = map.project(ll); if (p.x < mm(4) || p.y < mm(4) || p.x > W - mm(4) || p.y > H - mm(4) || (inF && !inF(p))) continue;
+      const txt = D.caps ? name.toUpperCase() : name, tw = g.measureText(txt).width, b = { x: p.x - tw / 2 - mm(0.5), y: p.y - size * 0.7, w: tw + mm(1), h: size * 1.4 };
+      if (obst.some(o => hit(b, o))) continue;
+      seen.add(name); obst.push(b);
+      g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = mm(0.6); g.strokeText(txt, p.x, p.y);
+      g.fillStyle = D.color || '#6E747A'; g.fillText(txt, p.x, p.y);
+    }
+    try { g.letterSpacing = '0px'; } catch (e) {}
+    g.textAlign = 'left';
+  }
   // Beschriftung entlang einer Linie (Fluss- und Straßennamen): mittig gesetzt, lesbar gedreht, gleiche Namen mit Abstand
   function drawLineLabels(g, map, k, W, H, items, obst, o) {
     const mm = v => v * k, placed = {};
     g.font = o.font; g.textBaseline = 'middle'; g.textAlign = 'center';
     items.sort((a, b) => (b.prio || 0) - (a.prio || 0));
     for (const it of items) {
-      const tw = g.measureText(it.name).width, th = o.size;
       const list = placed[it.name] || (placed[it.name] = []);
       if (list.length >= 3) continue;
       const pts = it.line.map(c => map.project(c));
       const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
-      const L = cum[cum.length - 1]; if (L < tw * 1.25) continue;
+      const L = cum[cum.length - 1];
+      // passt der Name nicht: Schrift bis 70 % verkleinern, sonst an Leerzeichen oder Bindestrich zweizeilig setzen
+      let lines = [it.name], f = 1;
+      g.font = o.font; let tw = g.measureText(it.name).width;
+      if (L < tw * 1.25 && o.fit) {
+        f = Math.max(0.7, L / (tw * 1.25));
+        if (L < tw * f * 1.25) {
+          const cut = [...it.name.matchAll(/[ -]/g)].map(m => m.index).sort((a, b) => Math.abs(a - it.name.length / 2) - Math.abs(b - it.name.length / 2))[0];
+          if (cut == null) continue;
+          lines = [it.name.slice(0, cut + (it.name[cut] === '-' ? 1 : 0)).trim(), it.name.slice(cut + 1).trim()];
+          g.font = o.fontAt(1); const w2 = Math.max(...lines.map(t => g.measureText(t).width));
+          f = Math.min(1, Math.max(0.7, L / (w2 * 1.25)));
+          if (L < w2 * f * 1.25) continue;
+        }
+        g.font = o.fontAt(f); tw = Math.max(...lines.map(t => g.measureText(t).width));
+      } else if (L < tw * 1.25) continue;
+      const th = o.size * f * (lines.length === 2 ? 2.1 : 1);
       const at = d => { let i = 1; while (i < cum.length - 1 && cum[i] < d) i++; const t = (d - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1); return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t }; };
       const pm = at(L / 2), pa = at(L / 2 - tw / 2), pb = at(L / 2 + tw / 2);
       if (pm.x < mm(3) || pm.y < mm(3) || pm.x > W - mm(3) || pm.y > H - mm(3) || (o.inF && !o.inF(pm))) continue;
@@ -1579,8 +1626,11 @@ return maplibregl$1;
       const b = { x: pm.x - hw, y: pm.y - hh, w: 2 * hw, h: 2 * hh };
       if (obst.some(q => hit(b, q))) continue;
       g.save(); g.translate(pm.x, pm.y); g.rotate(ang);
-      if (o.halo) { g.lineJoin = 'round'; g.strokeStyle = o.haloCol || 'rgba(255,255,255,.92)'; g.lineWidth = mm(0.7); g.strokeText(it.name, 0, 0); }
-      g.fillStyle = o.color; g.fillText(it.name, 0, 0); g.restore();
+      const lh = o.size * f * 1.05, y0 = lines.length === 2 ? -lh / 2 : 0;
+      if (o.halo && o.box) { const px = mm(0.6), py = mm(0.25); g.fillStyle = o.haloCol || '#FFFFFF'; g.fillRect(-tw / 2 - px, -th / 2 - py, tw + 2 * px, th + 2 * py); }
+      else if (o.halo) { g.lineJoin = 'round'; g.strokeStyle = o.haloCol || 'rgba(255,255,255,.92)'; g.lineWidth = mm(0.7); lines.forEach((t, i) => g.strokeText(t, 0, y0 + i * lh)); }
+      g.fillStyle = o.color; lines.forEach((t, i) => g.fillText(t, 0, y0 + i * lh)); g.restore();
+      g.font = o.font;
       list.push(pm); obst.push(b);
     }
     g.textAlign = 'left';
@@ -1591,7 +1641,8 @@ return maplibregl$1;
   const lblScale = (kind, L) => L.lblAuto === false ? 1 : Math.min(1.35, Math.max(0.75, Math.pow((kind === 'mk' ? 10000 : 50000) / scaleOf(kind), 0.35)));
   const lblOpts = (k, T, L, minD, inF, f = 1) => {
     const size = 0.3528 * k * (+L.lblSize || 5) * f, w = +L.lblWeight || 400;
-    return { font: `${L.lblItalic ? 'italic ' : ''}${w} ${size}px ${famOf(L.lblFont || T.font, w)}`, size, color: L.lblColor || TCOL,
+    const fontAt = q => `${L.lblItalic ? 'italic ' : ''}${w} ${size * q}px ${famOf(L.lblFont || T.font, w)}`;
+    return { font: fontAt(1), fontAt, size, color: L.lblColor || TCOL,
       halo: L.lblBg !== false, haloCol: L.lblBgCol || '#FFFFFF', minD: minD * k, inF };
   };
   function drawWaterNames(g, map, k, W, H, obst, T, inF) {
@@ -1614,7 +1665,7 @@ return maplibregl$1;
       const name = pr['name:de'] || pr.name_de || pr.name; if (!name) continue;
       for (const ln of linesOf(f.geometry)) if (ln.length > 1) items.push({ name, line: ln, prio: PRIO[pr.class] || 0 });
     }
-    drawLineLabels(g, map, k, W, H, items, obst, lblOpts(k, T, T.road, 45, inF, lblScale(kind, T.road)));
+    drawLineLabels(g, map, k, W, H, items, obst, Object.assign(lblOpts(k, T, T.road, 45, inF, lblScale(kind, T.road)), { box: true, fit: true }));
   }
   // Bahnhöfe als Symbol: weißer Kreis mit Rand in Bahnfarbe
   function drawStations(g, map, k, W, H, T, inF) {
@@ -2610,7 +2661,7 @@ return maplibregl$1;
   }
   function drawBase(g, map, kind, W, H, transparent) {
     if (!transparent) { g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H); }
-    if (ST(kind).hypso.on) drawHypso(g, map, kind);
+    // Höhenstufen sind entfallen (Schummerung mit Farbton ersetzt sie)
     if (kind !== 'ov' && ST(kind).veg.on !== false && ST(kind).green.on) drawGreen(g, map, kind);
     if (kind !== 'ov' && zg(kind).on) drawZg(g, map, kind);
     if (kind === 'ov') drawSettlements(g, map, W, H, true);
@@ -2741,7 +2792,7 @@ return maplibregl$1;
   const demLL = (d, i, j) => { const n = 256 * 2 ** d.z, X = (d.tx0 * 256 + i) / n, Y = (d.ty0 * 256 + j) / n;
     return [X * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * Y))) * 180 / Math.PI]; };
   async function ensureDem(kind) {
-    const v = views[kind], T = ST(kind); if (!v || kind !== active || !(T.contour.on || T.hypso.on)) return;
+    const v = views[kind], T = ST(kind); if (!v || kind !== active || !T.contour.on) return;
     const m = v.map, b = m.getBounds();
     let z = Math.max(3, Math.min(kind === 'ov' ? 10 : 14, Math.floor(m.getZoom())));
     let x0, x1, y0, y1;
@@ -3352,10 +3403,21 @@ return maplibregl$1;
   // Gliederung der Stil-Liste. Jede Ebene beschreibt nur, welche Standardattribute sie hat
   // (col = Farbe, fill = Füllfarbe, alpha = Deckkraft, w = Strichstärke, dash = Linienart) plus eigene Optionen (opt) und Beschriftung (lbl).
   // Das Attribut-Board zeigt sie immer in derselben Reihenfolge.
-  const GRP = [['darst', 'Kartendarstellung'], ['verk', 'Verkehr'], ['stadt', 'Stadt und Landschaft'], ['topo', 'Topographie']];
+  const GRP = [['darst', 'Kartendarstellung'], ['verk', 'Verkehr'], ['stadt', 'Stadt'], ['land', 'Landschaft'], ['topo', 'Schummerung und Gelände']];
+  const tierRows = k => [['big', k === 'ov' ? 'Großstädte' : 'ab 100.000 EW'], ['mid', k === 'ov' ? 'Mittelstädte' : 'ab 10.000 EW'], ['small', k === 'ov' ? 'Kleinstädte' : 'kleinere Orte']].map(([t, n]) =>
+    `<div class="tier"><b>${n}</b><div class="row"><label class="f">Größe (pt)<input type="number" data-s="ts.${t}" min="4" max="24" step="0.5"></label>
+    <label class="f">Farbe<button class="sw" data-s="ct.${t}.col" aria-label="Farbe ${n}"></button></label>
+    <label class="f">Schnitt<select data-s="ct.${t}.w"><option value="">wie Schrift</option><option value="300">leicht</option><option value="400">normal</option><option value="600">halbfett</option><option value="700">fett</option></select></label></div>
+    <label class="check"><input type="checkbox" data-s="ct.${t}.caps"> Versalien</label></div>`).join('');
   const sizeRow = (k, cls) => `<div class="row"><label class="f">${k === 'ov' ? 'Großstadt' : '≥ 100.000 EW'} (pt)<input type="number" data-s="ts.big" min="4" max="24" step="0.5"></label>
     <label class="f">${k === 'ov' ? 'Mittelstadt' : '≥ 10.000 EW'} (pt)<input type="number" data-s="ts.mid" min="4" max="24" step="0.5"></label>
     <label class="f">${k === 'ov' ? 'Kleinstadt' : 'kleiner'} (pt)<input type="number" data-s="ts.small" min="4" max="24" step="0.5"></label></div>`;
+  const LGC = new Set(store.get('lgClosed') || []);         // eingeklappte Ebenengruppen (gilt für alle Karten)
+  document.addEventListener('click', e => {
+    const h = e.target.closest('.lgrp[data-g]'); if (!h) return;
+    const g = h.dataset.g; LGC.has(g) ? LGC.delete(g) : LGC.add(g); store.set('lgClosed', [...LGC]);
+    document.querySelectorAll(`.lgrp[data-g="${g}"], .lgb[data-g="${g}"]`).forEach(x => x.classList.toggle('closed', LGC.has(g)));
+  });
   const LAYERS = [
     { grp: 'darst', id: 'txt', name: () => 'Schrift', eye: 'txt', col: 'tcol', keys: ['font', 'weight', 'italic', 'caps', 'txt', 'tcol', 'ts', 'halo'],
       opt: () => `<div class="row"><label class="f">Grundschrift<select data-s="font">${FONT_OPTS.replace('<option value="">wie Schrift</option>', '')}</select></label>
@@ -3392,15 +3454,20 @@ return maplibregl$1;
       opt: k => k === 'ov' ? `<label class="f">Schwellenwert<select data-s="cities.min" data-num>${[10000, 20000, 50000, 100000, 500000, 1000000].map(v => `<option value="${v}">ab ${v >= 1e6 ? '1 Mio.' : v.toLocaleString('de-DE')} Einwohnern</option>`).join('')}</select></label>
         <label class="check"><input type="checkbox" data-s="cities.abroad"> Auch Städte im Ausland (ab 100.000 EW)</label>`
         : `<label class="f">ab Einwohnern (in 500er-Schritten)<input type="number" data-s="cities.min" min="500" step="500"></label><p class="hint">Orte mit Einwohnerzahl aus OpenStreetMap für den sichtbaren Ausschnitt.</p>`,
-      lbl: k => sizeRow(k) + '<div class="row"><label class="check"><input type="checkbox" data-s="caps"> Großstädte in Versalien</label><label class="check"><input type="checkbox" data-s="halo.cities"> Weißer Hintergrund</label></div><p class="hint">Schriftart, Schnitt und Farbe kommen aus der Ebene „Schrift“.</p>' },
+      lbl: k => tierRows(k) + '<label class="check"><input type="checkbox" data-s="halo.cities"> Weißer Hintergrund</label><p class="hint">Schriftart aus der Ebene „Schrift“. Ohne eigene Farbe wird die Schriftfarbe je Kategorie etwas heller.</p>' },
+    { grp: 'stadt', id: 'dist', name: () => 'Stadtteile', eye: 'dist.on', col: 'dist.color', only: ['mi', 'mk'], keys: ['dist'],
+      inact: k => scaleOf(k) > 50000 ? 'Stadtteile erscheinen ab 1:50.000.' : null,
+      opt: () => `<div class="row"><label class="f">Größe (pt)<input type="number" data-s="dist.size" min="4" max="16" step="0.5"></label>
+        <label class="f">Schnitt<select data-s="dist.w"><option value="300">leicht</option><option value="400">normal</option><option value="600">halbfett</option><option value="700">fett</option></select></label></div>
+        <label class="check"><input type="checkbox" data-s="dist.caps"> Versalien</label><p class="hint">Namen von Stadtteilen und -bezirken, nur in Großstädten ab 100.000 Einwohnern und ab 1:50.000.</p>` },
     { grp: 'stadt', id: 'settle', name: () => 'Siedlungsflächen', eye: 'settle.on', col: 'settle.color', alpha: 'settle.alpha', keys: ['settle'],
       opt: k => k === 'ov' ? '<label class="f">Umfang<select data-s="settle.mode"><option value="shown">Um alle angezeigten Städte</option><option value="big">Nur Großstädte ab 100.000 EW</option></select></label>'
         : '<p class="hint">Bei Siedlungsflächen-Darstellung in voller Farbe, bei Einzelgebäuden aufgehellt dahinter.</p>' },
     { grp: 'stadt', id: 'bldg', inact: k => k === 'mi' && builtMode('mi') === 'flaeche' ? 'Bei diesem Maßstab als Siedlungsfläche – Einzelgebäude bis 1:50.000.' : null, name: () => 'Gebäude', eye: 'bldg.on', col: 'bldg.color', alpha: 'bldg.alpha', only: ['mi', 'mk'], keys: ['bldg'],
       opt: () => '<label class="check"><input type="checkbox" data-s="bldg.line"> Feine Kontur</label><label class="check"><input type="checkbox" data-s="bldg.shadow"> Schlagschatten (ab 1:25.000, Länge maßstabsabhängig)</label><label class="f">Schatten-Deckkraft · <span data-out="bldg.shAlpha"></span><input type="range" data-s="bldg.shAlpha" min="5" max="60" step="5"></label>' },
-    { grp: 'stadt', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', alpha: 'water.alpha', keys: ['water'], lbl: () => lblUI('water', 'Flussnamen'),
+    { grp: 'land', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', alpha: 'water.alpha', keys: ['water'], lbl: () => lblUI('water', 'Flussnamen'),
       opt: () => '<label class="f"><span>Schatten nach innen · <b data-out="water.inner"></b></span><input type="range" data-s="water.inner" min="0" max="80" step="5"></label><p class="hint">Gibt Seen und Flüssen Tiefe: das Ufer wirft einen weichen Schatten ins Wasser. 0 = aus.</p>' },
-    { grp: 'stadt', id: 'veg', inact: k => k !== 'ov' && ST(k).crowns.on && k === 'mi' && scaleOf('mi') > 25000 ? 'Bäume erscheinen erst ab 1:25.000.' : null, name: () => 'Vegetation', eye: 'veg.on', col: 'park.color', nofarbe: true, keys: ['veg', 'wood', 'park', 'green', 'field', 'crowns'],
+    { grp: 'land', id: 'veg', inact: k => k !== 'ov' && ST(k).crowns.on && k === 'mi' && scaleOf('mi') > 25000 ? 'Bäume erscheinen erst ab 1:25.000.' : null, name: () => 'Vegetation', eye: 'veg.on', col: 'park.color', nofarbe: true, keys: ['veg', 'wood', 'park', 'green', 'field', 'crowns'],
       opt: k => `<label class="f">Stimmung<select data-s="veg.preset"><option value="eigen">eigene Einstellung</option><option value="baeume">Bäume mit Schatten auf zarter Fläche</option><option value="halbton">Halbtonraster</option><option value="flaeche">Grün zart (Flächen)</option><option value="schwarzplan">Schwarzplan (Punktraster grau)</option></select></label>
         <div class="vlist">
         ${vegRow('wood', 'Wald', VMODES)}
@@ -3426,12 +3493,10 @@ return maplibregl$1;
         <label class="f"><span>Aufhellen · <b data-out="photo.light"></b></span><input type="range" data-s="photo.light" min="0" max="80" step="10"></label>
         <p class="hint">Liegt unter allen anderen Ebenen. Für eine ruhige Hinterlegung: Graustufen 100 %, Aufhellen 40–60 %. ${k === 'ov' ? 'In der Landkarte immer Satellitenbild.' : 'Amtliche Luftbilder mit 20 cm Auflösung; außerhalb Bayerns und Baden-Württembergs das Satellitenbild.'}</p>` },
     { grp: 'topo', id: 'hill', name: () => 'Schummerung', eye: 'hill.on', alpha: 'hill.alpha', keys: ['hill'],
-      opt: () => '<p class="hint">Licht und Schatten wie bei einem Reliefmodell, Licht von Nordwesten. Zeigt Hänge und Täler, keine Höhenwerte.</p>' },
-    { grp: 'topo', id: 'contour', name: () => 'Höhenlinien', eye: 'contour.on', col: 'contour.color', alpha: 'contour.alpha', w: 'contour.w', keys: ['contour'],
+      opt: () => '<label class="f">Farbton<select data-s="hill.tone"><option value="grau">grau</option><option value="braun">braun</option><option value="gruen">grün</option></select></label><p class="hint">Licht und Schatten wie bei einem Reliefmodell, Licht von Nordwesten. Zeigt Hänge und Täler, keine Höhenwerte.</p>' },
+    { grp: 'topo', id: 'contour', name: () => 'Höhenlinien', eye: 'contour.on', col: 'contour.color', alpha: 'contour.alpha', w: 'contour.w', keys: ['contour', 'hypso'],
       opt: () => `<label class="f">Abstand<select data-s="contour.step"><option value="auto">automatisch nach Maßstab</option>${[1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500].map(v => `<option value="${v}">${String(v).replace('.', ',')} m</option>`).join('')}</select></label><label class="check"><input type="checkbox" data-s="contour.idx"> Jede 5. Linie kräftiger</label>
-        <p class="hint">Linien gleicher Höhe – dicht heißt steil. Die Höhendaten haben ein Raster von etwa 10–30 m; enge Linien (1–2,5 m) sind interpoliert und keine Vermessungsgrundlage.</p>` },
-    { grp: 'topo', id: 'hypso', name: () => 'Höhenstufen', eye: 'hypso.on', alpha: 'hypso.alpha', keys: ['hypso'],
-      opt: () => '<p class="hint">Flächige Tönung nach absoluter Höhe – Tal grünlich, Höhen sandfarben.</p>' }
+        <p class="hint">Linien gleicher Höhe – dicht heißt steil. Die Höhendaten haben ein Raster von etwa 10–30 m; enge Linien (1–2,5 m) sind interpoliert und keine Vermessungsgrundlage.</p>` }
   ];
   const DASH_OPTS = '<option value="solid">durchgehend</option><option value="dashed">gestrichelt</option><option value="dotted">gepunktet</option>';
   // Attribut-Board einer Ebene: immer Kopf · Farbe und Deckkraft · Strich · Darstellung · Beschriftung
@@ -3497,7 +3562,7 @@ return maplibregl$1;
         <button data-p="all" title="Dieselbe Vorlage bzw. Vorlagenfamilie in Landkarte, Makro- und Mikrolage verwenden">Für alle Karten übernehmen</button>
         <p class="hint pinfo"></p>
       </div>
-      <div class="layers">${GRP.map(([gid, gname]) => `<div class="lgrp">${gname}</div>` + LAYERS.filter(L => L.grp === gid && (!L.only || L.only.includes(kind))).map(layerRow).join('')).join('')}</div>
+      <div class="layers">${GRP.map(([gid, gname]) => `<div class="lgrp${LGC.has(gid) ? ' closed' : ''}" data-g="${gid}" role="button" tabindex="0">${gname}</div><div class="lgb${LGC.has(gid) ? ' closed' : ''}" data-g="${gid}">` + LAYERS.filter(L => L.grp === gid && (!L.only || L.only.includes(kind))).map(layerRow).join('') + '</div>').join('')}</div>
       <div class="inspector" aria-live="polite"><div class="ihead">Attribute</div>${LAYERS.filter(L => !L.only || L.only.includes(kind)).map(L => boardOf(L, kind)).join('')}</div>
       <p class="hint">Ebene anklicken – ihre Attribute erscheinen unten im Board.${kind === 'ov' ? ' Strichstärken gelten bei 1:1 Mio., kleinere Maßstäbe werden automatisch feiner.' : ' Flughäfen erscheinen automatisch maßstäblich.'}</p>
     </div>
@@ -3557,7 +3622,7 @@ return maplibregl$1;
       let v = getP(T, el.dataset.s);
       if (el.dataset.near != null) v = WSTEPS.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a, WSTEPS[0]);   // nächste feste Stufe
       if (el.dataset.mul) v = v / +el.dataset.mul;
-      if (el.classList.contains('sw')) el.style.background = v; else if (el.type === 'checkbox') el.checked = !!v; else el.value = String(v);
+      if (el.classList.contains('sw')) el.style.background = v || (/^ct\./.test(el.dataset.s) ? ({ big: TCOL, mid: mix(TCOL, '#FFFFFF', 0.3), small: mix(TCOL, '#FFFFFF', 0.42) })[el.dataset.s.split('.')[1]] : ''); else if (el.type === 'checkbox') el.checked = !!v; else el.value = String(v);
     });
     root.querySelectorAll('[data-f]').forEach(el => { const F = S.focus[kind], key = el.dataset.f; if (el.type === 'checkbox') el.checked = !!F[key]; else el.value = key === 'r' && kind === 'ov' ? F.r / 1000 : F[key]; });
     root.querySelectorAll('[data-out]').forEach(o => { o.textContent = getP(T, o.dataset.out) + ' %'; });
@@ -3755,7 +3820,7 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 7;
+  const FAM_VER = 8;
   const FAMS = {
     kontrast: { name: 'ATLAS · Kontrast Dunkelblau/Orange', desc: 'weißes Land, dunkelblaues Wasser, orange Hauptstraßen, dunkle Gebäude', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B', hi: '#F0642D', north: { color: '#14284B' },
@@ -3778,13 +3843,13 @@ return maplibregl$1;
         mw: { color: '#B9BDC2', mode: k === 'mk' ? 'fill' : 'line', fill: '#FFFFFF' }, road: { color: '#C4C7CB', mode: k === 'mk' ? 'fill' : 'line', fill: '#FFFFFF' }, minor: { color: '#D3D6DA', mode: k === 'mk' ? 'fill' : 'line', fill: '#FFFFFF' },
         rail: { color: '#6E747A', classic: false }, water: { color: '#3A4A5C', inner: k === 'ov' ? 0 : 35 }, border: { color: '#9EA3A8' }, hill: { on: false } }) },
     pastell: { name: 'Pastell · Grün', desc: 'helle Gebäude mit weichem Schatten, sanftes Grün mit Bäumen, gedecktes Wasser', veg: 'pastell',
-      st: k => ({ font: 'source', weight: 400, caps: false, tcol: '#2F3A33', hi: '#F0642D', north: { color: '#2F3A33' },
+      st: k => ({ font: 'source', weight: 400, caps: false, tcol: '#2F3A33', hi: '#F0642D', north: { color: '#2F3A33' }, ct: { big: { caps: false, w: '600' } },
         settle: { on: true, color: k === 'ov' ? '#ECEBE5' : '#F3F2EE' }, bldg: { on: true, color: '#FFFFFF', shadow: true, shAlpha: 30, line: k === 'mk', lineCol: '#D6D6D0' },
         mw: { color: '#C9C8C1', w: k === 'ov' ? 0.3 : 0.6, mode: k === 'mk' ? 'both' : 'line', fill: '#FFFFFF' }, road: { color: '#D6D5CF', mode: k === 'mk' ? 'both' : 'line', fill: '#FFFFFF' }, minor: { color: '#E2E1DB', mode: k === 'mk' ? 'fill' : 'line', fill: '#FFFFFF' },
         rail: { color: '#A3A39C', classic: false }, water: { color: '#6F8F88', inner: k === 'ov' ? 0 : 40, lblColor: '#4D615C' }, border: { color: '#B8B7B0' }, hill: { on: k === 'ov', alpha: 25 } }) },
     landschaft: { name: 'Landschaft', desc: 'kräftige Grüntöne für Wald, Wiesen und Felder, dunkles Wasser – für Stadtrand und Region', veg: 'landschaft',
       st: k => ({ font: 'source', weight: 400, caps: true, tcol: '#24301F', hi: '#F2B705', north: { color: '#24301F' },
-        hypso: { on: k === 'ov', alpha: 75, ramp: 'gruenbraun' },
+        hypso: { on: false },
         settle: { on: true, color: k === 'ov' ? '#E5E3DC' : '#EEEDE8' }, bldg: { on: true, color: '#C4C1B8', shadow: k === 'mk', shAlpha: 20 },
         mw: { color: '#9A988F', w: k === 'ov' ? 0.3 : 0.6 }, road: { color: '#B6B4AB' }, minor: { color: '#D2D0C8' },
         rail: { color: '#6E6C64', classic: false }, water: { color: '#24395A', inner: k === 'ov' ? 0 : 40 }, border: { color: '#9A988F' }, hill: { on: k !== 'mk', alpha: k === 'ov' ? 45 : 30, tone: 'braun' } }) },
@@ -5581,7 +5646,7 @@ return maplibregl$1;
   loadFonts().then(() => repaint()); if (document.fonts) document.fonts.ready.then(() => repaint());
   // Verlauf starten
   hist.stack = [stateStr()]; hist.i = 0; hist.ready = true; updUndo();
-  window.__lk = { ISO: () => ISO, views, P: () => P, S, styleFor, zoomForScale, cities: () => CITIES, mapData: () => mapData, tileItems: () => tileItems(), catOf, setTab, setZoom, vzoom, active: () => active, undo, redo, hist, DEMS, PLACES, TREES, ST, repaint, drawBase, makeZip };
+  window.__lk = { ISO: () => ISO, views, P: () => P, S, styleFor, zoomForScale, cities: () => CITIES, mapData: () => mapData, tileItems: () => tileItems(), catOf, setTab, setZoom, vzoom, active: () => active, undo, redo, hist, DEMS, PLACES, TREES, ST, repaint, drawBase, makeZip, drawLineLabels, lblOpts };
 })();
 </script>
 </body>
