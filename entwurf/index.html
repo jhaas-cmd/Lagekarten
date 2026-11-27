@@ -431,6 +431,8 @@ return maplibregl$1;
   .famgrid button { display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 7px 8px 8px; border-radius: 9px; text-align: left; white-space: normal; height: auto; background: #F6F7F9; border: 1.5px solid transparent; box-shadow: none; }
   .famgrid button .sw4 { display: flex; height: 14px; border-radius: 4px; overflow: hidden; } .famgrid button .sw4 i { flex: 1; }
   .famgrid button b { font-size: 11px; font-weight: 600; line-height: 1.25; color: #14284B; }
+  .famgrid button em { font-style: normal; font-size: 9.5px; font-weight: 600; color: #F0642D; text-transform: uppercase; letter-spacing: .04em; }
+  .famact { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .famact button { flex: 1 1 auto; font-size: 11px; }
   .famgrid button.on { border-color: #14284B; background: #fff; } .famgrid button:hover { background: #EEF1F5; }
   .helpgrid { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; font-size: 12px; } .helpgrid kbd { font: 11px/1 var(--font); border: 1px solid #C9CDD2; border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; background: #F7F8FA; }
   .bar .info b { color: var(--ink); }
@@ -483,7 +485,8 @@ return maplibregl$1;
     <section>
       <h2>Kartenstil · alle Karten</h2>
       <div class="famgrid" id="famGrid"></div>
-      <p class="hint">Stellt Landkarte, Makro- und Mikrolage auf die gewählte GIEAG-Vorlage um. Feinheiten danach im Reiter Stil der jeweiligen Karte.</p>
+      <div class="famact" id="famAct" hidden></div>
+      <p class="hint">Stellt Landkarte, Makro- und Mikrolage auf die gewählte GIEAG-Vorlage um. Änderungen im Reiter Stil werden zur „Anpassung“ dieser Vorlage – für alle drei Karten gemeinsam, das Original bleibt erhalten.</p>
     </section>
 
     <section>
@@ -3481,8 +3484,8 @@ return maplibregl$1;
         <p class="hint">Innerhalb des Radius farbig und beschriftet; außerhalb grau, Orts-, Straßen- und Flussnamen entfallen.</p>` },
     { grp: 'darst', id: 'ptitle', name: () => 'Projekttitel', eye: 'ptitle.on', keys: ['ptitle'],
       opt: () => '<p class="hint">Titel am Projektpunkt ein- oder ausblenden. Text, Größe und Lage stehen im Reiter Übersicht unter „Projektpunkt und Titel“.</p>' },
-    { grp: 'darst', id: 'ppoint', name: () => 'Projektpunkt', eye: 'ppoint.on', keys: ['ppoint'],
-      opt: () => '<p class="hint">Punkt am Projektort ein- oder ausblenden. Farbe und Größe stehen im Reiter Übersicht. Ein gezeichnetes Baufeld oder markierte Gebäude ersetzen den Punkt in Makro- und Mikrolage.</p>' },
+    { grp: 'darst', id: 'ppoint', name: () => 'Projektpunkt · Signalfarbe', eye: 'ppoint.on', col: 'hi', keys: ['ppoint', 'hi'],
+      opt: () => '<p class="hint">Farbe = Signalfarbe der Vorlage (Projektpunkt, Baufeld, markierte Gebäude, Radius), z. B. Orange oder Gelb. Eine im Reiter Übersicht eigens gesetzte Punktfarbe hat Vorrang; dort auch die Größe. Ein gezeichnetes Baufeld oder markierte Gebäude ersetzen den Punkt in Makro- und Mikrolage.</p>' },
     { grp: 'darst', id: 'north', name: () => 'Nordpfeil', eye: 'north.on', col: 'north.color', keys: ['north'],
       opt: () => `<label class="f">Typ<select data-s="north.type"><option value="atlas">ATLAS · Kreis mit A</option><option value="kreis">Kreis mit Pfeil</option><option value="pfeil">Schlanker Pfeil</option><option value="nadel">Klassischer Halbpfeil</option><option value="kompass">Kompassrose</option></select></label>
         <div class="row"><label class="f">Position<select data-s="north.pos"><option value="br">unten rechts</option><option value="tr">oben rechts</option><option value="tl">oben links</option><option value="bl">unten links</option></select></label>
@@ -3692,11 +3695,11 @@ return maplibregl$1;
       if (el.dataset.near != null) v = WSTEPS.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a, WSTEPS[0]);   // nächste feste Stufe
       if (el.dataset.mul) v = v / +el.dataset.mul;
       if (el.classList.contains('sw') && !v && el.dataset.s === 'rn.mwRef.col') el.style.background = mix(T.mw.color, '#000000', 0.45);
-      else if (el.classList.contains('sw')) el.style.background = v || (/^ct\./.test(el.dataset.s) ? ({ big: TCOL, mid: mix(TCOL, '#FFFFFF', 0.3), small: mix(TCOL, '#FFFFFF', 0.42) })[el.dataset.s.split('.')[1]] : ''); else if (el.type === 'checkbox') el.checked = !!v; else el.value = String(v);
+      else if (el.classList.contains('sw')) el.style.background = v || (el.dataset.s === 'hi' ? S.accent : /^ct\./.test(el.dataset.s) ? ({ big: TCOL, mid: mix(TCOL, '#FFFFFF', 0.3), small: mix(TCOL, '#FFFFFF', 0.42) })[el.dataset.s.split('.')[1]] : ''); else if (el.type === 'checkbox') el.checked = !!v; else el.value = String(v);
     });
     root.querySelectorAll('[data-f]').forEach(el => { const F = S.focus[kind], key = el.dataset.f; if (el.type === 'checkbox') el.checked = !!F[key]; else el.value = key === 'r' && kind === 'ov' ? F.r / 1000 : F[key]; });
     root.querySelectorAll('[data-out]').forEach(o => { o.textContent = getP(T, o.dataset.out) + ' %'; });
-    root.querySelectorAll('[data-chip]').forEach(c => { c.style.background = getP(T, c.dataset.chip); });
+    root.querySelectorAll('[data-chip]').forEach(c => { c.style.background = getP(T, c.dataset.chip) || (c.dataset.chip === 'hi' ? S.accent : ''); });
     root.querySelectorAll('.layer').forEach(r => {
       const cb = r.querySelector('input'); r.classList.toggle('off', !cb.checked);
       const L = LAYERS.find(x => x.id === r.dataset.layer), why = L && L.inact && cb.checked ? L.inact(kind) : null;
@@ -3743,8 +3746,23 @@ return maplibregl$1;
     root.querySelectorAll('.pane').forEach(x => { x.hidden = x.dataset.pane !== pn; });
     panes[kind] = pn; store.set('panes', panes);
   }
+  // Angepasste Fassung einer GIEAG-Vorlage: immer alle drei Karten gemeinsam, ersetzt die Kachel unter 01 Projekt
+  const myId = (fam, kk) => 'mein_' + fam + '_' + kk;
+  const famId = (fam, kk) => S.presets[myId(fam, kk)] ? myId(fam, kk) : 'gieag_' + fam + '_' + kk;
+  const isTuned = fam => KINDS.some(kk => S.presets[myId(fam, kk)]);
   function guardFixed(kind) {
     const id = S.use[kind], pr = S.presets[id]; if (!pr || !pr.fixed) return;
+    if (pr.fam && !isTuned(pr.fam) && !(FAMS[pr.fam] || {}).hide) {
+      const fam = pr.fam, F = FAMS[fam];
+      for (const kk of KINDS) {
+        const src = S.presets['gieag_' + fam + '_' + kk]; if (!src) continue;
+        S.presets[myId(fam, kk)] = { name: 'GIEAG · ' + F.name + ' (angepasst) · ' + KNAME[kk], famName: 'GIEAG · ' + F.name, fam, base: kk, own: true, desc: F.desc, st: JSON.parse(JSON.stringify(src.st)) };
+      }
+      for (const kk of KINDS) if (S.use[kk] === 'gieag_' + fam + '_' + kk) S.use[kk] = myId(fam, kk);
+      S.use[kind] = myId(fam, kind);
+      status('Deine Anpassung von „' + F.name + '“ – gilt für Landkarte, Makro- und Mikrolage gemeinsam. Das Original bleibt erhalten.');
+      setTimeout(renderFamGrid, 0); return;
+    }
     const nid = 'p' + Date.now() + kind, name = (pr.famName || pr.name) + ' · ' + KNAME[kind] + ' (eigene)';
     S.presets[nid] = { name, base: pr.base || kind, st: JSON.parse(JSON.stringify(pr.st)) };
     S.use[kind] = nid; status('GIEAG-Vorlagen sind geschützt – deine Änderung steht in der eigenen Kopie „' + name + '“.');
@@ -3775,7 +3793,7 @@ return maplibregl$1;
     root.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => {
       guardFixed(kind);
       const L = LAYERS.find(x => x.id === b.dataset.reset), pr = S.presets[S.use[kind]], def = stDef(pr.base || kind);
-      for (const k of L.keys) pr.st[k] = JSON.parse(JSON.stringify(def[k]));
+      for (const k of L.keys) { if (def[k] === undefined) delete pr.st[k]; else pr.st[k] = JSON.parse(JSON.stringify(def[k])); }
       afterStyle(kind, L.keys[0] + '.');
       status(L.name(kind) + ' auf Standard zurückgesetzt.');
     });
@@ -3890,34 +3908,43 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 11;
+  const FAM_VER = 12;
   const FAMS = {
-    kontrast: { name: 'ATLAS · Kontrast Dunkelblau/Orange', desc: 'weißes Land, dunkelblaues Wasser, orange Hauptstraßen, dunkle Gebäude', veg: 'grau',
+    // Die vier GIEAG-Vorlagen nach Anlass. Grundlage sind die früheren Stile; Julius' Feintuning kommt später als tuned:{ov,mi,mk} hinzu
+    praesent: { name: 'Präsentation · Investor', desc: 'Hauskarte für Expo Real, Steckbrief, Dossier und Investitionsausschuss – Lagebeziehungen im Vordergrund (Büro, F&E)', veg: 'grau',
+      st: k => FAMS.kontrast.st(k) },
+    staedtebau: { name: 'Städtebau · Schwarzplan', desc: 'für Gemeinde, Planungsausschuss und Wettbewerb – Körnung und Dichte, eigenes Grundstück in Signalfarbe', veg: 'grau',
+      st: k => FAMS.akzent.st(k) },
+    vermarktung: { name: 'Wohnen · Vermarktung', desc: 'für Käufer, Mieter und Broschüre – hell, freundlich, Grün und Wasser; Landkarte mit warmer Geländeschattierung', veg: 'pastell',
+      st: k => dm(FAMS.pastell.st(k), { hill: { on: k === 'ov', alpha: 40, tone: 'braun' } }) },
+    gewerbe: { name: 'Gewerbe · Logistik · Region', desc: 'für Light Industrial und Logistik – zurückhaltend grau, Verkehrsachsen und Anschlussstellen treten hervor', veg: 'grau',
+      st: k => FAMS.signal.st(k) },
+    kontrast: { hide: true, name: 'ATLAS · Kontrast Dunkelblau/Orange', desc: 'weißes Land, dunkelblaues Wasser, orange Hauptstraßen, dunkle Gebäude', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B', hi: '#F0642D', north: { color: '#14284B' },
         settle: { on: true, color: k === 'ov' ? '#E6E8EC' : '#EEF0F3' }, bldg: { on: true, color: k === 'mk' ? '#26324A' : '#3A4660', shadow: false },
         mw: { color: '#F0642D', w: k === 'ov' ? 0.4 : 0.7, mode: 'line' }, road: { color: '#F59A6B', w: k === 'ov' ? 0.2 : 0.4, mode: 'line' }, minor: { color: '#CDD2D9', mode: 'line' },
         rail: { color: '#5A6B85', classic: false }, water: { color: '#1F3354', inner: k === 'ov' ? 0 : 45, lblColor: '#FFFFFF' }, border: { color: '#9AA3B0' }, hill: { on: false } }) },
-    gelb: { name: 'ATLAS · Dunkelblau/Gelb', desc: 'wie Kontrast, Signalfarbe Gelb – kräftig auf Leinwand und Bildschirm', veg: 'grau',
+    gelb: { hide: true, name: 'ATLAS · Dunkelblau/Gelb', desc: 'wie Kontrast, Signalfarbe Gelb – kräftig auf Leinwand und Bildschirm', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B', hi: '#F2B705', north: { color: '#14284B' },
         settle: { on: true, color: k === 'ov' ? '#E6E8EC' : '#EEF0F3' }, bldg: { on: true, color: k === 'mk' ? '#26324A' : '#3A4660', shadow: false },
         mw: { color: '#F2B705', w: k === 'ov' ? 0.4 : 0.7, mode: 'line' }, road: { color: '#F5CB4A', w: k === 'ov' ? 0.2 : 0.4, mode: 'line' }, minor: { color: '#CDD2D9', mode: 'line' },
         rail: { color: '#5A6B85', classic: false }, water: { color: '#1F3354', inner: k === 'ov' ? 0 : 45, lblColor: '#FFFFFF' }, border: { color: '#9AA3B0' }, hill: { on: false } }) },
-    signal: { name: 'Grau + Signal', desc: 'Grautöne und Schraffuren, Wasser schwarz, Hervorhebungen in Gelb', veg: 'grau',
+    signal: { hide: true, name: 'Grau + Signal', desc: 'Grautöne und Schraffuren, Wasser schwarz, Hervorhebungen in Gelb', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#1E1E1E', hi: '#E8D200', north: { color: '#1E1E1E' },
         settle: { on: true, color: k === 'ov' ? '#D9DBDE' : '#DADCDF' }, bldg: { on: true, color: k === 'mk' ? '#8D9298' : '#A3A8AD', shadow: false },
         mw: { color: '#6E747A', w: k === 'ov' ? 0.3 : 0.6, mode: 'line' }, road: { color: '#FFFFFF', w: 0.45, mode: 'line' }, minor: { color: '#FFFFFF', w: 0.3, mode: 'line' },
         rail: { color: '#3C4044', classic: true }, water: { color: '#111111', inner: 0 }, border: { color: '#6E747A', dash: 'dashed' }, hill: { on: false } }) },
-    akzent: { name: 'Schwarzplan · Akzent', desc: 'dunkle Gebäude auf Hellgrau, eigenes Projekt in Orange', veg: 'grau',
+    akzent: { hide: true, name: 'Schwarzplan · Akzent', desc: 'dunkle Gebäude auf Hellgrau, eigenes Projekt in Orange', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#1E1E1E', hi: '#F0642D', north: { color: '#1E1E1E' },
         settle: { on: true, color: k === 'ov' ? '#DCDEE1' : '#E9EAEC' }, bldg: { on: true, color: '#2E3033', shadow: false },
         mw: { color: '#B9BDC2', mode: k === 'mk' ? 'fill' : 'line', fill: '#FFFFFF' }, road: { color: '#C4C7CB', mode: k === 'mk' ? 'fill' : 'line', fill: '#FFFFFF' }, minor: { color: '#D3D6DA', mode: k === 'mk' ? 'fill' : 'line', fill: '#FFFFFF' },
         rail: { color: '#6E747A', classic: false }, water: { color: '#3A4A5C', inner: k === 'ov' ? 0 : 35 }, border: { color: '#9EA3A8' }, hill: { on: false } }) },
-    pastell: { name: 'Pastell · Grün', desc: 'helle Gebäude mit weichem Schatten, sanftes Grün mit Bäumen, gedecktes Wasser', veg: 'pastell',
+    pastell: { hide: true, name: 'Pastell · Grün', desc: 'helle Gebäude mit weichem Schatten, sanftes Grün mit Bäumen, gedecktes Wasser', veg: 'pastell',
       st: k => ({ font: 'source', weight: 400, caps: false, tcol: '#2F3A33', hi: '#F0642D', north: { color: '#2F3A33' }, ct: { big: { caps: false, w: '600' } },
         settle: { on: true, color: k === 'ov' ? '#ECEBE5' : '#F3F2EE' }, bldg: { on: true, color: '#FFFFFF', shadow: true, shAlpha: 30, line: k === 'mk', lineCol: '#D6D6D0' },
         mw: { color: '#C9C8C1', w: k === 'ov' ? 0.3 : 0.6, mode: k === 'mk' ? 'both' : 'line', fill: '#FFFFFF' }, road: { color: '#D6D5CF', mode: k === 'mk' ? 'both' : 'line', fill: '#FFFFFF' }, minor: { color: '#E2E1DB', mode: k === 'mk' ? 'fill' : 'line', fill: '#FFFFFF' },
         rail: { color: '#A3A39C', classic: false }, water: { color: '#6F8F88', inner: k === 'ov' ? 0 : 40, lblColor: '#4D615C' }, border: { color: '#B8B7B0' }, hill: { on: k === 'ov', alpha: 25 } }) },
-    landschaft: { name: 'Landschaft', desc: 'kräftige Grüntöne für Wald, Wiesen und Felder, dunkles Wasser – für Stadtrand und Region', veg: 'landschaft',
+    landschaft: { hide: true, name: 'Landschaft', desc: 'kräftige Grüntöne für Wald, Wiesen und Felder, dunkles Wasser – für Stadtrand und Region', veg: 'landschaft',
       st: k => ({ font: 'source', weight: 400, caps: true, tcol: '#24301F', hi: '#F2B705', north: { color: '#24301F' },
         hypso: { on: false },
         settle: { on: true, color: k === 'ov' ? '#E5E3DC' : '#EEEDE8' }, bldg: { on: true, color: '#C4C1B8', shadow: k === 'mk', shAlpha: 20 },
@@ -3958,6 +3985,7 @@ return maplibregl$1;
       const st = dm(stDef(kk), F.st(kk));
       const V = VEG_PRESETS[F.veg] ? VEG_PRESETS[F.veg](kk) : {}; for (const [key, o] of Object.entries(V)) st[key] = Object.assign({}, st[key], o);
       st.veg = { on: true, preset: F.veg };
+      if (F.tuned && F.tuned[kk]) dm(st, JSON.parse(JSON.stringify(F.tuned[kk])));
       S.presets[id] = { name: 'GIEAG · ' + F.name + ' · ' + KNAME[kk], famName: 'GIEAG · ' + F.name, fam, base: kk, fixed: true, ver: FAM_VER, desc: F.desc, hide: !!F.hide, st };
     }
     saveS();
@@ -3967,17 +3995,51 @@ return maplibregl$1;
   function renderFamGrid() {
     const box = $('famGrid'); if (!box) return;
     const escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-    const cur = (S.presets[S.use.mi] || {}).fam;
+    const curP = S.presets[S.use.mi] || {}, cur = curP.fam;
     box.innerHTML = Object.entries(FAMS).filter(([, F]) => !F.hide).map(([fam, F]) => {
-      const st = (S.presets['gieag_' + fam + '_mk'] || {}).st || {};
+      const st = (S.presets[famId(fam, 'mk')] || {}).st || {};
       const cols = [st.settle && st.settle.color, st.wood && st.wood.on && st.wood.mode === 'green' ? st.wood.color : st.bldg && st.bldg.color, st.water && st.water.color, st.mw && st.mw.color, st.hi || '#F0642D'].filter(Boolean);
-      return `<button data-fam="${fam}" class="${fam === cur ? 'on' : ''}" title="${escH(F.desc || '')}"><span class="sw4">${cols.map(c => `<i style="background:${c}"></i>`).join('')}</span><b>${escH(F.name)}</b></button>`;
+      return `<button data-fam="${fam}" class="${fam === cur ? 'on' : ''}" title="${escH(F.desc || '')}"><span class="sw4">${cols.map(c => `<i style="background:${c}"></i>`).join('')}</span><b>${escH(F.name)}</b>${isTuned(fam) ? '<em>angepasst</em>' : ''}</button>`;
     }).join('');
+    const act = $('famAct');
+    if (act) {
+      const any = Object.keys(FAMS).some(isTuned), t = cur && isTuned(cur) && !(FAMS[cur] || {}).hide, orig = t && curP.fixed;
+      act.innerHTML = (t ? (orig ? `<button data-fa="mine">Zu meiner Anpassung</button>` : `<button data-fa="orig">Original ansehen</button>`) + `<button data-fa="drop">Anpassung verwerfen</button>` : '')
+        + (any ? `<button data-fa="exp" title="Alle angepassten Vorlagen als Datei – zum festen Einbau in ATLAS">Angepasste Vorlagen exportieren</button>` : '');
+      act.hidden = !act.innerHTML;
+      act.querySelectorAll('button').forEach(b => b.onclick = () => famAction(b.dataset.fa, cur));
+    }
     box.querySelectorAll('button').forEach(b => b.onclick = () => {
-      for (const kk of KINDS) { const id = 'gieag_' + b.dataset.fam + '_' + kk; if (S.presets[id]) S.use[kk] = id; }
+      for (const kk of KINDS) { const id = famId(b.dataset.fam, kk); if (S.presets[id]) S.use[kk] = id; }
       saveS(); syncAllPresets(); relayout(true); renderFamGrid(); snap();
       status('Kartenstil „' + FAMS[b.dataset.fam].name + '“ für alle Karten gesetzt.');
     });
+  }
+  // Unterschiede eines Stils gegenüber dem Grundstil – kompakt für den festen Einbau
+  function stDiff(a, b) {
+    const out = {};
+    for (const [k, v] of Object.entries(b || {})) {
+      if (v && typeof v === 'object' && !Array.isArray(v) && a && a[k] && typeof a[k] === 'object') { const d = stDiff(a[k], v); if (Object.keys(d).length) out[k] = d; }
+      else if (JSON.stringify(a ? a[k] : undefined) !== JSON.stringify(v)) out[k] = v;
+    }
+    return out;
+  }
+  function famAction(a, fam) {
+    if (a === 'orig' || a === 'mine') {
+      for (const kk of KINDS) { const id = a === 'orig' ? 'gieag_' + fam + '_' + kk : myId(fam, kk); if (S.presets[id]) S.use[kk] = id; }
+      status(a === 'orig' ? 'Original „' + FAMS[fam].name + '“ – deine Anpassung bleibt erhalten.' : 'Deine Anpassung von „' + FAMS[fam].name + '“.');
+    } else if (a === 'drop') {
+      if (!confirm('Deine Anpassung von „' + FAMS[fam].name + '“ verwerfen und zum Original zurückkehren?')) return;
+      for (const kk of KINDS) { delete S.presets[myId(fam, kk)]; for (const k2 of KINDS) if (S.use[k2] === myId(fam, kk)) S.use[k2] = 'gieag_' + fam + '_' + k2; }
+      status('Anpassung verworfen – „' + FAMS[fam].name + '“ wieder im Original.');
+    } else if (a === 'exp') {
+      const out = { app: 'atlas-vorlagen', at: new Date().toISOString(), famVer: FAM_VER, fams: {} };
+      for (const f of Object.keys(FAMS)) if (isTuned(f)) { out.fams[f] = { name: FAMS[f].name, tuned: {} };
+        for (const kk of KINDS) { const m = S.presets[myId(f, kk)], g = S.presets['gieag_' + f + '_' + kk]; if (m && g) out.fams[f].tuned[kk] = stDiff(g.st, m.st); } }
+      saveBlob(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }), 'ATLAS_Vorlagen_' + new Date().toISOString().slice(0, 10) + '.json');
+      status('Angepasste Vorlagen exportiert – Datei an Claude geben, dann werden sie fest eingebaut.'); return;
+    }
+    saveS(); syncAllPresets(); relayout(true); snap();
   }
   for (const kk of KINDS) $('ui_' + kk).innerHTML = mapUI(kk);
   renderFamGrid();
@@ -5661,7 +5723,7 @@ return maplibregl$1;
     // Radius der Kennzahlen je Nutzung: Stadt / Land
     radius: { wohnen: [1000, 2000], buero: [1000, 3000], light: [5000, 5000], logistik: [10000, 10000], fue: [3000, 5000] },
     // empfohlene Vorlage je Nutzung
-    fam: { wohnen: 'pastell', buero: 'kontrast', light: 'signal', logistik: 'signal', fue: 'kontrast' },
+    fam: { wohnen: 'vermarktung', buero: 'praesent', light: 'gewerbe', logistik: 'gewerbe', fue: 'praesent' },
     // Maßstäbe Makro-/Mikrolage: Stadt / Land
     scale: { mi: [25000, 50000], mk: [10000, 15000] },
     // Formate je Zweck (Schlüssel aus PRESETS)
@@ -5751,7 +5813,7 @@ return maplibregl$1;
     const p = wzPlan(), fam = $('gsFam').value;
     P.asset = WZ.asset; P.use = WZ.use; P.started = true;
     const K = kzSet(); K.asset = WZ.asset; K.r = p.r;
-    if (fam) for (const kk of KINDS) { const id = Object.keys(S.presets).find(i => S.presets[i].fam === fam && S.presets[i].base === kk); if (id) S.use[kk] = id; }
+    if (fam) for (const kk of KINDS) { const id = S.presets[famId(fam, kk)] ? famId(fam, kk) : Object.keys(S.presets).find(i => S.presets[i].fam === fam && S.presets[i].base === kk); if (id) S.use[kk] = id; }
     S.ovPreset = p.U.ov; S.miPreset = p.U.mi; S.mkPreset = p.U.mk; S.scale = p.mi; S.mkScale = p.mk;
     P.miCenter = [P.lon, P.lat]; P.mkCenter = [P.lon, P.lat]; P.ov.center = [P.lon, P.lat];
     showStart(false); saveS(); syncAllUI(); syncAllPresets(); syncKzUI(); snap();
