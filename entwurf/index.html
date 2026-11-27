@@ -455,7 +455,7 @@ return maplibregl$1;
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><defs><clipPath id="lgc"><circle cx="16" cy="16" r="14"/></clipPath></defs><circle cx="16" cy="16" r="14" fill="none" stroke="#14284B" stroke-width="1.5"/><g clip-path="url(#lgc)" fill="none"><path d="M7.25 31.16 L16.00 1.40 L24.75 31.16" stroke="#14284B" stroke-width="3" stroke-linejoin="miter" stroke-miterlimit="20"/><path d="M12.15 16.37 L27.82 25.23" stroke="#F0642D" stroke-width="2"/></g></svg><div><h1>ATLAS</h1><span>axperon site information</span></div><b class="draft">ENTWURF</b></div>
+    <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><defs><clipPath id="lgc"><circle cx="16" cy="16" r="14"/></clipPath></defs><circle cx="16" cy="16" r="14" fill="none" stroke="#14284B" stroke-width="1.5"/><g clip-path="url(#lgc)" fill="none"><path d="M7.25 31.16 L16.00 1.40 L24.75 31.16" stroke="#14284B" stroke-width="3" stroke-linejoin="miter" stroke-miterlimit="20"/><path d="M23.00 28.12 L12.50 15.06" stroke="#F0642D" stroke-width="2.2" stroke-linecap="butt"/></g></svg><div><h1>ATLAS</h1><span>axperon site information</span></div><b class="draft">ENTWURF</b></div>
     <button class="projline" id="projLine" title="Projekt öffnen"><b id="plName"></b><small id="plSub"></small></button>
 
     <div class="group"><span>01</span>Projekt</div>
@@ -553,6 +553,11 @@ return maplibregl$1;
         <label class="f">Radius um den Projektpunkt<select id="kzR"><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option><option value="3000">3 km</option><option value="5000">5 km</option><option value="10000">10 km</option><option value="20000">20 km</option></select></label>
         <label class="cb"><input type="checkbox" id="kzShowR"> Radius in Makro- und Mikrolage einzeichnen</label>
         <button id="kzGo" class="primary">Neu berechnen</button>
+        <div class="tier"><b>Bodenrichtwert</b>
+          <div class="row"><label class="f">€/m²<input type="number" id="brwV" min="0" step="10"></label><label class="f">Stichtag<input type="text" id="brwD" placeholder="01.01.2024"></label></div>
+          <div class="row"><label class="f">Nutzung<select id="brwA"><option value="W">Wohnen</option><option value="M">gemischt</option><option value="G">Gewerbe</option><option value="S">Sonstiges</option></select></label>
+            <button id="brwOpen" style="align-self:end">BORIS öffnen</button></div>
+          <p class="hint">Automatisch abrufbar ist der Wert nicht: BORIS-BW zeigt ihn kostenfrei im Portal (Nutzungsbedingungen beachten), in Bayern ist er meist kostenpflichtig. Den Wert hier eintragen – er erscheint im Dossier.</p></div>
         <button id="kzPrint">Dossier drucken / als PDF sichern</button>
         <div class="row"><button id="kzCopy">Text kopieren</button><button id="kzPng">Kachel als PNG</button></div>
         <button id="kzTraffic">Verkehrsstärken in der Umgebung laden</button>
@@ -1483,7 +1488,7 @@ return maplibregl$1;
     g.lineWidth = r * 0.107; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
     g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
     g.lineWidth = r * 0.214; g.beginPath(); g.moveTo(...p(210, 1.25)); g.lineTo(...p(0, 1.043)); g.lineTo(...p(150, 1.25)); g.stroke();
-    g.strokeStyle = bar || col; g.lineWidth = r * 0.143; g.beginPath(); g.moveTo(...lp(p(0, 1), p(210, 1), 0.55)); g.lineTo(...p(128, 1.07)); g.stroke();
+    g.strokeStyle = bar || col; g.lineWidth = r * 0.157; g.beginPath(); g.moveTo(...p(150, 1)); g.lineTo(...lp(p(0, 1), p(210, 1), 0.5)); g.stroke();
     g.restore();
   }
   // Nordpfeil-Typen: ATLAS (Kreis mit A) · Kreis mit Pfeil · schlanker Pfeil · klassischer Halbpfeil · Kompassrose
@@ -4253,7 +4258,7 @@ return maplibregl$1;
     { g: 'kk', n: 'Einkünfte je Steuerpflichtigen', ra: 'est', u: '€', d: 0 },
     { g: 'kk', n: 'Kaufkraftindex (GfK/Nexiga)', ext: 'kostenpflichtig – nicht frei verfügbar' },
     { g: 'pend', n: 'Ein- und Auspendler, Pendlersaldo', ext: 'Bundesagentur für Arbeit · keine frei abrufbare Schnittstelle, Abruf manuell im Pendleratlas' },
-    { g: 'boden', n: 'Bodenrichtwert', ext: 'BW: kostenfrei im Portal BORIS-BW abrufbar · Bayern: Gutachterausschuss (kostenpflichtig)' },
+    { g: 'boden', n: 'Bodenrichtwert', brw: true },
     { g: 'boden', n: 'Kaufpreise für Bauland', ext: 'Kreisebene · noch keine frei abrufbare Schnittstelle gefunden' },
     { g: 'bau', n: 'Fertiggestellte Wohnungen je 1.000 Einwohner', ra: 'fert', u: '', d: 1 },
     { g: 'bau', n: 'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)', ra: 'bevd', u: '', d: 0, sign: true },
@@ -4265,6 +4270,7 @@ return maplibregl$1;
     { g: 'bestand', n: 'Eigentümerquote', u: '%', d: 1, f: s => s.e == null ? null : s.e / 10, src: 'Zensus 2022 (Zellen mit Angabe)' },
     { g: 'bestand', n: 'Leerstand marktaktiv', u: '%', d: 1, f: s => s.v == null ? null : s.v / 10, src: 'Zensus 2022 (nur ausgewiesene Zellen)' },
     { g: 'bestand', n: 'Wohnfläche je Einwohner', u: 'm²', d: 1, f: s => s.s == null ? null : s.s / 10, src: 'Zensus 2022' },
+    { g: 'bestand', n: 'Wohnfläche je Haushalt', u: 'm²', d: 0, f: s => s.s == null || s.h == null ? null : s.s / 10 * s.h / 100, src: 'Zensus 2022 (abgeleitet)' },
     { g: 'bestand', n: 'Gebäude vor 1949', u: '%', d: 1, f: s => bShare(s, 0, 2), src: 'Zensus 2022' },
     { g: 'bestand', n: 'Gebäude 1949–1990', u: '%', d: 1, f: s => bShare(s, 2, 4), src: 'Zensus 2022' },
     { g: 'bestand', n: 'Gebäude ab 2011', u: '%', d: 1, f: s => bShare(s, 6, 8), src: 'Zensus 2022' },
@@ -4315,7 +4321,7 @@ return maplibregl$1;
     'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)': 'Arbeitsplatzdichte je 1.000 EW', 'Fertiggestellte Wohnungen je 1.000 Einwohner': 'Fertigstellungen je 1.000 EW',
     'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)': 'Bevölkerung je 10.000 EW / Jahr', 'Verfügbares Einkommen je Einwohner': 'Verfügb. Einkommen je EW',
     'Einkünfte je Steuerpflichtigen': 'Einkünfte je Steuerpflichtigem', 'Einzelhandel gesamt (Geschäfte)': 'Geschäfte gesamt', 'Autobahn-Anschlussstelle': 'Autobahn',
-    'Ein- und Auspendler, Pendlersaldo': 'Pendlersaldo', 'Kaufkraftindex (GfK/Nexiga)': 'Kaufkraftindex', 'Gastronomie (Restaurants, Cafés, Bars)': 'Gastronomie'
+    'Ein- und Auspendler, Pendlersaldo': 'Pendlersaldo', 'Wohnfläche je Haushalt': 'Ø Wohnfläche je Haushalt', 'Kaufkraftindex (GfK/Nexiga)': 'Kaufkraftindex', 'Gastronomie (Restaurants, Cafés, Bars)': 'Gastronomie'
   };
   const short = n => SHORT[n] || n;
   const KZGS = { infra: 'Infrastruktur im Umgriff', anb: 'Verkehrsanbindung', bau: 'Bautätigkeit', bestand: 'Gebäudebestand', kk: 'Einkommen', arbg: 'Große Arbeitgeber' };
@@ -4342,12 +4348,16 @@ return maplibregl$1;
     const K = kzSet();
     $('kzAsset').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === K.asset));
     $('kzR').value = String(K.r); $('kzShowR').checked = !!K.showR;
+    $('brwV').value = P.brw ? P.brw.v : ''; $('brwD').value = P.brw ? P.brw.d || '' : ''; $('brwA').value = P.brw ? P.brw.art || 'W' : 'W';
     $('kzHint').textContent = !P.kz ? 'Wird beim Öffnen automatisch berechnet.' : kzStale() ? 'Projektpunkt oder Radius geändert – wird neu berechnet.'
       : 'Berechnet am ' + new Date(P.kz.at).toLocaleDateString('de-DE') + ' für ' + radTxt(P.kz.r) + (P.kz.city && P.kz.city.name ? ' · Vergleich: ' + P.kz.city.name : '') + '.';
     renderCalc();
   }
   $('kzAsset').querySelectorAll('button').forEach(b => b.onclick = () => { kzSet().asset = b.dataset.a; P.asset = b.dataset.a; if (b.dataset.a === 'logistik' && kzSet().r < 5000) kzSet().r = 10000; saveS(); syncKzUI(); renderKz(); if (kzOn && kzStale()) runKz(); });
   $('kzR').onchange = () => { kzSet().r = +$('kzR').value; saveS(); syncKzUI(); repaint(); if (kzOn) runKz(); };
+  const brwSet = () => { const v = +$('brwV').value; P.brw = v > 0 ? { v, d: $('brwD').value.trim(), art: $('brwA').value, src: P.region === 'BY' ? 'BORIS-Bayern' : P.region === 'BW' ? 'BORIS-BW' : 'BORIS' } : null; renderKz(); snap(); };
+  ['brwV', 'brwD', 'brwA'].forEach(id => $(id).onchange = brwSet);
+  $('brwOpen').onclick = () => window.open('https://www.bodenrichtwerte-boris.de/', '_blank', 'noopener');
   $('kzShowR').onchange = () => { kzSet().showR = $('kzShowR').checked; saveS(); repaint(); };
   let kzBusy = null;
   // Zensus im Radius (+ 25 km für Gewerbe), danach im Hintergrund Stadtvergleich und Regionalatlas
@@ -4394,6 +4404,7 @@ return maplibregl$1;
     const order = KZORDER[kzSet().asset] || KZORDER.wohnen, out = [];
     for (const g of order) for (const k of KZK.filter(k => k.g === g && (!k.assets || k.assets.includes(kzSet().asset)))) {
       if (k.txt) { const t = k.txt(); out.push({ g, k, txt: t }); continue; }
+      if (k.brw) { out.push({ g, k, brw: P.brw && +P.brw.v > 0 ? P.brw : null }); continue; }
       if (k.emp) { const E = Z.emp && samePt(Z.emp) ? Z.emp : null; if (E && E.list) E.list.forEach(e => out.push({ g, k, empItem: e })); else out.push({ g, k, empItem: null, empErr: E && E.err }); continue; }
       if (k.inf) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.inf] : undefined;
         if (I === undefined && Z.infra) continue;
@@ -4418,7 +4429,7 @@ return maplibregl$1;
       const p = polOf(r.k); if (!p) continue;
       let dv = null;
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null && r.raw.land != null) dv = devOf(r.k, r.raw.v, r.raw.land); }
-      else if (!r.ext && r.txt == null && r.traffic === undefined && r.empItem === undefined && !r.k.sum) dv = devOf(r.k, r.v, r.um);
+      else if (!r.ext && r.txt == null && r.traffic === undefined && r.empItem === undefined && r.brw === undefined && !r.k.sum) dv = devOf(r.k, r.v, r.um);
       if (dv == null) continue;
       const c = Math.max(-0.5, Math.min(0.5, dv)) * Math.sign(p);
       sw += Math.abs(p); sv += c * Math.abs(p); items.push({ n: r.k.n, c, raw: r.raw !== undefined });
@@ -4506,6 +4517,12 @@ return maplibregl$1;
         const ra = grp.some(x => x.raw !== undefined);
         if (cur === 'arbg') srcNow = 'Wikidata · Beschäftigte des Unternehmens insgesamt, nicht je Standort';
         html += `<table>` + (cur === 'arbg' ? thE(cur) : cur === 'infra' ? thI(cur) : cur === 'anb' ? thA(cur) : num ? th(cur) : ra ? thR(cur) : thX(cur));
+      }
+      if (r.brw !== undefined) {
+        const B = r.brw, ART = { W: 'Wohnen', M: 'gemischt', G: 'Gewerbe', S: 'Sonstiges' };
+        html += B ? `<tr><td class="nm">Bodenrichtwert</td><td class="v">${fmtN(+B.v, 0, '€/m²')}</td><td class="vs">${esc([ART[B.art] || '', B.d ? 'Stichtag ' + B.d : ''].filter(Boolean).join(' · '))}</td><td colspan="2" class="c" style="text-align:left">${esc(B.src || 'BORIS')}</td></tr>`
+          : `<tr class="ext"><td class="nm">Bodenrichtwert</td><td colspan="4" class="c" style="text-align:left">links unter „Bodenrichtwert“ aus BORIS eintragen</td></tr>`;
+        continue;
       }
       if (r.empItem !== undefined) {
         const e = r.empItem;
@@ -4706,7 +4723,7 @@ return maplibregl$1;
     let best = null;
     for (const f of js.features || []) {
       const a = f.attributes || {}, v = get(a, I.a), j = +(get(a, 'jahr2') || get(a, 'jahr') || 0);
-      if (v == null || v === '' || isNaN(+v)) continue;
+      if (v == null || v === '' || isNaN(+v) || Math.abs(+v) >= 1e7) continue;     // Sonderwerte des Regionalatlas (5555555555 usw.)
       if (!best || j > best.jahr) best = { v: +v * (I.f || 1), jahr: j || null, where: get(a, 'gen') || get(a, 'name') || '' };
     }
     return best;
@@ -4798,6 +4815,7 @@ return maplibregl$1;
     for (const r of kzRows()) {
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null) lines.push(`${r.k.n}: ${fmtN(r.raw.v, r.k.d, r.k.u, r.k.sign)} (${r.raw.where || ''}${r.raw.land != null ? ', Land ' + fmtN(r.raw.land, r.k.d, r.k.u, r.k.sign) : ''})`); continue; }
       if (r.traffic !== undefined) { if (r.traffic && r.traffic.list) r.traffic.list.forEach(t => lines.push(`Verkehr ${t.name}: ${fmtN(t.dtv, 0, 'Kfz/24 h')} (${fmtN(t.dist / 1000, 1, 'km')} entfernt)`)); continue; }
+      if (r.brw !== undefined) { if (r.brw) lines.push(`Bodenrichtwert: ${fmtN(+r.brw.v, 0, '€/m²')}${r.brw.d ? ' (Stichtag ' + r.brw.d + ')' : ''}`); continue; }
       if (r.empItem !== undefined) { if (r.empItem) lines.push(`Arbeitgeber ${r.empItem.n}: ${r.empItem.emp.toLocaleString('de-DE')} Beschäftigte (gesamt), ${fmtD(r.empItem.d)}`); continue; }
       if (r.inf !== undefined) { if (r.inf) lines.push(`${r.k.n}: ${r.inf.n} im Radius` + (r.c.count ? '' : `, nächste ${fmtD(r.inf.d)}${r.inf.nm ? ' (' + r.inf.nm + ')' : ''}`)); continue; }
       if (r.anb !== undefined) { if (r.anb) lines.push(`${r.anb.label}: ${fmtD(r.anb.km * 1000)}, ${fmtM(r.anb.min)} ${r.anb.mode === 'Fuß' ? 'zu Fuß' : 'Pkw'}`); continue; }
@@ -4813,7 +4831,7 @@ return maplibregl$1;
   $('kzPng').onclick = async () => {
     const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst berechnen.'; return; }
     await loadFonts();
-    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.raw === undefined && r.traffic === undefined && r.inf === undefined && r.anb === undefined && r.empItem === undefined && r.v != null).slice(0, 6);
+    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.raw === undefined && r.traffic === undefined && r.inf === undefined && r.anb === undefined && r.empItem === undefined && r.brw === undefined && r.v != null).slice(0, 6);
     const W = 1800, H = 1000, c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d'), F = famOf(ST(active).font, 400), FB = famOf(ST(active).font, 700);
     g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
