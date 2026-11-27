@@ -557,6 +557,8 @@ return maplibregl$1;
           <div class="row"><label class="f">€/m²<input type="number" id="brwV" min="0" step="10"></label><label class="f">Stichtag<input type="text" id="brwD" placeholder="01.01.2024"></label></div>
           <div class="row"><label class="f">Nutzung<select id="brwA"><option value="W">Wohnen</option><option value="M">gemischt</option><option value="G">Gewerbe</option><option value="S">Sonstiges</option></select></label>
             <button id="brwOpen" style="align-self:end">BORIS öffnen</button></div>
+          <label class="f">oder Freitext<input type="text" id="brwT" placeholder="z. B. nicht frei verfügbar – muss eingeholt werden"></label>
+          <button id="brwNA" style="font-size:11px">„nicht frei verfügbar“ eintragen</button>
           <p class="hint">Automatisch abrufbar ist der Wert nicht: BORIS-BW zeigt ihn kostenfrei im Portal (Nutzungsbedingungen beachten), in Bayern ist er meist kostenpflichtig. Den Wert hier eintragen – er erscheint im Dossier.</p></div>
         <button id="kzPrint">Dossier drucken / als PDF sichern</button>
         <div class="row"><button id="kzCopy">Text kopieren</button><button id="kzPng">Kachel als PNG</button></div>
@@ -4394,15 +4396,17 @@ return maplibregl$1;
     const K = kzSet();
     $('kzAsset').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === K.asset));
     $('kzR').value = String(K.r); $('kzShowR').checked = !!K.showR;
-    $('brwV').value = P.brw ? P.brw.v : ''; $('brwD').value = P.brw ? P.brw.d || '' : ''; $('brwA').value = P.brw ? P.brw.art || 'W' : 'W';
+    $('brwV').value = P.brw && P.brw.v ? P.brw.v : ''; $('brwT').value = P.brw ? P.brw.t || '' : ''; $('brwD').value = P.brw ? P.brw.d || '' : ''; $('brwA').value = P.brw ? P.brw.art || 'W' : 'W';
     $('kzHint').textContent = !P.kz ? 'Wird beim Öffnen automatisch berechnet.' : kzStale() ? 'Projektpunkt oder Radius geändert – wird neu berechnet.'
       : 'Berechnet am ' + new Date(P.kz.at).toLocaleDateString('de-DE') + ' für ' + radTxt(P.kz.r) + (P.kz.city && P.kz.city.name ? ' · Vergleich: ' + P.kz.city.name : '') + '.';
     renderCalc();
   }
   $('kzAsset').querySelectorAll('button').forEach(b => b.onclick = () => { kzSet().asset = b.dataset.a; P.asset = b.dataset.a; if (b.dataset.a === 'logistik' && kzSet().r < 5000) kzSet().r = 10000; saveS(); syncKzUI(); renderKz(); if (kzOn && kzStale()) runKz(); });
   $('kzR').onchange = () => { kzSet().r = +$('kzR').value; saveS(); syncKzUI(); repaint(); if (kzOn) runKz(); };
-  const brwSet = () => { const v = +$('brwV').value; P.brw = v > 0 ? { v, d: $('brwD').value.trim(), art: $('brwA').value, src: P.region === 'BY' ? 'BORIS-Bayern' : P.region === 'BW' ? 'BORIS-BW' : 'BORIS' } : null; renderKz(); snap(); };
-  ['brwV', 'brwD', 'brwA'].forEach(id => $(id).onchange = brwSet);
+  const brwSet = () => { const v = +$('brwV').value, t = $('brwT').value.trim();
+    P.brw = v > 0 || t ? { v: v > 0 ? v : null, t, d: $('brwD').value.trim(), art: $('brwA').value, src: P.region === 'BY' ? 'BORIS-Bayern' : P.region === 'BW' ? 'BORIS-BW' : 'BORIS' } : null; renderKz(); snap(); };
+  ['brwV', 'brwD', 'brwA', 'brwT'].forEach(id => $(id).onchange = brwSet);
+  $('brwNA').onclick = () => { $('brwT').value = 'Bodenrichtwert an dieser Stelle nicht frei verfügbar – muss eingeholt werden'; brwSet(); };
   $('brwOpen').onclick = () => window.open('https://www.bodenrichtwerte-boris.de/', '_blank', 'noopener');
   $('kzShowR').onchange = () => { kzSet().showR = $('kzShowR').checked; saveS(); repaint(); };
   let kzBusy = null;
@@ -4451,7 +4455,7 @@ return maplibregl$1;
     for (const g of order) for (const k of KZK.filter(k => k.g === g && (!k.assets || k.assets.includes(kzSet().asset)))) {
       if (k.txt) { const t = k.txt(); out.push({ g, k, txt: t }); continue; }
       if (k.wl) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.wl] : undefined; out.push({ g, k, wl: I || null, c: INFRA.find(c => c.id === k.wl) }); continue; }
-      if (k.brw) { out.push({ g, k, brw: P.brw && +P.brw.v > 0 ? P.brw : null }); continue; }
+      if (k.brw) { out.push({ g, k, brw: P.brw && (+P.brw.v > 0 || P.brw.t) ? P.brw : null }); continue; }
       if (k.emp) { const E = Z.emp && samePt(Z.emp) ? Z.emp : null; if (E && E.list) E.list.forEach(e => out.push({ g, k, empItem: e })); else out.push({ g, k, empItem: null, empErr: E && E.err }); continue; }
       if (k.inf) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.inf] : undefined;
         if (I === undefined && Z.infra) continue;
@@ -4579,7 +4583,8 @@ return maplibregl$1;
       }
       if (r.brw !== undefined) {
         const B = r.brw, ART = { W: 'Wohnen', M: 'gemischt', G: 'Gewerbe', S: 'Sonstiges' };
-        html += B ? `<tr><td class="nm">Bodenrichtwert</td><td class="v">${fmtN(+B.v, 0, '€/m²')}</td><td class="vs">${esc([ART[B.art] || '', B.d ? 'Stichtag ' + B.d : ''].filter(Boolean).join(' · '))}</td><td colspan="2" class="c" style="text-align:left">${esc(B.src || 'BORIS')}</td></tr>`
+        html += B && +B.v > 0 ? `<tr><td class="nm">Bodenrichtwert</td><td class="v">${fmtN(+B.v, 0, '€/m²')}</td><td class="vs">${esc([ART[B.art] || '', B.d ? 'Stichtag ' + B.d : ''].filter(Boolean).join(' · '))}</td><td colspan="2" class="c" style="text-align:left">${esc(B.t || B.src || 'BORIS')}</td></tr>`
+          : B && B.t ? `<tr><td class="nm">Bodenrichtwert</td><td colspan="4" style="text-align:left;color:#2A3038">${esc(B.t)}</td></tr>`
           : `<tr class="ext"><td class="nm">Bodenrichtwert</td><td colspan="4" class="c" style="text-align:left">links unter „Bodenrichtwert“ aus BORIS eintragen</td></tr>`;
         continue;
       }
@@ -4714,7 +4719,7 @@ return maplibregl$1;
       for (const p of it.pts) {
         const [x, y] = dosProj(B, p[0], p[1]); if (x < 0 || y < 0 || x > B.w || y > B.h) continue;
         if (sym === 'ring') { g.fillStyle = '#fff'; g.strokeStyle = col; g.lineWidth = mm(0.45); g.beginPath(); g.arc(x, y, mm(1.15), 0, Math.PI * 2); g.fill(); g.stroke(); }
-        else { const s2 = mm(1.5); g.fillStyle = '#fff'; g.fillRect(x - s2 / 2 - mm(0.2), y - s2 / 2 - mm(0.2), s2 + mm(0.4), s2 + mm(0.4)); g.fillStyle = col; g.fillRect(x - s2 / 2, y - s2 / 2, s2, s2); }
+        else { g.fillStyle = '#fff'; g.beginPath(); g.arc(x, y, mm(0.95), 0, Math.PI * 2); g.fill(); g.fillStyle = col; g.beginPath(); g.arc(x, y, mm(0.75), 0, Math.PI * 2); g.fill(); }
       }
     }
     // nächster Halt mit Namen
@@ -4733,7 +4738,7 @@ return maplibregl$1;
       g.fillStyle = 'rgba(255,255,255,.94)'; g.fillRect(mm(3), B.h - lh - mm(3), lw, lh);
       used.forEach(([lab, col, sym], i) => { const y = B.h - lh - mm(3) + mm(3.3) + i * mm(3.6);
         if (sym === 'ring') { g.fillStyle = '#fff'; g.strokeStyle = col; g.lineWidth = mm(0.45); g.beginPath(); g.arc(mm(6), y, mm(1), 0, Math.PI * 2); g.fill(); g.stroke(); }
-        else { g.fillStyle = col; g.fillRect(mm(5), y - mm(0.9), mm(1.8), mm(1.8)); }
+        else { g.fillStyle = col; g.beginPath(); g.arc(mm(6), y, mm(0.85), 0, Math.PI * 2); g.fill(); }
         g.fillStyle = '#2A3038'; g.fillText(lab, mm(8.5), y); });
     }
     // Maßstabsleiste und Nordpfeil unten rechts
@@ -4875,7 +4880,7 @@ return maplibregl$1;
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null) lines.push(`${r.k.n}: ${fmtN(r.raw.v, r.k.d, r.k.u, r.k.sign)} (${r.raw.where || ''}${r.raw.land != null ? ', Land ' + fmtN(r.raw.land, r.k.d, r.k.u, r.k.sign) : ''})`); continue; }
       if (r.traffic !== undefined) { if (r.traffic && r.traffic.list) r.traffic.list.forEach(t => lines.push(`Verkehr ${t.name}: ${fmtN(t.dtv, 0, 'Kfz/24 h')} (${fmtN(t.dist / 1000, 1, 'km')} entfernt)`)); continue; }
       if (r.wl !== undefined) { if (r.wl && r.wl.list) r.wl.list.slice(0, 3).forEach(x => lines.push(`${r.k.n}: ${x.nm}, ${fmtD(x.d)}`)); continue; }
-      if (r.brw !== undefined) { if (r.brw) lines.push(`Bodenrichtwert: ${fmtN(+r.brw.v, 0, '€/m²')}${r.brw.d ? ' (Stichtag ' + r.brw.d + ')' : ''}`); continue; }
+      if (r.brw !== undefined) { if (r.brw) lines.push('Bodenrichtwert: ' + (+r.brw.v > 0 ? `${fmtN(+r.brw.v, 0, '€/m²')}${r.brw.d ? ' (Stichtag ' + r.brw.d + ')' : ''}` : r.brw.t)); continue; }
       if (r.empItem !== undefined) { if (r.empItem) lines.push(`Arbeitgeber ${r.empItem.n}: ${r.empItem.emp.toLocaleString('de-DE')} Beschäftigte (gesamt), ${fmtD(r.empItem.d)}`); continue; }
       if (r.inf !== undefined) { if (r.inf) lines.push(`${r.k.n}: ${r.inf.n} im Radius` + (r.c.count ? '' : `, nächste ${fmtD(r.inf.d)}${r.inf.nm ? ' (' + r.inf.nm + ')' : ''}`)); continue; }
       if (r.anb !== undefined) { if (r.anb) lines.push(`${r.anb.label}: ${fmtD(r.anb.km * 1000)}, ${fmtM(r.anb.min)} ${r.anb.mode === 'Fuß' ? 'zu Fuß' : 'Pkw'}`); continue; }
