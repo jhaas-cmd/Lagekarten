@@ -1673,8 +1673,16 @@ return maplibregl$1;
   function drawLakeNames(g, map, k, W, H, obst, T, inF, kind) {
     let fs = []; try { fs = map.querySourceFeatures('omt', { sourceLayer: 'water_name' }); } catch (e) { return; }
     const o = lblOpts(k, T, T.water, 0, inF), mm = v => v * k, seen = new Set();
-    const list = fs.filter(f => f.geometry.type === 'Point' && /^(lake|pond|reservoir|basin|sea|bay)$/.test((f.properties || {}).class || '') || (f.geometry.type === 'Point' && !(f.properties || {}).class))
-      .map(f => ({ f, name: (f.properties || {})['name:de'] || (f.properties || {}).name_de || (f.properties || {}).name })).filter(x => x.name);
+    const NOT = /kneipp|denkmal|brunnen|becken|biotop|rückhalt|rueckhalt|regenwasser|lösch|loesch|feuerwehr|schwimm|bad\b|freibad|pool|klär|klaer|tümpel|zierteich|wasserspiel|fontäne|planschen/i;
+    const list = fs.filter(f => f.geometry.type === 'Point' && /^(lake|sea|bay|reservoir|lagoon)$/.test((f.properties || {}).class || 'lake'))
+      .map(f => ({ f, name: (f.properties || {})['name:de'] || (f.properties || {}).name_de || (f.properties || {}).name })).filter(x => x.name && !NOT.test(x.name));
+    // Mindestgröße der Wasserfläche: ca. 25 mm² auf dem Blatt (1:10.000 ≈ 0,25 ha · 1:25.000 ≈ 1,6 ha · 1:100.000 ≈ 25 ha)
+    let polys = []; try { polys = map.querySourceFeatures('omt', { sourceLayer: 'water' }).filter(f => /Polygon/.test(f.geometry.type)); } catch (e) {}
+    const sc = scaleOf(kind), minA = 25e-6 * sc * sc;
+    const ringA = r => { let a = 0; const c = Math.cos(r[0][1] * Math.PI / 180) * 111320; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] - r[i][0]) * c * (r[j][1] + r[i][1]) * 111320; return Math.abs(a / 2); };
+    const inRing = (pt, r) => { let n = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > pt[1]) !== (r[j][1] > pt[1]) && pt[0] < (r[j][0] - r[i][0]) * (pt[1] - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) n = !n; return n; };
+    const areaAt = pt => { let best = 0; for (const f of polys) for (const poly of (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates)) if (poly[0] && inRing(pt, poly[0])) best = Math.max(best, ringA(poly[0])); return best; };
+    for (let i = list.length - 1; i >= 0; i--) if (polys.length && areaAt(list[i].f.geometry.coordinates) < minA) list.splice(i, 1);
     g.font = o.font; g.textAlign = 'center'; g.textBaseline = 'middle';
     for (const { f, name } of list) {
       if (seen.has(name)) continue;
@@ -3305,7 +3313,7 @@ return maplibregl$1;
       status('');
       for (const it of js) {
         const b = document.createElement('button'); b.textContent = it.display_name;
-        b.onclick = () => { P.place = it.display_name; P.addr = addrOf(it); setPoint(+it.lon, +it.lat); box.hidden = true; status('Projektpunkt gesetzt.'); syncProjLine(); };
+        b.onclick = () => { P.place = it.display_name; P.addr = addrOf(it); setPoint(+it.lon, +it.lat); box.hidden = true; autoScale(); syncProjLine(); };
         box.appendChild(b);
       }
     } catch (e) { status('Die Suche ist nicht erreichbar. Koordinaten einfügen funktioniert immer, z. B. 48.7137, 9.0034.'); }
@@ -5725,7 +5733,8 @@ return maplibregl$1;
     // empfohlene Vorlage je Nutzung
     fam: { wohnen: 'vermarktung', buero: 'praesent', light: 'gewerbe', logistik: 'gewerbe', fue: 'praesent' },
     // Maßstäbe Makro-/Mikrolage: Stadt / Land
-    scale: { mi: [25000, 50000], mk: [10000, 15000] },
+    // Maßstäbe je Karte: Stadt / Land; Mikrolage in Großstädten (ab 500.000 EW) enger
+    scale: { ov: [500000, 1000000], mi: [50000, 100000], mk: [15000, 25000], mkGross: 10000 },
     // Formate je Zweck (Schlüssel aus PRESETS)
     use: {
       expo: { ov: '20.93x19.05', mi: '33.87x19.05', mk: '15.19x11.10', tab: 'mi', txt: 'Folienformate: Landkarte A1 Bildhälfte, Makrolage B1 Vollbild, Mikrolage A2 50/50' },
@@ -5735,7 +5744,21 @@ return maplibregl$1;
   };
   const WZ = { step: 1, placed: false, asset: null, use: null };
   // Stadt oder Land: liegt eine Großstadt (ab 100.000 EW) in der Nähe?
-  const isUrban = () => CITIES.some(c => c[4] >= 100000 && crow([P.lon, P.lat], [c[1], c[2]]) < (c[4] >= 500000 ? 14 : 8));
+  // Lage → Maßstäbe der drei Karten (START_DEF.scale); greift bei jedem neu gesuchten Ort und im Assistenten
+  const isGross = () => CITIES.some(c => c[4] >= 500000 && crow([P.lon, P.lat], [c[1], c[2]]) < 8);   // innerhalb einer Großstadt ab 500.000 EW
+  function scalesByLage() {
+    const D = START_DEF.scale, u = isUrban() ? 0 : 1;
+    return { urban: !u, gross: !u && isGross(), ov: D.ov[u], mi: D.mi[u], mk: !u && isGross() ? D.mkGross : D.mk[u] };
+  }
+  function autoScale() {
+    const sc = scalesByLage();
+    S.ovScale = String(sc.ov); S.scale = sc.mi; S.mkScale = sc.mk;
+    $('ovScale').value = S.ovScale; $('scale').value = String(S.scale); $('mkScale').value = String(S.mkScale);
+    saveS(); try { syncBar(); } catch (e) {} restyleOv(); relayout(); setTimeout(() => loadMapping(), 400);
+    status('Maßstäbe nach Lage (' + (sc.gross ? 'Großstadt' : sc.urban ? 'städtisch' : 'ländlich') + '): Landkarte 1:' + sc.ov.toLocaleString('de-DE') + ' · Makro 1:' + sc.mi.toLocaleString('de-DE') + ' · Mikro 1:' + sc.mk.toLocaleString('de-DE') + ' – jederzeit änderbar.');
+  }
+  // städtisch: Großstadt in 8 km (ab 500.000 EW: 18 km, Speckgürtel) oder selbst in/an einer Mittelstadt ab 40.000 EW (3 km)
+  const isUrban = () => CITIES.some(c => { const d = crow([P.lon, P.lat], [c[1], c[2]]); return c[4] >= 500000 ? d < 18 : c[4] >= 100000 ? d < 8 : c[4] >= 40000 && d < 3; });
   function showStart(on) {
     $('startCard').hidden = !on;
     if (!on) return;
@@ -5766,7 +5789,8 @@ return maplibregl$1;
   }
   function wzPlan() {
     const urb = isUrban() ? 0 : 1, U = START_DEF.use[WZ.use] || START_DEF.use.steckbrief;
-    return { urban: !urb, r: START_DEF.radius[WZ.asset][urb], mi: START_DEF.scale.mi[urb], mk: START_DEF.scale.mk[urb], U };
+    const sc = scalesByLage();
+    return { urban: !urb, r: START_DEF.radius[WZ.asset][urb], ov: sc.ov, mi: sc.mi, mk: sc.mk, U };
   }
   function wzSummary() {
     const p = wzPlan(), fam = $('gsFam').value, famN = fam ? (Object.values(S.presets).find(x => x.fam === fam) || {}).famName : 'aktuelle Vorlagen';
@@ -5776,7 +5800,7 @@ return maplibregl$1;
       ['Nutzung', ANAME[WZ.asset]],
       ['Lage', p.urban ? 'städtisch – Großstadt in der Nähe' : 'eher ländlich'],
       ['Radius', radTxt(p.r) + ` <small>für Kennzahlen und Infrastruktur</small>`],
-      ['Karten', `Landkarte ${fn(p.U.ov)}<br>Makrolage ${fn(p.U.mi)} · M 1:${p.mi.toLocaleString('de-DE')}<br>Mikrolage ${fn(p.U.mk)} · M 1:${p.mk.toLocaleString('de-DE')}`],
+      ['Karten', `Landkarte ${fn(p.U.ov)} · M 1:${p.ov.toLocaleString('de-DE')}<br>Makrolage ${fn(p.U.mi)} · M 1:${p.mi.toLocaleString('de-DE')}<br>Mikrolage ${fn(p.U.mk)} · M 1:${p.mk.toLocaleString('de-DE')}`],
       ['Kartenstil', esc(famN || '–')]
     ].map(([t, d]) => `<dt>${t}</dt><dd>${d}</dd>`).join('');
   }
@@ -5814,7 +5838,7 @@ return maplibregl$1;
     P.asset = WZ.asset; P.use = WZ.use; P.started = true;
     const K = kzSet(); K.asset = WZ.asset; K.r = p.r;
     if (fam) for (const kk of KINDS) { const id = S.presets[famId(fam, kk)] ? famId(fam, kk) : Object.keys(S.presets).find(i => S.presets[i].fam === fam && S.presets[i].base === kk); if (id) S.use[kk] = id; }
-    S.ovPreset = p.U.ov; S.miPreset = p.U.mi; S.mkPreset = p.U.mk; S.scale = p.mi; S.mkScale = p.mk;
+    S.ovPreset = p.U.ov; S.miPreset = p.U.mi; S.mkPreset = p.U.mk; S.scale = p.mi; S.mkScale = p.mk; S.ovScale = String(p.ov);
     P.miCenter = [P.lon, P.lat]; P.mkCenter = [P.lon, P.lat]; P.ov.center = [P.lon, P.lat];
     showStart(false); saveS(); syncAllUI(); syncAllPresets(); syncKzUI(); snap();
     if (p.U.tab === 'kz') showKz(); else setTab(p.U.tab);
@@ -5858,7 +5882,7 @@ return maplibregl$1;
   loadFonts().then(() => repaint()); if (document.fonts) document.fonts.ready.then(() => repaint());
   // Verlauf starten
   hist.stack = [stateStr()]; hist.i = 0; hist.ready = true; updUndo();
-  window.__lk = { ISO: () => ISO, views, P: () => P, S, styleFor, zoomForScale, cities: () => CITIES, mapData: () => mapData, tileItems: () => tileItems(), catOf, setTab, setZoom, vzoom, active: () => active, undo, redo, hist, DEMS, PLACES, TREES, ST, repaint, drawBase, makeZip, drawLineLabels, lblOpts };
+  window.__lk = { autoScale, ISO: () => ISO, views, P: () => P, S, styleFor, zoomForScale, cities: () => CITIES, mapData: () => mapData, tileItems: () => tileItems(), catOf, setTab, setZoom, vzoom, active: () => active, undo, redo, hist, DEMS, PLACES, TREES, ST, repaint, drawBase, makeZip, drawLineLabels, lblOpts };
 })();
 </script>
 </body>
