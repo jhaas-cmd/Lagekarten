@@ -3943,7 +3943,7 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 15;
+  const FAM_VER = 16;
   const FAMS = {
     // Drei GIEAG-Vorlagen als Reihe vom Abstrakten zum Bildhaften; Julius' Feintuning kommt später als tuned:{ov,mi,mk} hinzu
     abstrakt: { name: '1 · Abstrakt', desc: 'Schema wie ein Netzplan: weißes Blatt, nur Hauptachsen in einer Farbe, keine Vegetation, kaum Schrift – Lagebeziehungen, Radien und Fahrzeiten (Investor, Büro, Logistik)', veg: 'eigen',
@@ -3958,8 +3958,8 @@ return maplibregl$1;
         water: { color: '#DCE4ED', inner: 0, lbl: false, lake: false, lStream: false },
         border: { color: '#C3C9D1', dash: 'solid' }, hill: { on: false }, contour: { on: false },
         wood: { on: false }, park: { on: false }, field: { on: false }, green: { on: false }, crowns: { on: false } }),
-      // Feintuning Julius, 27.11.2026 (Export „ATLAS_Vorlagen_2026-11-27“)
-      tuned: {"ov": {"ct": {"small": {"on": true}}, "north": {"on": true}, "scalebar": {"on": true}, "cities": {"min": 20000}, "settle": {"color": "#A3A9AE"}}, "mi": {"ptitle": {"lines": "zwei"}, "ct": {"mid": {"col": "#1E1E1E"}}, "cities": {"on": true}, "settle": {"color": "#A3A9AE"}, "mw": {"w": 0.7}, "road": {"w": 0.15}, "rail": {"color": "#1E1E1E", "w": 0.25}, "water": {"on": false, "color": "#8FB8DE"}, "veg": {"on": false}}, "mk": {"font": "aptos", "weight": 300, "ptitle": {"lines": "zwei"}, "bldg": {"color": "#C4C7CB"}, "rail": {"color": "#3C4044", "w": 0.15}}} },
+      // Feintuning Julius, 27.11.2026, 15:21 (Export „ATLAS_Vorlagen_2026-11-27 (2)“)
+      tuned: {"ov": {"ptitle": {"lines": "zwei"}, "ct": {"mid": {"col": "#1D4278"}, "small": {"on": true}}, "north": {"on": true}, "scalebar": {"on": true}, "cities": {"min": 20000}, "settle": {"color": "#A3A9AE"}, "mw": {"w": 0.35}, "wood": {"on": true}, "hill": {"on": true}}, "mi": {"ptitle": {"lines": "zwei"}, "ct": {"mid": {"col": "#1E1E1E"}}, "cities": {"on": true}, "settle": {"color": "#A3A9AE"}, "mw": {"w": 0.7}, "road": {"w": 0.15}, "rail": {"color": "#1E1E1E", "w": 0.25}, "water": {"on": false, "color": "#8FB8DE"}, "veg": {"on": false}}, "mk": {"font": "aptos", "weight": 300, "ptitle": {"lines": "zwei"}, "settle": {"color": "#E3E5E8"}, "bldg": {"color": "#A3A9AE", "shadow": true, "shAlpha": 10}, "road": {"w": 0.5}, "minor": {"color": "#A3A9AE", "fill": "#E3E5E8"}, "rail": {"color": "#3C4044", "w": 0.25}, "water": {"color": "#13315C", "inner": 30, "alpha": 55}, "wood": {"on": true, "color": "#8E9399"}, "field": {"mode": "dots", "color": "#B4B8BD", "link": true}, "park": {"mode": "dots", "color": "#B4B8BD"}, "hill": {"alpha": 70}, "grid": {"on": true, "size": "250", "w": 0.05, "lbl": false}}} },
     diagramm: { name: '2 · Diagrammatisch', desc: 'Schwarzplan-Denken in Graustufen: Gebäude als dunkle Körnung, Straßen hell, Grün als Punktraster, eigenes Grundstück in Signalfarbe (Städtebau, Gemeinde, Wettbewerb)', veg: 'schwarzplan',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#1E1E1E', hi: '#F0642D', north: { color: '#1E1E1E' },
         ct: { small: { on: k !== 'ov' } }, cities: k === 'ov' ? { on: true, min: 50000 } : {},
@@ -3969,7 +3969,9 @@ return maplibregl$1;
         minor: k === 'ov' ? { on: false } : { on: true, color: '#C9CCD0', fill: '#FFFFFF', w: 0.3, mode: k === 'mk' ? 'fill' : 'line' },
         rail: { color: '#3C4044', w: k === 'ov' ? 0.2 : 0.35, classic: k !== 'ov', st: false },
         water: { color: '#B9C3CD', inner: 0, lblColor: '#5A6470', lake: true },
-        border: { color: '#8E9399', dash: 'dashed' }, hill: { on: false }, contour: { on: false } }) },
+        border: { color: '#8E9399', dash: 'dashed' }, hill: { on: false }, contour: { on: false } }),
+      // Feintuning Julius, 27.11.2026, 15:21
+      tuned: {"ov": {}, "mi": {"ptitle": {"lines": "zwei"}, "rn": {"mwRef": {"on": true}}, "settle": {"color": "#5A5F64"}, "bldg": {"on": false}, "road": {"color": "#A3A9AE", "w": 0.5}, "minor": {"color": "#FFFFFF", "w": 0.1}, "rail": {"w": 0.25}, "water": {"color": "#0B2545", "alpha": 40}, "hill": {"on": true, "alpha": 80}, "grid": {"on": true, "size": "1000", "color": "#A3A9AE"}}, "mk": {}} },
     // Grundlage auf Julius' Wunsch: Pastell · Grün (wird noch feinjustiert)
     karto: { name: '3 · Kartografisch', desc: 'hell und grün: helle Gebäude mit weichem Schatten, sanftes Grün mit Bäumen, gedecktes Wasser (Wohnen, Vermarktung, ländliche Lagen)', veg: 'pastell',
       st: k => FAMS.pastell.st(k) },
