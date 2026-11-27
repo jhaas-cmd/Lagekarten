@@ -955,7 +955,7 @@ return maplibregl$1;
   const LBL = (o) => Object.assign({ lbl: false, lblFont: '', lblWeight: 400, lblItalic: false, lblSize: 5, lblColor: '#3C4044', lblBg: true, lblBgCol: '#FFFFFF' }, o);
   const stDef = kind => ({
     font: 'aptos', weight: 300, italic: false, caps: true, txt: true, tcol: '#0A0A0A', hi: '',
-    ptitle: { on: true }, ppoint: { on: true },
+    ptitle: { on: true, lines: 'eine', maxw: 45 }, ppoint: { on: true },
     ts: kind === 'ov' ? { big: 7, mid: 5.5, small: 5 } : { big: 8, mid: 6.5, small: 5.5 },
     ct: { big: { on: true, col: '', w: '', caps: true }, mid: { on: true, col: '', w: '', caps: false }, small: { on: true, col: '', w: '', caps: false } },
     names: { on: true, bg: true, bgCol: '#FFFFFF', bgA: 'halb' },
@@ -977,7 +977,7 @@ return maplibregl$1;
       : { on: true, color: kind === 'mk' ? '#8F9398' : '#CFD1D4', w: 0.35, mode: kind === 'mk' ? 'both' : 'line', fill: '#FFFFFF', alpha: 100 },
     rail: kind === 'ov' ? { on: true, color: '#7E8388', w: 0.15, classic: false, st: false, alpha: 100 } : { on: true, color: '#3C4044', w: 0.35, classic: true, st: true, alpha: 100 },
     border: { on: true, color: '#9A9EA3', w: 0.25, dash: 'solid', alpha: 100 },
-    water: LBL({ on: true, color: S.waterBlack === false ? '#8FB8DE' : '#111111', inner: 0, lake: true, lblItalic: true, lblSize: 5.5, lblColor: '#3A3F44', alpha: 100 }),
+    water: LBL({ on: true, color: S.waterBlack === false ? '#8FB8DE' : '#111111', inner: 0, lake: true, lRiver: true, lCanal: true, lStream: false, pond: false, lblItalic: true, lblSize: 5.5, lblColor: '#3A3F44', alpha: 100 }),
     wood: { on: kind !== 'ov', mode: 'dots', color: '#B4B8BD', alpha: 100 },
     field: { on: false, mode: 'green', color: '#E4EEDB', alpha: 100 },
     veg: { on: true, preset: 'eigen' },
@@ -1360,9 +1360,23 @@ return maplibregl$1;
   function projectLabel(g, kind, k, proj, size, plate) {
     const mm = v => v * k, pt = v => v * 0.3528 * k;
     const L = lbl(kind);
-    const lines = (P.name || '').toUpperCase().split(/\r?\n/).map(t => t.trim()).filter(Boolean);
-    if (!lines.length) return null;
+    const raw = (P.name || (P.place || '').split(',')[0] || '').toUpperCase().trim();
+    if (!raw) return null;
     g.font = `700 ${pt(size)}px ${FONT}`;
+    // Zeilen: eine · zwei (ausgewogen) · automatisch (Umbruch bei maximaler Breite); Zeilenumbrüche im Namen gelten immer
+    const PT = ST(kind).ptitle || {}, mode = PT.lines || 'eine', wd = t => g.measureText(t).width;
+    let lines = [];
+    for (const para of raw.split(/\r?\n/).map(t => t.trim()).filter(Boolean)) {
+      const ws = para.split(/\s+/);
+      if (mode === 'zwei' && ws.length > 1) {
+        let best = null; for (let i = 1; i < ws.length; i++) { const a = ws.slice(0, i).join(' '), b = ws.slice(i).join(' '), m = Math.max(wd(a), wd(b)); if (!best || m < best.m) best = { m, a, b }; }
+        lines.push(best.a, best.b);
+      } else if (mode === 'auto') {
+        const maxw = mm(+PT.maxw || 45); let cur = '';
+        for (const w of ws) { const t = cur ? cur + ' ' + w : w; if (cur && wd(t) > maxw) { lines.push(cur); cur = w; } else cur = t; }
+        if (cur) lines.push(cur);
+      } else lines.push(para);
+    }
     const lh = pt(size) * 1.05;                                   // enger Zeilenabstand, wie die Folien-Headlines
     const widths = lines.map(t => g.measureText(t).width), tw = Math.max(...widths), th = lh * lines.length;
     const ax = proj.x + mm(L.dx), ay = proj.y + mm(L.dy);
@@ -1421,7 +1435,7 @@ return maplibregl$1;
     drawWaterShadow(g, map, k, W, H, T);
     if (T.contour.on) drawContours(g, map, kind, k, T);
     if (T.grid.on) drawGrid(g, map, kind, k, W, H, false);
-    const titleOn = ({ ov: S.ovTitle, mi: S.miTitle, mk: S.mkTitle })[kind] && (!T.ptitle || T.ptitle.on !== false);
+    const titleOn = !T.ptitle || T.ptitle.on !== false;       // ein Schalter: Ebene „Projekttitel“ (Übersicht-Häkchen schaltet dieselbe Ebene)
     const fsT = +({ ov: S.fsOv, mi: S.fsMi, mk: S.fsMk })[kind] || (kind === 'ov' ? 8 : 7.5);
     const plate = !!T.halo.title;
     // erst die Projektbeschriftung messen, dann nur kollidierende Namen weglassen
@@ -1447,8 +1461,8 @@ return maplibregl$1;
     if (T.scalebar.on) obst.push({ x: W - mm(34), y: H - mm(14), w: mm(34), h: mm(14) });   // Maßstabsleiste freihalten
     if (T.north.on) obst.push(northBox(k, W, H, T));
     if (T.txt) {
-      if (T.water.on && T.water.lbl) drawWaterNames(g, map, k, W, H, obst, T, inF);
-      if (T.water.on && T.water.lake) drawLakeNames(g, map, k, W, H, obst, T, inF, kind);
+      if (T.water.on && T.water.lbl && (T.water.lRiver !== false || T.water.lCanal !== false || T.water.lStream)) drawWaterNames(g, map, k, W, H, obst, T, inF);
+      if (T.water.on && T.water.lbl && (T.water.lake || T.water.pond)) drawLakeNames(g, map, k, W, H, obst, T, inF, kind);
       if (!T.rn || T.rn.on !== false) {
         drawRoadRefs(g, map, k, W, H, obst, T, inF, kind);
         if (kind !== 'ov' && (T.road.lbl || (T.rn && T.rn.minor))) drawRoadNames(g, map, k, W, H, obst, T, inF, kind);
@@ -1680,11 +1694,13 @@ return maplibregl$1;
       .map(f => ({ f, name: (f.properties || {})['name:de'] || (f.properties || {}).name_de || (f.properties || {}).name })).filter(x => x.name && !NOT.test(x.name));
     // Mindestgröße der Wasserfläche: ca. 25 mm² auf dem Blatt (1:10.000 ≈ 0,25 ha · 1:25.000 ≈ 1,6 ha · 1:100.000 ≈ 25 ha)
     let polys = []; try { polys = map.querySourceFeatures('omt', { sourceLayer: 'water' }).filter(f => /Polygon/.test(f.geometry.type)); } catch (e) {}
-    const sc = scaleOf(kind), minA = 25e-6 * sc * sc;
+    const sc = scaleOf(kind), big = 9e-6 * sc * sc, small = 1e-6 * sc * sc, Wt = T.water;   // Seen ab 9 mm², Weiher ab 1 mm² Blattfläche
     const ringA = r => { let a = 0; const c = Math.cos(r[0][1] * Math.PI / 180) * 111320; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] - r[i][0]) * c * (r[j][1] + r[i][1]) * 111320; return Math.abs(a / 2); };
     const inRing = (pt, r) => { let n = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > pt[1]) !== (r[j][1] > pt[1]) && pt[0] < (r[j][0] - r[i][0]) * (pt[1] - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) n = !n; return n; };
     const areaAt = pt => { let best = 0; for (const f of polys) for (const poly of (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates)) if (poly[0] && inRing(pt, poly[0])) best = Math.max(best, ringA(poly[0])); return best; };
-    for (let i = list.length - 1; i >= 0; i--) if (polys.length && areaAt(list[i].f.geometry.coordinates) < minA) list.splice(i, 1);
+    // ohne passende Fläche in der Kachel (bei kleinen Maßstäben vereinfacht) zählt das Gewässer als See
+    for (let i = list.length - 1; i >= 0; i--) { const a = polys.length ? areaAt(list[i].f.geometry.coordinates) : 0, isLake = !a || a >= big;
+      if (!(isLake ? Wt.lake : Wt.pond && a >= small)) list.splice(i, 1); }
     g.font = o.font; g.textAlign = 'center'; g.textBaseline = 'middle';
     for (const { f, name } of list) {
       if (seen.has(name)) continue;
@@ -1701,9 +1717,10 @@ return maplibregl$1;
     let fs = []; try { fs = map.querySourceFeatures('omt', { sourceLayer: 'waterway' }); } catch (e) {}
     const items = [];
     for (const f of fs) {
-      const pr = f.properties || {}; if (!/^(river|canal)$/.test(pr.class || '')) continue;
+      const pr = f.properties || {}, W0 = T.water;
+      if (!((pr.class === 'river' && W0.lRiver !== false) || (pr.class === 'canal' && W0.lCanal !== false) || (pr.class === 'stream' && W0.lStream))) continue;
       const name = pr['name:de'] || pr.name_de || pr.name; if (!name) continue;
-      for (const ln of linesOf(f.geometry)) if (ln.length > 1) items.push({ name, line: ln, prio: pr.class === 'river' ? 2 : 1 });
+      for (const ln of linesOf(f.geometry)) if (ln.length > 1) items.push({ name, line: ln, prio: pr.class === 'river' ? 2 : pr.class === 'canal' ? 1 : 0 });
     }
     drawLineLabels(g, map, k, W, H, items, obst, lblOpts(k, T, T.water, 60, inF));
   }
@@ -3493,7 +3510,9 @@ return maplibregl$1;
         <label class="f">Außen aufhellen (%)<input type="number" data-s="focus.fade" min="0" max="80" step="5"></label></div>
         <p class="hint">Innerhalb des Radius farbig und beschriftet; außerhalb grau, Orts-, Straßen- und Flussnamen entfallen.</p>` },
     { grp: 'darst', id: 'ptitle', name: () => 'Projekttitel', eye: 'ptitle.on', keys: ['ptitle'],
-      opt: () => '<p class="hint">Titel am Projektpunkt ein- oder ausblenden. Text, Größe und Lage stehen im Reiter Übersicht unter „Projektpunkt und Titel“.</p>' },
+      opt: () => `<div class="row"><label class="f">Zeilen<select data-s="ptitle.lines"><option value="eine">eine Zeile</option><option value="zwei">zwei Zeilen (ausgewogen)</option><option value="auto">automatisch umbrechen</option></select></label>
+        <label class="f">max. Breite (mm)<input type="number" data-s="ptitle.maxw" min="15" max="150" step="5"></label></div>
+        <p class="hint">Text ist der Projektname (ohne Namen: Straße). Größe und Lage stehen im Reiter Übersicht unter „Projektpunkt und Titel“. Die maximale Breite gilt für „automatisch umbrechen“.</p>` },
     { grp: 'darst', id: 'ppoint', name: () => 'Projektpunkt · Signalfarbe', eye: 'ppoint.on', col: 'hi', keys: ['ppoint', 'hi'],
       opt: () => '<p class="hint">Farbe = Signalfarbe der Vorlage (Projektpunkt, Baufeld, markierte Gebäude, Radius), z. B. Orange oder Gelb. Eine im Reiter Übersicht eigens gesetzte Punktfarbe hat Vorrang; dort auch die Größe. Ein gezeichnetes Baufeld oder markierte Gebäude ersetzen den Punkt in Makro- und Mikrolage.</p>' },
     { grp: 'darst', id: 'north', name: () => 'Nordpfeil', eye: 'north.on', col: 'north.color', keys: ['north'],
@@ -3547,7 +3566,10 @@ return maplibregl$1;
         : '<p class="hint">Bei Siedlungsflächen-Darstellung in voller Farbe, bei Einzelgebäuden aufgehellt dahinter.</p>' },
     { grp: 'stadt', id: 'bldg', inact: k => k === 'mi' && builtMode('mi') === 'flaeche' ? 'Bei diesem Maßstab als Siedlungsfläche – Einzelgebäude bis 1:50.000.' : null, name: () => 'Gebäude', eye: 'bldg.on', col: 'bldg.color', alpha: 'bldg.alpha', only: ['mi', 'mk'], keys: ['bldg'],
       opt: () => '<label class="check"><input type="checkbox" data-s="bldg.line"> Feine Kontur</label><label class="check"><input type="checkbox" data-s="bldg.shadow"> Schlagschatten (ab 1:25.000, Länge maßstabsabhängig)</label><label class="f">Schatten-Deckkraft · <span data-out="bldg.shAlpha"></span><input type="range" data-s="bldg.shAlpha" min="5" max="60" step="5"></label>' },
-    { grp: 'land', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', alpha: 'water.alpha', keys: ['water'], lbl: () => lblUI('water', 'Flussnamen') + '<label class="check"><input type="checkbox" data-s="water.lake"> Seen und Weiher beschriften</label>',
+    { grp: 'land', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', alpha: 'water.alpha', keys: ['water'], lbl: () => lblUI('water', 'Gewässer beschriften').replace('</label>', `</label>
+        <div class="row" style="flex-wrap:wrap;gap:2px 12px"><label class="check"><input type="checkbox" data-s="water.lRiver"> Flüsse</label><label class="check"><input type="checkbox" data-s="water.lCanal"> Kanäle</label><label class="check"><input type="checkbox" data-s="water.lStream"> Bäche</label>
+        <label class="check"><input type="checkbox" data-s="water.lake"> Seen</label><label class="check"><input type="checkbox" data-s="water.pond"> Weiher und Teiche</label></div>
+        <p class="hint">Seen ab ca. 3 × 3 mm auf dem Blatt (1:100.000 ≈ 9 ha, 1:25.000 ≈ 0,6 ha), Weiher und Teiche auch kleiner.</p>`),
       opt: () => '<label class="f"><span>Schatten nach innen · <b data-out="water.inner"></b></span><input type="range" data-s="water.inner" min="0" max="80" step="5"></label><p class="hint">Gibt Seen und Flüssen Tiefe: das Ufer wirft einen weichen Schatten ins Wasser. 0 = aus.</p>' },
     { grp: 'land', id: 'veg', inact: k => k !== 'ov' && ST(k).crowns.on && k === 'mi' && scaleOf('mi') > 25000 ? 'Bäume erscheinen erst ab 1:25.000.' : null, name: () => 'Vegetation', eye: 'veg.on', col: 'park.color', nofarbe: true, keys: ['veg', 'wood', 'park', 'green', 'field', 'crowns'],
       opt: k => `<label class="f">Stimmung<select data-s="veg.preset"><option value="eigen">eigene Einstellung</option><option value="baeume">Bäume mit Schatten auf zarter Fläche</option><option value="halbton">Halbtonraster</option><option value="flaeche">Grün zart (Flächen)</option><option value="schwarzplan">Schwarzplan (Punktraster grau)</option></select></label>
@@ -3887,7 +3909,7 @@ return maplibregl$1;
     for (const kind of KINDS) {
       $(kind + 'Preset').value = S[kind + 'Preset']; $(kind + 'Cw').value = S[kind + 'Cw']; $(kind + 'Ch').value = S[kind + 'Ch'];
       $(kind + 'Custom').hidden = S[kind + 'Preset'] !== 'custom';
-      $(kind + 'Title').checked = !!S[kind + 'Title']; $('fs' + CAP(kind)).value = S['fs' + CAP(kind)];
+      $(kind + 'Title').checked = ST(kind).ptitle.on !== false; $('fs' + CAP(kind)).value = S['fs' + CAP(kind)];
       syncStyleUI(kind); syncPP(kind); renderZoneUI(kind);
     }
     $('ovScale').value = S.ovScale; $('scale').value = String(S.scale); $('mkScale').value = String(S.mkScale); $('built').value = S.built || 'auto'; $('dpi').value = S.dpi;
@@ -4103,8 +4125,9 @@ return maplibregl$1;
   });
   const opts = { ovTitle: 'ovTitle', miTitle: 'miTitle', mkTitle: 'mkTitle', optAttrib: 'attrib', optTransp: 'transp' };
   for (const [id, key] of Object.entries(opts)) {
-    $(id).checked = !!S[key];
-    $(id).onchange = () => { S[key] = $(id).checked; saveS(); repaint(); };
+    const tk = /^(ov|mi|mk)Title$/.test(id) ? id.slice(0, 2) : null;      // Projekttitel: schaltet die Ebene der Vorlage
+    $(id).checked = tk ? ST(tk).ptitle.on !== false : !!S[key];
+    $(id).onchange = () => { if (tk) { guardFixed(tk); ST(tk).ptitle.on = $(id).checked; S[key] = $(id).checked; saveS(); syncAllPresets(); repaint(); return; } S[key] = $(id).checked; saveS(); repaint(); };
   }
 
   // ---------- Beschriftungen ----------
