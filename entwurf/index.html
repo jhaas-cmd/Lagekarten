@@ -3458,6 +3458,9 @@ return maplibregl$1;
     landschaft: k => ({ wood: { on: k !== 'ov', mode: 'green', color: '#7F9660', alpha: 100 }, park: { on: k !== 'ov', mode: 'green', color: '#B9CB94', alpha: 100 },
       field: { on: k !== 'ov', link: false, mode: 'green', color: '#DDE4C3', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#D3DFB6', alpha: 100 },
       crowns: { on: k === 'mk', shadow: true, color: '#5E7A41', alpha: 85, dens: 25, forest: 100, size: 100, vari: 30, grp: 60 } }),
+    karte: k => ({ wood: { on: true, mode: 'green', color: '#9CC17F', alpha: 100 }, park: { on: k !== 'ov', mode: 'green', color: '#C8DFAA', alpha: 100 },
+      field: { on: k !== 'ov', link: false, mode: 'green', color: '#F2EDD5', alpha: 100 }, green: { on: k !== 'ov', mode: 'flaeche', color: '#DDEBC8', alpha: 100 },
+      crowns: { on: k === 'mk', shadow: true, color: '#6F9550', alpha: 90, dens: 35, forest: 100, size: 100, vari: 30, grp: 60 } }),
     grau: k => ({ wood: { on: true, mode: 'half-l', color: '#9EA3A8', alpha: 100 }, park: { on: true, mode: 'half-m', color: '#B1B5BA', alpha: 100 },
       field: { on: true, link: true, mode: 'half-s', color: '#BFC3C7', alpha: 100 }, green: { on: false }, crowns: { on: false } }),
     schwarzplan: k => ({ wood: { on: true, mode: 'dots', color: '#8E9399', alpha: 100 }, park: { on: true, mode: 'dots', color: '#B4B8BD', alpha: 100 },
@@ -3572,7 +3575,7 @@ return maplibregl$1;
         <p class="hint">Seen ab ca. 3 × 3 mm auf dem Blatt (1:100.000 ≈ 9 ha, 1:25.000 ≈ 0,6 ha), Weiher und Teiche auch kleiner.</p>`),
       opt: () => '<label class="f"><span>Schatten nach innen · <b data-out="water.inner"></b></span><input type="range" data-s="water.inner" min="0" max="80" step="5"></label><p class="hint">Gibt Seen und Flüssen Tiefe: das Ufer wirft einen weichen Schatten ins Wasser. 0 = aus.</p>' },
     { grp: 'land', id: 'veg', inact: k => k !== 'ov' && ST(k).crowns.on && k === 'mi' && scaleOf('mi') > 25000 ? 'Bäume erscheinen erst ab 1:25.000.' : null, name: () => 'Vegetation', eye: 'veg.on', col: 'park.color', nofarbe: true, keys: ['veg', 'wood', 'park', 'green', 'field', 'crowns'],
-      opt: k => `<label class="f">Stimmung<select data-s="veg.preset"><option value="eigen">eigene Einstellung</option><option value="baeume">Bäume mit Schatten auf zarter Fläche</option><option value="halbton">Halbtonraster</option><option value="flaeche">Grün zart (Flächen)</option><option value="schwarzplan">Schwarzplan (Punktraster grau)</option></select></label>
+      opt: k => `<label class="f">Stimmung<select data-s="veg.preset"><option value="eigen">eigene Einstellung</option><option value="karte">Kartografisch (Wald, Wiesen, Felder)</option><option value="baeume">Bäume mit Schatten auf zarter Fläche</option><option value="halbton">Halbtonraster</option><option value="flaeche">Grün zart (Flächen)</option><option value="schwarzplan">Schwarzplan (Punktraster grau)</option></select></label>
         <div class="vlist">
         ${vegRow('wood', 'Wald', VMODES)}
         ${vegRow('park', 'Öffentliches Grün', VMODES)}
@@ -3940,16 +3943,48 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 12;
+  const FAM_VER = 13;
   const FAMS = {
-    // Die vier GIEAG-Vorlagen nach Anlass. Grundlage sind die früheren Stile; Julius' Feintuning kommt später als tuned:{ov,mi,mk} hinzu
-    praesent: { name: 'Präsentation · Investor', desc: 'Hauskarte für Expo Real, Steckbrief, Dossier und Investitionsausschuss – Lagebeziehungen im Vordergrund (Büro, F&E)', veg: 'grau',
+    // Drei GIEAG-Vorlagen als Reihe vom Abstrakten zum Bildhaften; Julius' Feintuning kommt später als tuned:{ov,mi,mk} hinzu
+    abstrakt: { name: '1 · Abstrakt', desc: 'Schema wie ein Netzplan: weißes Blatt, nur Hauptachsen in einer Farbe, keine Vegetation, kaum Schrift – Lagebeziehungen, Radien und Fahrzeiten (Investor, Büro, Logistik)', veg: 'eigen',
+      st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B', hi: '#F0642D', north: { color: '#14284B' },
+        ct: { small: { on: false } }, cities: k === 'ov' ? { on: true, min: 100000 } : {}, dist: { on: false },
+        rn: { mwRef: { on: true }, bRef: { on: false }, minor: false },
+        settle: { on: true, color: '#EEF0F3' }, bldg: { on: k === 'mk', color: '#E2E6EB', shadow: false, line: false },
+        mw: { on: true, color: '#14284B', w: k === 'ov' ? 0.5 : 0.9, mode: 'line' },
+        road: { on: k !== 'ov', color: '#14284B', w: k === 'mk' ? 0.45 : 0.35, mode: 'line', lbl: false },
+        minor: { on: k === 'mk', color: '#D3D8DF', w: 0.3, mode: 'line' },
+        rail: { color: '#8A94A6', w: k === 'ov' ? 0.2 : 0.35, classic: false, st: false },
+        water: { color: '#DCE4ED', inner: 0, lbl: false, lake: false, lStream: false },
+        border: { color: '#C3C9D1', dash: 'solid' }, hill: { on: false }, contour: { on: false },
+        wood: { on: false }, park: { on: false }, field: { on: false }, green: { on: false }, crowns: { on: false } }) },
+    diagramm: { name: '2 · Diagrammatisch', desc: 'Schwarzplan-Denken in Graustufen: Gebäude als dunkle Körnung, Straßen hell, Grün als Punktraster, eigenes Grundstück in Signalfarbe (Städtebau, Gemeinde, Wettbewerb)', veg: 'schwarzplan',
+      st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#1E1E1E', hi: '#F0642D', north: { color: '#1E1E1E' },
+        ct: { small: { on: k !== 'ov' } }, cities: k === 'ov' ? { on: true, min: 50000 } : {},
+        settle: { on: true, color: k === 'ov' ? '#D9DBDE' : '#E3E4E6' }, bldg: { on: true, color: '#1E1E1E', shadow: false, line: false },
+        mw: k === 'ov' ? { color: '#6E747A', w: 0.35, mode: 'line' } : { color: '#8E9399', fill: '#FFFFFF', w: 0.85, mode: k === 'mk' ? 'fill' : 'both' },
+        road: k === 'ov' ? { on: false } : { color: '#A3A8AD', fill: '#FFFFFF', w: 0.6, mode: k === 'mk' ? 'fill' : 'both', lbl: k === 'mk', lblColor: '#4A4F55' },
+        minor: k === 'ov' ? { on: false } : { on: true, color: '#C9CCD0', fill: '#FFFFFF', w: 0.3, mode: k === 'mk' ? 'fill' : 'line' },
+        rail: { color: '#3C4044', w: k === 'ov' ? 0.2 : 0.35, classic: k !== 'ov', st: false },
+        water: { color: '#B9C3CD', inner: 0, lblColor: '#5A6470', lake: true },
+        border: { color: '#8E9399', dash: 'dashed' }, hill: { on: false }, contour: { on: false } }) },
+    karto: { name: '3 · Kartografisch', desc: 'Atlas-Optik, bewusst bildhaft: Wald und Wiesen grün, Felder warm, Gewässer blau, Gelände geschummert, Straßen farbig in klarer Rangfolge, reich beschriftet (Wohnen, Vermarktung, ländliche Lagen)', veg: 'karte',
+      st: k => ({ font: 'source', weight: 400, caps: false, tcol: '#2B2B2B', hi: '#F0642D', north: { color: '#2B2B2B' },
+        ct: { big: { caps: true, w: '600' } }, cities: k === 'ov' ? { on: true, min: 20000 } : {},
+        settle: { on: true, color: k === 'ov' ? '#E9E3DB' : '#EEE9E2' }, bldg: { on: true, color: '#D9D0C5', shadow: k === 'mk', shAlpha: 25, line: k === 'mk', lineCol: '#BBB1A5' },
+        mw: k === 'ov' ? { color: '#E0632B', w: 0.5, mode: 'line' } : { color: '#B4501F', fill: '#F28C4B', w: 0.95, mode: 'both' },
+        road: k === 'ov' ? { on: true, color: '#E2A92E', w: 0.25, mode: 'line' } : { color: '#C29A35', fill: '#FBDB7E', w: 0.7, mode: 'both', lbl: k === 'mk' },
+        minor: k === 'ov' ? { on: false } : { on: true, color: '#C9C2B8', fill: '#FFFFFF', w: 0.45, mode: 'both' },
+        rail: { color: '#555555', w: k === 'ov' ? 0.25 : 0.4, classic: true, st: k !== 'ov' },
+        water: { color: '#86B6DC', inner: k === 'ov' ? 0 : 40, lbl: true, lblColor: '#2F5E8A', lake: true, lStream: k === 'mk' },
+        border: { color: '#8C7B6B', dash: 'dashed' }, hill: { on: k !== 'mk', alpha: k === 'ov' ? 45 : 30, tone: 'braun' } }) },
+    praesent: { hide: true, name: 'Präsentation · Investor', desc: 'Hauskarte für Expo Real, Steckbrief, Dossier und Investitionsausschuss – Lagebeziehungen im Vordergrund (Büro, F&E)', veg: 'grau',
       st: k => FAMS.kontrast.st(k) },
-    staedtebau: { name: 'Städtebau · Schwarzplan', desc: 'für Gemeinde, Planungsausschuss und Wettbewerb – Körnung und Dichte, eigenes Grundstück in Signalfarbe', veg: 'grau',
+    staedtebau: { hide: true, name: 'Städtebau · Schwarzplan', desc: 'für Gemeinde, Planungsausschuss und Wettbewerb – Körnung und Dichte, eigenes Grundstück in Signalfarbe', veg: 'grau',
       st: k => FAMS.akzent.st(k) },
-    vermarktung: { name: 'Wohnen · Vermarktung', desc: 'für Käufer, Mieter und Broschüre – hell, freundlich, Grün und Wasser; Landkarte mit warmer Geländeschattierung', veg: 'pastell',
+    vermarktung: { hide: true, name: 'Wohnen · Vermarktung', desc: 'für Käufer, Mieter und Broschüre – hell, freundlich, Grün und Wasser; Landkarte mit warmer Geländeschattierung', veg: 'pastell',
       st: k => dm(FAMS.pastell.st(k), { hill: { on: k === 'ov', alpha: 40, tone: 'braun' } }) },
-    gewerbe: { name: 'Gewerbe · Logistik · Region', desc: 'für Light Industrial und Logistik – zurückhaltend grau, Verkehrsachsen und Anschlussstellen treten hervor', veg: 'grau',
+    gewerbe: { hide: true, name: 'Gewerbe · Logistik · Region', desc: 'für Light Industrial und Logistik – zurückhaltend grau, Verkehrsachsen und Anschlussstellen treten hervor', veg: 'grau',
       st: k => FAMS.signal.st(k) },
     kontrast: { hide: true, name: 'ATLAS · Kontrast Dunkelblau/Orange', desc: 'weißes Land, dunkelblaues Wasser, orange Hauptstraßen, dunkle Gebäude', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B', hi: '#F0642D', north: { color: '#14284B' },
@@ -5768,7 +5803,7 @@ return maplibregl$1;
     // Radius der Kennzahlen je Nutzung: Stadt / Land
     radius: { wohnen: [1000, 2000], buero: [1000, 3000], light: [5000, 5000], logistik: [10000, 10000], fue: [3000, 5000] },
     // empfohlene Vorlage je Nutzung
-    fam: { wohnen: 'vermarktung', buero: 'praesent', light: 'gewerbe', logistik: 'gewerbe', fue: 'praesent' },
+    fam: { wohnen: 'karto', buero: 'abstrakt', light: 'abstrakt', logistik: 'abstrakt', fue: 'abstrakt' },
     // Maßstäbe Makro-/Mikrolage: Stadt / Land
     // Maßstäbe je Karte: Stadt / Land; Mikrolage in Großstädten (ab 500.000 EW) enger
     scale: { ov: [500000, 1000000], mi: [50000, 100000], mk: [15000, 25000], mkGross: 10000 },
