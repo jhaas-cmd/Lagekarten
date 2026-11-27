@@ -432,7 +432,7 @@ return maplibregl$1;
   .famgrid button .sw4 { display: flex; height: 14px; border-radius: 4px; overflow: hidden; } .famgrid button .sw4 i { flex: 1; }
   .famgrid button b { font-size: 11px; font-weight: 600; line-height: 1.25; color: #14284B; }
   .famgrid button em { font-style: normal; font-size: 9.5px; font-weight: 600; color: #F0642D; text-transform: uppercase; letter-spacing: .04em; }
-  .famact { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .famact button { flex: 1 1 auto; font-size: 11px; }
+  .famact { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .famact button { flex: 1 1 auto; font-size: 11px; } .famact select { flex: 1 1 100%; font-size: 11px; }
   .famgrid button.on { border-color: #14284B; background: #fff; } .famgrid button:hover { background: #EEF1F5; }
   .helpgrid { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; font-size: 12px; } .helpgrid kbd { font: 11px/1 var(--font); border: 1px solid #C9CDD2; border-bottom-width: 2px; border-radius: 4px; padding: 2px 6px; background: #F7F8FA; }
   .bar .info b { color: var(--ink); }
@@ -4067,9 +4067,12 @@ return maplibregl$1;
     if (act) {
       const any = Object.keys(FAMS).some(isTuned), t = cur && isTuned(cur) && !(FAMS[cur] || {}).hide, orig = t && curP.fixed;
       act.innerHTML = (t ? (orig ? `<button data-fa="mine">Zu meiner Anpassung</button>` : `<button data-fa="orig">Original ansehen</button>`) + `<button data-fa="drop">Anpassung verwerfen</button>` : '')
-        + (any ? `<button data-fa="exp" title="Alle angepassten Vorlagen als Datei – zum festen Einbau in ATLAS">Angepasste Vorlagen exportieren</button>` : '');
-      act.hidden = !act.innerHTML;
+        + (any ? `<button data-fa="exp" title="Alle angepassten Vorlagen als Datei – zum festen Einbau in ATLAS">Angepasste Vorlagen exportieren</button>` : '')
+        + `<select id="famSaveAs" title="Übernimmt den Stil, den die drei Karten gerade zeigen, als deine Anpassung der gewählten Vorlage"><option value="">Aktuellen Kartenstil speichern als …</option>`
+        + Object.entries(FAMS).filter(([, F]) => !F.hide).map(([f, F]) => `<option value="${f}">${escH(F.name)}${isTuned(f) ? ' (Anpassung ersetzen)' : ''}</option>`).join('') + `</select>`;
+      act.hidden = false;
       act.querySelectorAll('button').forEach(b => b.onclick = () => famAction(b.dataset.fa, cur));
+      $('famSaveAs').onchange = e => { const f = e.target.value; e.target.value = ''; if (f) famAction('saveas', f); };
     }
     box.querySelectorAll('button').forEach(b => b.onclick = () => {
       for (const kk of KINDS) { const id = famId(b.dataset.fam, kk); if (S.presets[id]) S.use[kk] = id; }
@@ -4087,7 +4090,17 @@ return maplibregl$1;
     return out;
   }
   function famAction(a, fam) {
-    if (a === 'orig' || a === 'mine') {
+    if (a === 'saveas') {
+      // Stil, den Landkarte, Makro- und Mikrolage gerade zeigen, als Anpassung dieser Vorlage übernehmen
+      if (isTuned(fam) && !confirm('Deine bisherige Anpassung von „' + FAMS[fam].name + '“ durch den aktuellen Kartenstil ersetzen?')) return;
+      const F = FAMS[fam], src = {};
+      for (const kk of KINDS) src[kk] = JSON.parse(JSON.stringify(ST(kk)));
+      for (const kk of KINDS) {
+        S.presets[myId(fam, kk)] = { name: 'GIEAG · ' + F.name + ' (angepasst) · ' + KNAME[kk], famName: 'GIEAG · ' + F.name, fam, base: kk, own: true, desc: F.desc, st: src[kk] };
+        S.use[kk] = myId(fam, kk);
+      }
+      status('Aktueller Kartenstil als Anpassung von „' + F.name + '“ gespeichert – jetzt „Angepasste Vorlagen exportieren“ und die Datei an Claude geben.');
+    } else if (a === 'orig' || a === 'mine') {
       for (const kk of KINDS) { const id = a === 'orig' ? 'gieag_' + fam + '_' + kk : myId(fam, kk); if (S.presets[id]) S.use[kk] = id; }
       status(a === 'orig' ? 'Original „' + FAMS[fam].name + '“ – deine Anpassung bleibt erhalten.' : 'Deine Anpassung von „' + FAMS[fam].name + '“.');
     } else if (a === 'drop') {

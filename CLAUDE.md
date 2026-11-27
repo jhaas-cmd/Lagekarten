@@ -171,3 +171,4 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - `praesent`, `staedtebau`, `vermarktung`, `gewerbe` jetzt `hide: true`. Assistent: Wohnen → karto, Büro/F&E/Light/Logistik → abstrakt.
 - Feintuning eingebaut (`FAM_VER = 14`): `abstrakt.tuned` aus Julius' Export vom 27.11.2026. Im selben Export lagen nur noch Anpassungen der ausgeblendeten `praesent`/`vermarktung` – nicht eingebaut; `diagramm` fehlte.
 - `karto` (3 · Kartografisch) basiert jetzt auf `pastell` (Vegetation `pastell`), `FAM_VER = 15`; Feintuning durch Julius folgt.
+- „Aktuellen Kartenstil speichern als …“ (`#famSaveAs`, `famAction('saveas', fam)`): kopiert den Stil, den die drei Karten gerade zeigen, als `mein_<fam>_*` (Anpassung) – danach exportieren.
