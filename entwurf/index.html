@@ -950,7 +950,7 @@ return maplibregl$1;
     ts: kind === 'ov' ? { big: 7, mid: 5.5, small: 5 } : { big: 8, mid: 6.5, small: 5.5 },
     ct: { big: { on: true, col: '', w: '', caps: true }, mid: { on: true, col: '', w: '', caps: false }, small: { on: true, col: '', w: '', caps: false } },
     names: { on: true, bg: true, bgCol: '#FFFFFF', bgA: 'halb' },
-    rn: { on: true, mwRef: { on: kind === 'ov', size: kind === 'ov' ? 5 : 5.5, col: '' }, bRef: { on: false, size: kind === 'ov' ? 5 : 5.5, col: '' }, bgA: 'halb' },
+    rn: { on: true, minor: kind === 'mk', mwRef: { on: kind === 'ov', size: kind === 'ov' ? 5 : 5.5, col: '' }, bRef: { on: false, size: kind === 'ov' ? 5 : 5.5, col: '' }, bgA: 'halb' },
     dist: { on: kind !== 'ov', color: '#6E747A', size: kind === 'mk' ? 6 : 5.5, w: 600, caps: true },
     halo: { title: kind !== 'ov', cities: kind !== 'ov', notes: true, pois: false, legend: true },
     focus: { on: false, r: kind === 'ov' ? 60000 : kind === 'mi' ? 1500 : 300, fade: 20 },
@@ -1441,7 +1441,7 @@ return maplibregl$1;
       if (T.water.on && T.water.lbl) drawWaterNames(g, map, k, W, H, obst, T, inF);
       if (!T.rn || T.rn.on !== false) {
         drawRoadRefs(g, map, k, W, H, obst, T, inF, kind);
-        if (kind !== 'ov' && T.road.lbl) drawRoadNames(g, map, k, W, H, obst, T, inF, kind);
+        if (kind !== 'ov' && (T.road.lbl || (T.rn && T.rn.minor))) drawRoadNames(g, map, k, W, H, obst, T, inF, kind);
       }
     }
     const namesOn = !T.names || T.names.on !== false;
@@ -1674,7 +1674,7 @@ return maplibregl$1;
   function drawRoadNames(g, map, k, W, H, obst, T, inF, kind) {
     let fs = []; try { fs = map.querySourceFeatures('omt', { sourceLayer: 'transportation_name' }); } catch (e) {}
     const PRIO = { motorway: 6, trunk: 5, primary: 5, secondary: 4, tertiary: 3, minor: 2, service: 1 };
-    const allowed = kind === 'mk' ? ['trunk', 'primary', 'secondary', 'tertiary', 'minor'] : ['trunk', 'primary', 'secondary', 'tertiary'];
+    const allowed = [...(T.road.lbl ? ['trunk', 'primary', 'secondary', 'tertiary'] : []), ...(T.rn && T.rn.minor ? ['minor'] : [])];
     const items = [];
     for (const f of fs) {
       const pr = f.properties || {}; if (!allowed.includes(pr.class)) continue;
@@ -3428,8 +3428,9 @@ return maplibregl$1;
   const bgRow = (on, col, a) => `<div class="tier"><b>Hintergrund</b><div class="row"><label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-s="${on}"> zeigen</label>
     <label class="f">Farbe<button class="sw" data-s="${col}" aria-label="Hintergrundfarbe"></button></label>
     <label class="f">Deckung<select data-s="${a}"><option value="halb">50 % transparent</option><option value="voll">vollflächig</option></select></label></div></div>`;
-  const tierRows = k => [['big', k === 'ov' ? 'Großstädte' : 'ab 100.000 EW'], ['mid', k === 'ov' ? 'Mittelstädte' : 'ab 10.000 EW'], ['small', k === 'ov' ? 'Kleinstädte' : 'kleinere Orte']].map(([t, n]) =>
-    `<div class="tier"><b><label class="check"><input type="checkbox" data-s="ct.${t}.on"> ${n}</label></b><div class="row"><label class="f">Größe (pt)<input type="number" data-s="ts.${t}" min="4" max="24" step="0.5"></label>
+  const cityKinds = k => [['big', k === 'ov' ? 'Großstädte' : 'Großstädte ab 100.000 EW'], ['mid', k === 'ov' ? 'Mittelstädte' : 'Städte ab 10.000 EW'], ['small', k === 'ov' ? 'Kleinstädte' : 'kleinere Orte']];
+  const tierRows = k => cityKinds(k).map(([t, n]) =>
+    `<div class="tier"><b>${n}</b><div class="row"><label class="f">Größe (pt)<input type="number" data-s="ts.${t}" min="4" max="24" step="0.5"></label>
     <label class="f">Farbe<button class="sw" data-s="ct.${t}.col" aria-label="Farbe ${n}"></button></label>
     <label class="f">Schnitt<select data-s="ct.${t}.w"><option value="">wie Schrift</option><option value="300">leicht</option><option value="400">normal</option><option value="600">halbfett</option><option value="700">fett</option></select></label></div>
     <label class="check"><input type="checkbox" data-s="ct.${t}.caps"> Versalien</label></div>`).join('');
@@ -3465,33 +3466,41 @@ return maplibregl$1;
       lbl: () => '<label class="check"><input type="checkbox" data-s="grid.lbl"> Raster beschriften</label>' },
     { grp: 'darst', id: 'border', name: () => 'Grenzen', eye: 'border.on', col: 'border.color', alpha: 'border.alpha', w: 'border.w', dash: 'border.dash', only: ['ov'], keys: ['border'] },
     { grp: 'verk', id: 'mw', name: () => 'Autobahnen', eye: 'mw.on', col: 'mw.color', fill: k => k !== 'ov' && 'mw.fill', alpha: 'mw.alpha', w: 'mw.w', keys: ['mw'],
-      opt: k => k === 'ov' ? '' : roadMode('mw'),
+      opt: k => (k === 'ov' ? '' : roadMode('mw')) + '<label class="check"><input type="checkbox" data-s="rn.mwRef.on"> Nummern zeigen (A 8)</label>',
  },
     { grp: 'verk', id: 'road', name: k => k === 'ov' ? 'Bundesstraßen' : 'Haupt- und Nebenstraßen', eye: 'road.on', col: 'road.color', fill: k => k !== 'ov' && 'road.fill', alpha: 'road.alpha', w: 'road.w', keys: ['road'],
-      opt: k => k === 'ov' ? '' : roadMode('road') + '<p class="hint">Bundes-, Staats- und Kreisstraßen sowie Sammelstraßen. Beschriftung unter „Straßennamen“.</p>' },
+      opt: k => (k === 'ov' ? '' : roadMode('road')) + '<label class="check"><input type="checkbox" data-s="rn.bRef.on"> Nummern zeigen (B 27)</label>'
+        + (k !== 'ov' ? '<label class="check"><input type="checkbox" data-s="road.lbl"> Straßennamen zeigen</label><p class="hint">Bundes-, Staats- und Kreisstraßen sowie Sammelstraßen. Schrift unter „Straßennamen“.</p>' : '') },
     { grp: 'verk', id: 'minor', name: () => 'Wohn- und Anliegerstraßen', eye: 'minor.on', col: 'minor.color', fill: 'minor.fill', alpha: 'minor.alpha', w: 'minor.w', only: ['mi', 'mk'], keys: ['minor'],
-      opt: k => roadMode('minor') + (k === 'mi' ? '<label class="check"><input type="checkbox" data-s="road.tracks"> Feldwege und Zufahrten auch ab 1:50.000</label>' : '') + '<p class="hint">Ortsstraßen, Zufahrten und Wege. Im Stadtgebiet zum Beruhigen dezent grau oder ganz ausblenden.</p>' },
-    { grp: 'verk', id: 'rnames', name: () => 'Straßennamen', eye: 'rn.on', keys: ['rn'],
-      opt: k => [['mwRef', 'Autobahnen (A 8)'], ['bRef', 'Bundesstraßen (B 27)']].map(([t, n]) => `<div class="tier"><b><label class="check"><input type="checkbox" data-s="rn.${t}.on"> ${n}</label></b><div class="row">
+      opt: k => roadMode('minor') + '<label class="check"><input type="checkbox" data-s="rn.minor"> Straßennamen zeigen</label>' + (k === 'mi' ? '<label class="check"><input type="checkbox" data-s="road.tracks"> Feldwege und Zufahrten auch ab 1:50.000</label>' : '') + '<p class="hint">Ortsstraßen, Zufahrten und Wege. Im Stadtgebiet zum Beruhigen dezent grau oder ganz ausblenden.</p>' },
+    { grp: 'verk', id: 'rnames', name: () => 'Straßennamen', eye: 'rn.on', keys: ['rn', 'road'],
+      opt: k => [['mwRef', 'Autobahnnummern (A 8)'], ['bRef', 'Bundesstraßennummern (B 27)']].map(([t, n]) => `<div class="tier"><b>${n}</b><div class="row">
           <label class="f">Größe (pt)<input type="number" data-s="rn.${t}.size" min="4" max="14" step="0.5"></label><label class="f">Schildfarbe<button class="sw" data-s="rn.${t}.col" aria-label="Schildfarbe ${n}"></button></label></div></div>`).join('')
-        + (k !== 'ov' ? `<div class="tier"><b><label class="check"><input type="checkbox" data-s="road.lbl"> Straßennamen</label></b>
+        + (k !== 'ov' ? `<div class="tier"><b>Straßennamen</b>
           <div class="row"><label class="f">Schriftart<select data-s="road.lblFont">${FONT_OPTS}</select></label><label class="f">Schnitt<select data-s="road.lblWeight" data-num>${WEIGHT_OPTS}</select></label></div>
           <div class="row"><label class="f">Größe (pt)<input type="number" data-s="road.lblSize" min="4" max="16" step="0.5"></label><label class="f">Farbe<button class="sw" data-s="road.lblColor" aria-label="Schriftfarbe"></button></label>
           <label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-s="road.lblItalic"> Kursiv</label></div>
           <label class="check"><input type="checkbox" data-s="road.lblAuto"> Größe passt sich dem Maßstab an (Angabe gilt bei ${k === 'mk' ? '1:10.000' : '1:50.000'})</label></div>`
           + bgRow('road.lblBg', 'road.lblBgCol', 'rn.bgA') : '')
-        + '<p class="hint">Zu lange Namen werden bis 70 % verkleinert oder zweizeilig gesetzt.</p>' },
+        + '<p class="hint">Nur die Schrift – welche Straßen beschriftet werden, stellst du bei Autobahnen, Haupt- und Wohnstraßen ein. Zu lange Namen werden bis 70 % verkleinert oder zweizeilig gesetzt.</p>' },
     { grp: 'verk', id: 'rail', name: () => 'Bahn', eye: 'rail.on', col: 'rail.color', alpha: 'rail.alpha', w: 'rail.w', keys: ['rail'],
       opt: k => '<label class="check"><input type="checkbox" data-s="rail.classic"> Klassisch: schwarz-weiß gestrichelt</label>' + (k !== 'ov' ? '<label class="check"><input type="checkbox" data-s="rail.st"> Bahnhöfe als Symbol</label>' : '') },
-    { grp: 'stadt', id: 'names', name: () => 'Städtenamen', eye: 'names.on', keys: ['names', 'cities', 'ct', 'ts', 'dist', 'halo'],
-      opt: k => (k !== 'mk' ? (k === 'ov' ? `<label class="check"><input type="checkbox" data-s="cities.on"> Städte zeigen</label><label class="f">Schwellenwert<select data-s="cities.min" data-num>${[10000, 20000, 50000, 100000, 500000, 1000000].map(v => `<option value="${v}">ab ${v >= 1e6 ? '1 Mio.' : v.toLocaleString('de-DE')} Einwohnern</option>`).join('')}</select></label>
+    { grp: 'stadt', id: 'cities', name: () => 'Städte', eye: 'cities.on', only: ['ov', 'mi'], keys: ['cities', 'ct', 'dist'],
+      opt: k => (k === 'ov' ? `<label class="f">Schwellenwert<select data-s="cities.min" data-num>${[10000, 20000, 50000, 100000, 500000, 1000000].map(v => `<option value="${v}">ab ${v >= 1e6 ? '1 Mio.' : v.toLocaleString('de-DE')} Einwohnern</option>`).join('')}</select></label>
           <label class="check"><input type="checkbox" data-s="cities.abroad"> Auch Städte im Ausland (ab 100.000 EW)</label>`
-          : `<label class="check"><input type="checkbox" data-s="cities.on"> Ortsnamen zeigen</label><label class="f">ab Einwohnern (in 500er-Schritten)<input type="number" data-s="cities.min" min="500" step="500"></label>`) + tierRows(k) : '')
-        + (k !== 'ov' ? `<div class="tier"><b><label class="check"><input type="checkbox" data-s="dist.on"> Stadtteile</label></b><div class="row"><label class="f">Größe (pt)<input type="number" data-s="dist.size" min="4" max="16" step="0.5"></label>
+          : `<label class="f">ab Einwohnern (in 500er-Schritten)<input type="number" data-s="cities.min" min="500" step="500"></label>`)
+        + `<div class="tier"><b>Welche Städte?</b>${cityKinds(k).map(([t, n]) => `<label class="check"><input type="checkbox" data-s="ct.${t}.on"> ${n}</label>`).join('')}
+          ${k === 'mi' ? '<label class="check"><input type="checkbox" data-s="dist.on"> Stadtteile (in Großstädten, ab 1:50.000)</label>' : ''}</div>
+          <p class="hint">Hier wählst du, welche Städte erscheinen. Schriftgröße, Farbe und Hintergrund stehen unter „Städtenamen“.</p>` },
+    { grp: 'stadt', id: 'distsel', name: () => 'Stadtteile', eye: 'dist.on', only: ['mk'], keys: ['dist'],
+      opt: () => '<p class="hint">Namen von Stadtteilen und -bezirken in Großstädten ab 100.000 Einwohnern. Schrift unter „Städtenamen“.</p>' },
+    { grp: 'stadt', id: 'names', name: () => 'Städtenamen', eye: 'names.on', keys: ['names', 'ts', 'ct', 'dist', 'halo'],
+      opt: k => (k !== 'mk' ? tierRows(k) : '')
+        + (k !== 'ov' ? `<div class="tier"><b>Stadtteile</b><div class="row"><label class="f">Größe (pt)<input type="number" data-s="dist.size" min="4" max="16" step="0.5"></label>
           <label class="f">Farbe<button class="sw" data-s="dist.color" aria-label="Farbe Stadtteile"></button></label>
           <label class="f">Schnitt<select data-s="dist.w"><option value="300">leicht</option><option value="400">normal</option><option value="600">halbfett</option><option value="700">fett</option></select></label></div>
-          <label class="check"><input type="checkbox" data-s="dist.caps"> Versalien</label><p class="hint">Nur in Großstädten ab 100.000 Einwohnern, ab 1:50.000.</p></div>` : '')
-        + bgRow('names.bg', 'names.bgCol', 'names.bgA') + '<p class="hint">Schriftart aus der Ebene „Schrift“. Ohne eigene Farbe wird die Schriftfarbe je Kategorie etwas heller.</p>' },
+          <label class="check"><input type="checkbox" data-s="dist.caps"> Versalien</label></div>` : '')
+        + bgRow('names.bg', 'names.bgCol', 'names.bgA') + '<p class="hint">Nur die Schrift – welche Städte erscheinen, steht unter „Städte“. Schriftart aus der Ebene „Schrift“; ohne eigene Farbe wird die Schriftfarbe je Kategorie etwas heller.</p>' },
     { grp: 'stadt', id: 'settle', name: () => 'Siedlungsflächen', eye: 'settle.on', col: 'settle.color', alpha: 'settle.alpha', keys: ['settle'],
       opt: k => k === 'ov' ? '<label class="f">Umfang<select data-s="settle.mode"><option value="shown">Um alle angezeigten Städte</option><option value="big">Nur Großstädte ab 100.000 EW</option></select></label>'
         : '<p class="hint">Bei Siedlungsflächen-Darstellung in voller Farbe, bei Einzelgebäuden aufgehellt dahinter.</p>' },
@@ -3853,7 +3862,7 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 9;
+  const FAM_VER = 10;
   const FAMS = {
     kontrast: { name: 'ATLAS · Kontrast Dunkelblau/Orange', desc: 'weißes Land, dunkelblaues Wasser, orange Hauptstraßen, dunkle Gebäude', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B', hi: '#F0642D', north: { color: '#14284B' },
