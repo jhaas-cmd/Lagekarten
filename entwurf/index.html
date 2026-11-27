@@ -4054,7 +4054,28 @@ return maplibregl$1;
     }
     saveS();
   }
+  // Nur noch drei Vorlagen (+ ATLAS-Graustufen für die Dossier-Karte); alle älteren Vorlagen entfallen
+  { const pastellSt = FAMS.pastell.st; FAMS.karto.st = k => pastellSt(k);
+    for (const f of Object.keys(FAMS)) if (!['abstrakt', 'diagramm', 'karto', 'atlas'].includes(f)) delete FAMS[f]; }
   ensureFamilies();
+  // Einmaliges Aufräumen (Julius, 27.11.2026): nur die drei Vorlagen und deren Anpassungen bleiben.
+  // Sicherung vorher unter 'presetsBackup1'; Karten mit einem entfallenden Stil werden zuerst als Anpassung von „Kartografisch“ gesichert.
+  if (!S.presetClean1) {
+    try { store.set('presetsBackup1', { at: new Date().toISOString(), presets: S.presets, use: S.use }); } catch (e) {}
+    const keep = id => { const p = S.presets[id]; return !!(p && p.fam && FAMS[p.fam] && /^(gieag|mein)_/.test(id)); };
+    const lost = KINDS.filter(kk => !keep(S.use[kk]));
+    if (lost.length && !isTuned('karto')) {
+      const F = FAMS.karto;
+      for (const kk of KINDS) {
+        const src = lost.includes(kk) ? S.presets[S.use[kk]] : S.presets['gieag_karto_' + kk];
+        if (src) S.presets[myId('karto', kk)] = { name: 'GIEAG · ' + F.name + ' (angepasst) · ' + KNAME[kk], famName: 'GIEAG · ' + F.name, fam: 'karto', base: kk, own: true, desc: F.desc, st: JSON.parse(JSON.stringify(src.st)) };
+      }
+      for (const kk of lost) S.use[kk] = myId('karto', kk);
+    }
+    for (const id of Object.keys(S.presets)) if (!keep(id)) delete S.presets[id];
+    for (const kk of KINDS) if (!S.presets[S.use[kk]]) S.use[kk] = famId('abstrakt', kk);
+    S.presetClean1 = true; saveS();
+  }
   // Kartenstil-Wahl unter 01 Projekt: je sichtbarer GIEAG-Vorlage eine Kachel mit Farbstreifen (Siedlung · Gebäude · Wasser · Straße · Signal)
   function renderFamGrid() {
     const box = $('famGrid'); if (!box) return;

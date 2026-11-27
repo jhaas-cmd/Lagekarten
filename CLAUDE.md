@@ -173,3 +173,6 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - `karto` (3 · Kartografisch) basiert jetzt auf `pastell` (Vegetation `pastell`), `FAM_VER = 15`; Feintuning durch Julius folgt.
 - „Aktuellen Kartenstil speichern als …“ (`#famSaveAs`, `famAction('saveas', fam)`): kopiert den Stil, den die drei Karten gerade zeigen, als `mein_<fam>_*` (Anpassung) – danach exportieren.
 - `FAM_VER = 16`: `abstrakt.tuned` durch die spätere Fassung (Export 15:21) ersetzt (u. a. Mikrolage: Gebäude mit Schatten, Raster 250 m, Wasser dunkelblau, Grün als Punktraster; Landkarte mit Wald und Schummerung), `diagramm.tuned` neu (Makro: Siedlung dunkelgrau, ohne Gebäude, Schummerung 80 %, Raster 1 km).
+## Aufgeräumt (27.11.2026)
+- `FAMS` enthält nur noch `abstrakt`, `diagramm`, `karto` (+ `atlas` ausgeblendet für die Dossier-Karte); alle übrigen Familien werden nach der Definition gelöscht (`karto.st` = früheres `pastell.st`).
+- Einmaliges Aufräumen beim Laden (`S.presetClean1`): Sicherung aller Presets in store `presetsBackup1`, Karten mit entfallendem Stil vorher als `mein_karto_*` gesichert, danach bleiben nur `gieag_*`/`mein_*` der verbliebenen Familien.
