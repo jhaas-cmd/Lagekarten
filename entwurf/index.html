@@ -3943,7 +3943,7 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 14;
+  const FAM_VER = 15;
   const FAMS = {
     // Drei GIEAG-Vorlagen als Reihe vom Abstrakten zum Bildhaften; Julius' Feintuning kommt später als tuned:{ov,mi,mk} hinzu
     abstrakt: { name: '1 · Abstrakt', desc: 'Schema wie ein Netzplan: weißes Blatt, nur Hauptachsen in einer Farbe, keine Vegetation, kaum Schrift – Lagebeziehungen, Radien und Fahrzeiten (Investor, Büro, Logistik)', veg: 'eigen',
@@ -3970,16 +3970,9 @@ return maplibregl$1;
         rail: { color: '#3C4044', w: k === 'ov' ? 0.2 : 0.35, classic: k !== 'ov', st: false },
         water: { color: '#B9C3CD', inner: 0, lblColor: '#5A6470', lake: true },
         border: { color: '#8E9399', dash: 'dashed' }, hill: { on: false }, contour: { on: false } }) },
-    karto: { name: '3 · Kartografisch', desc: 'Atlas-Optik, bewusst bildhaft: Wald und Wiesen grün, Felder warm, Gewässer blau, Gelände geschummert, Straßen farbig in klarer Rangfolge, reich beschriftet (Wohnen, Vermarktung, ländliche Lagen)', veg: 'karte',
-      st: k => ({ font: 'source', weight: 400, caps: false, tcol: '#2B2B2B', hi: '#F0642D', north: { color: '#2B2B2B' },
-        ct: { big: { caps: true, w: '600' } }, cities: k === 'ov' ? { on: true, min: 20000 } : {},
-        settle: { on: true, color: k === 'ov' ? '#E9E3DB' : '#EEE9E2' }, bldg: { on: true, color: '#D9D0C5', shadow: k === 'mk', shAlpha: 25, line: k === 'mk', lineCol: '#BBB1A5' },
-        mw: k === 'ov' ? { color: '#E0632B', w: 0.5, mode: 'line' } : { color: '#B4501F', fill: '#F28C4B', w: 0.95, mode: 'both' },
-        road: k === 'ov' ? { on: true, color: '#E2A92E', w: 0.25, mode: 'line' } : { color: '#C29A35', fill: '#FBDB7E', w: 0.7, mode: 'both', lbl: k === 'mk' },
-        minor: k === 'ov' ? { on: false } : { on: true, color: '#C9C2B8', fill: '#FFFFFF', w: 0.45, mode: 'both' },
-        rail: { color: '#555555', w: k === 'ov' ? 0.25 : 0.4, classic: true, st: k !== 'ov' },
-        water: { color: '#86B6DC', inner: k === 'ov' ? 0 : 40, lbl: true, lblColor: '#2F5E8A', lake: true, lStream: k === 'mk' },
-        border: { color: '#8C7B6B', dash: 'dashed' }, hill: { on: k !== 'mk', alpha: k === 'ov' ? 45 : 30, tone: 'braun' } }) },
+    // Grundlage auf Julius' Wunsch: Pastell · Grün (wird noch feinjustiert)
+    karto: { name: '3 · Kartografisch', desc: 'hell und grün: helle Gebäude mit weichem Schatten, sanftes Grün mit Bäumen, gedecktes Wasser (Wohnen, Vermarktung, ländliche Lagen)', veg: 'pastell',
+      st: k => FAMS.pastell.st(k) },
     praesent: { hide: true, name: 'Präsentation · Investor', desc: 'Hauskarte für Expo Real, Steckbrief, Dossier und Investitionsausschuss – Lagebeziehungen im Vordergrund (Büro, F&E)', veg: 'grau',
       st: k => FAMS.kontrast.st(k) },
     staedtebau: { hide: true, name: 'Städtebau · Schwarzplan', desc: 'für Gemeinde, Planungsausschuss und Wettbewerb – Körnung und Dichte, eigenes Grundstück in Signalfarbe', veg: 'grau',
