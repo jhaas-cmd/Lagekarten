@@ -943,7 +943,9 @@ return maplibregl$1;
   const stDef = kind => ({
     font: 'aptos', weight: 300, italic: false, caps: true, txt: true, tcol: '#0A0A0A', hi: '',
     ts: kind === 'ov' ? { big: 7, mid: 5.5, small: 5 } : { big: 8, mid: 6.5, small: 5.5 },
-    ct: { big: { col: '', w: '', caps: true }, mid: { col: '', w: '', caps: false }, small: { col: '', w: '', caps: false } },
+    ct: { big: { on: true, col: '', w: '', caps: true }, mid: { on: true, col: '', w: '', caps: false }, small: { on: true, col: '', w: '', caps: false } },
+    names: { on: true, bg: true, bgCol: '#FFFFFF', bgA: 'halb' },
+    rn: { on: true, mwRef: { on: kind === 'ov', size: kind === 'ov' ? 5 : 5.5, col: '' }, bRef: { on: false, size: kind === 'ov' ? 5 : 5.5, col: '' }, bgA: 'halb' },
     dist: { on: kind !== 'ov', color: '#6E747A', size: kind === 'mk' ? 6 : 5.5, w: 600, caps: true },
     halo: { title: kind !== 'ov', cities: kind !== 'ov', notes: true, pois: false, legend: true },
     focus: { on: false, r: kind === 'ov' ? 60000 : kind === 'mi' ? 1500 : 300, fade: 20 },
@@ -1432,11 +1434,14 @@ return maplibregl$1;
     if (T.north.on) obst.push(northBox(k, W, H, T));
     if (T.txt) {
       if (T.water.on && T.water.lbl) drawWaterNames(g, map, k, W, H, obst, T, inF);
-      if (kind === 'ov') drawRoadRefs(g, map, k, W, H, obst, T, inF);
-      else if (T.road.on && T.road.lbl) drawRoadNames(g, map, k, W, H, obst, T, inF, kind);
+      if (!T.rn || T.rn.on !== false) {
+        drawRoadRefs(g, map, k, W, H, obst, T, inF, kind);
+        if (kind !== 'ov' && T.road.lbl) drawRoadNames(g, map, k, W, H, obst, T, inF, kind);
+      }
     }
-    if (kind !== 'mk' && T.cities.on) drawCities(g, map, k, W, H, proj, T, obst, box0, kind, inF);
-    if (kind !== 'ov' && T.dist && T.dist.on && T.txt && scaleOf(kind) <= 50000) drawDistricts(g, map, k, W, H, T, obst, inF);
+    const namesOn = !T.names || T.names.on !== false;
+    if (kind !== 'mk' && T.cities.on && namesOn) drawCities(g, map, k, W, H, proj, T, obst, box0, kind, inF);
+    if (kind !== 'ov' && namesOn && T.dist && T.dist.on && T.txt && scaleOf(kind) <= 50000) drawDistricts(g, map, k, W, H, T, obst, inF);
     if (kind === 'ov' || (!P.site.length && !P.bld.length)) drawDot(g, proj.x, proj.y, k, { color: pp.color || A, r: +pp.r || 1.2, ring: pp.ring, shadow: pp.shadow });
     const box = titleOn ? projectLabel(g, kind, k, proj, fsT, plate) : null;
     if (kind !== 'ov' && drawRing.length) {
@@ -1529,6 +1534,7 @@ return maplibregl$1;
       if (Array.isArray(it)) [n, lon, lat, t0, pop] = it; else ({ n, lon, lat, pop } = it);
       if (!n || !min || pop < min || (t0 === 3 && (!T.cities.abroad || pop < 100000))) continue;
       const t = pop >= 100000 ? 1 : pop >= (dots ? 50000 : 10000) ? 2 : 4;
+      if (ct(t === 1 ? 'big' : t === 2 ? 'mid' : 'small').on === false) continue;
       const p = map.project([lon, lat]);
       if (p.x < mm(1) || p.y < mm(1) || p.x > W - mm(1) || p.y > H - mm(1) || !inF(p)) continue;
       // Stadt praktisch am Projektort (z. B. Leipzig bei 1:10 Mio.): kein eigener Punkt, Name direkt am Projektpunkt
@@ -1553,7 +1559,7 @@ return maplibregl$1;
       });
       if (pick) {
         obst.push({ x: pick.x, y: pick.y, w: tw, h: th });
-        if (T.halo.cities) { g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,.92)'; g.lineWidth = mm(0.8); g.strokeText(txt, pick.x, pick.y + th / 2); }
+        nameBg(g, T, pick.x - mm(0.5), pick.y, tw + mm(1), th, mm);
         g.fillStyle = c.st.col; g.textBaseline = 'middle'; g.fillText(txt, pick.x, pick.y + th / 2);
       }
       try { g.letterSpacing = '0px'; } catch (e) {}
@@ -1567,6 +1573,11 @@ return maplibregl$1;
       }
       for (const c of set) place(c);
     }
+  }
+  // Hintergrund hinter Städte- und Stadtteilnamen (Farbe, vollflächig oder 50 % transparent)
+  function nameBg(g, T, x, y, w, h, mm) {
+    const N = T.names || {}; if (N.bg === false) return;
+    g.save(); g.globalAlpha = N.bgA === 'voll' ? 1 : 0.5; g.fillStyle = N.bgCol || '#FFFFFF'; g.fillRect(x - mm(0.3), y - mm(0.1), w + mm(0.6), h + mm(0.2)); g.restore();
   }
   // Stadtteile und Stadtbezirke aus den Kartenkacheln – nur in der Nähe einer Großstadt (ab 100.000 EW)
   function drawDistricts(g, map, k, W, H, T, obst, inF) {
@@ -1583,7 +1594,7 @@ return maplibregl$1;
       const txt = D.caps ? name.toUpperCase() : name, tw = g.measureText(txt).width, b = { x: p.x - tw / 2 - mm(0.5), y: p.y - size * 0.7, w: tw + mm(1), h: size * 1.4 };
       if (obst.some(o => hit(b, o))) continue;
       seen.add(name); obst.push(b);
-      g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = mm(0.6); g.strokeText(txt, p.x, p.y);
+      nameBg(g, T, b.x, b.y, b.w, b.h, mm);
       g.fillStyle = D.color || '#6E747A'; g.fillText(txt, p.x, p.y);
     }
     try { g.letterSpacing = '0px'; } catch (e) {}
@@ -1627,7 +1638,7 @@ return maplibregl$1;
       if (obst.some(q => hit(b, q))) continue;
       g.save(); g.translate(pm.x, pm.y); g.rotate(ang);
       const lh = o.size * f * 1.05, y0 = lines.length === 2 ? -lh / 2 : 0;
-      if (o.halo && o.box) { const px = mm(0.6), py = mm(0.25); g.fillStyle = o.haloCol || '#FFFFFF'; g.fillRect(-tw / 2 - px, -th / 2 - py, tw + 2 * px, th + 2 * py); }
+      if (o.halo && o.box) { const px = mm(0.6), py = mm(0.25); g.globalAlpha = o.bgA || 1; g.fillStyle = o.haloCol || '#FFFFFF'; g.fillRect(-tw / 2 - px, -th / 2 - py, tw + 2 * px, th + 2 * py); g.globalAlpha = 1; }
       else if (o.halo) { g.lineJoin = 'round'; g.strokeStyle = o.haloCol || 'rgba(255,255,255,.92)'; g.lineWidth = mm(0.7); lines.forEach((t, i) => g.strokeText(t, 0, y0 + i * lh)); }
       g.fillStyle = o.color; lines.forEach((t, i) => g.fillText(t, 0, y0 + i * lh)); g.restore();
       g.font = o.font;
@@ -1665,7 +1676,7 @@ return maplibregl$1;
       const name = pr['name:de'] || pr.name_de || pr.name; if (!name) continue;
       for (const ln of linesOf(f.geometry)) if (ln.length > 1) items.push({ name, line: ln, prio: PRIO[pr.class] || 0 });
     }
-    drawLineLabels(g, map, k, W, H, items, obst, Object.assign(lblOpts(k, T, T.road, 45, inF, lblScale(kind, T.road)), { box: true, fit: true }));
+    drawLineLabels(g, map, k, W, H, items, obst, Object.assign(lblOpts(k, T, T.road, 45, inF, lblScale(kind, T.road)), { box: true, fit: true, bgA: (T.rn && T.rn.bgA) === 'voll' ? 1 : 0.5 }));
   }
   // Bahnhöfe als Symbol: weißer Kreis mit Rand in Bahnfarbe
   function drawStations(g, map, k, W, H, T, inF) {
@@ -1798,10 +1809,10 @@ return maplibregl$1;
     }
   }
   // Straßennummern in der Landkarte: Autobahnen (A 8) dunkel hinterlegt, Bundesstraßen (B 27) weiß mit Rand
-  function drawRoadRefs(g, map, k, W, H, obst, T, inF) {
-    const want = [];
-    if (T.mw.on && T.mw.lbl) want.push('motorway');
-    if (T.road.on && T.road.lbl) want.push('trunk', 'primary');
+  function drawRoadRefs(g, map, k, W, H, obst, T, inF, kind) {
+    const want = [], R = T.rn || {}, mwR = R.mwRef || {}, bR = R.bRef || {};
+    if (T.mw.on && (mwR.on || (kind === 'ov' && T.mw.lbl))) want.push('motorway');
+    if (T.road.on && (bR.on || (kind === 'ov' && T.road.lbl))) want.push('trunk', 'primary');
     if (!want.length) return;
     const mm = v => v * k, pt = v => v * 0.3528 * k;
     let feats = []; try { feats = map.querySourceFeatures('omt', { sourceLayer: 'transportation_name' }); } catch (e) {}
@@ -1818,16 +1829,20 @@ return maplibregl$1;
     }
     cands.sort((a, b) => (b.mw - a.mw) || (Math.hypot(a.q.x - W / 2, a.q.y - H / 2) - Math.hypot(b.q.x - W / 2, b.q.y - H / 2)));
     const placed = {}, minD = mm(40);
-    g.font = `700 ${pt(+T.ts.small || 5)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    // helle Schildfarbe → dunkle Schrift, dunkle → weiße Schrift
+    const light = c => { const m = /^#?([0-9a-f]{6})$/i.exec(c || ''); if (!m) return true; const n = parseInt(m[1], 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) > 160; };
     for (const c of cands) {
       const list = placed[c.ref] || (placed[c.ref] = []);
       if (list.some(o => Math.hypot(o.x - c.q.x, o.y - c.q.y) < minD)) continue;
-      const tw = g.measureText(c.ref).width + mm(1.4), th = pt(+T.ts.small || 5) * 1.45;
+      const sz = pt(+(c.mw ? mwR.size : bR.size) || +T.ts.small || 5); g.font = `700 ${sz}px ${FONT}`;
+      const tw = g.measureText(c.ref).width + mm(1.4), th = sz * 1.45;
       const b = { x: c.q.x - tw / 2, y: c.q.y - th / 2, w: tw, h: th };
       if (obst.some(o => hit(b, o))) continue;
-      g.fillStyle = c.mw ? mix(T.mw.color, '#000000', 0.45) : '#FFFFFF'; g.fillRect(b.x, b.y, b.w, b.h);
-      if (!c.mw) { g.strokeStyle = mix(T.road.color, '#000000', 0.35); g.lineWidth = mm(0.12); g.strokeRect(b.x, b.y, b.w, b.h); }
-      g.fillStyle = c.mw ? '#FFFFFF' : '#1E1E1E'; g.fillText(c.ref, c.q.x, c.q.y + mm(0.1));
+      const fill = c.mw ? (mwR.col || mix(T.mw.color, '#000000', 0.45)) : (bR.col || '#FFFFFF');
+      g.fillStyle = fill; g.fillRect(b.x, b.y, b.w, b.h);
+      if (!c.mw && !bR.col) { g.strokeStyle = mix(T.road.color, '#000000', 0.35); g.lineWidth = mm(0.12); g.strokeRect(b.x, b.y, b.w, b.h); }
+      g.fillStyle = light(fill) ? '#1E1E1E' : '#FFFFFF'; g.fillText(c.ref, c.q.x, c.q.y + mm(0.1));
       list.push(c.q); obst.push(b);
     }
     g.textAlign = 'left';
@@ -3404,8 +3419,12 @@ return maplibregl$1;
   // (col = Farbe, fill = Füllfarbe, alpha = Deckkraft, w = Strichstärke, dash = Linienart) plus eigene Optionen (opt) und Beschriftung (lbl).
   // Das Attribut-Board zeigt sie immer in derselben Reihenfolge.
   const GRP = [['darst', 'Kartendarstellung'], ['verk', 'Verkehr'], ['stadt', 'Stadt'], ['land', 'Landschaft'], ['topo', 'Schummerung und Gelände']];
+  // Hintergrund hinter Namen: ja/nein, Farbe, vollflächig oder halb transparent
+  const bgRow = (on, col, a) => `<div class="tier"><b>Hintergrund</b><div class="row"><label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-s="${on}"> zeigen</label>
+    <label class="f">Farbe<button class="sw" data-s="${col}" aria-label="Hintergrundfarbe"></button></label>
+    <label class="f">Deckung<select data-s="${a}"><option value="halb">50 % transparent</option><option value="voll">vollflächig</option></select></label></div></div>`;
   const tierRows = k => [['big', k === 'ov' ? 'Großstädte' : 'ab 100.000 EW'], ['mid', k === 'ov' ? 'Mittelstädte' : 'ab 10.000 EW'], ['small', k === 'ov' ? 'Kleinstädte' : 'kleinere Orte']].map(([t, n]) =>
-    `<div class="tier"><b>${n}</b><div class="row"><label class="f">Größe (pt)<input type="number" data-s="ts.${t}" min="4" max="24" step="0.5"></label>
+    `<div class="tier"><b><label class="check"><input type="checkbox" data-s="ct.${t}.on"> ${n}</label></b><div class="row"><label class="f">Größe (pt)<input type="number" data-s="ts.${t}" min="4" max="24" step="0.5"></label>
     <label class="f">Farbe<button class="sw" data-s="ct.${t}.col" aria-label="Farbe ${n}"></button></label>
     <label class="f">Schnitt<select data-s="ct.${t}.w"><option value="">wie Schrift</option><option value="300">leicht</option><option value="400">normal</option><option value="600">halbfett</option><option value="700">fett</option></select></label></div>
     <label class="check"><input type="checkbox" data-s="ct.${t}.caps"> Versalien</label></div>`).join('');
@@ -3442,24 +3461,32 @@ return maplibregl$1;
     { grp: 'darst', id: 'border', name: () => 'Grenzen', eye: 'border.on', col: 'border.color', alpha: 'border.alpha', w: 'border.w', dash: 'border.dash', only: ['ov'], keys: ['border'] },
     { grp: 'verk', id: 'mw', name: () => 'Autobahnen', eye: 'mw.on', col: 'mw.color', fill: k => k !== 'ov' && 'mw.fill', alpha: 'mw.alpha', w: 'mw.w', keys: ['mw'],
       opt: k => k === 'ov' ? '' : roadMode('mw'),
-      lbl: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="mw.lbl"> Autobahnnummern (A 8)</label>' : '' },
+ },
     { grp: 'verk', id: 'road', name: k => k === 'ov' ? 'Bundesstraßen' : 'Haupt- und Nebenstraßen', eye: 'road.on', col: 'road.color', fill: k => k !== 'ov' && 'road.fill', alpha: 'road.alpha', w: 'road.w', keys: ['road'],
-      opt: k => k === 'ov' ? '' : roadMode('road') + '<p class="hint">Bundes-, Staats- und Kreisstraßen sowie Sammelstraßen. Straßennamen gelten für alle Straßen.</p>',
-      lbl: k => k === 'ov' ? '<label class="check"><input type="checkbox" data-s="road.lbl"> Straßennummern (B 27)</label>' : lblUI('road', 'Straßennamen', k === 'mk' ? '1:10.000' : '1:50.000') },
+      opt: k => k === 'ov' ? '' : roadMode('road') + '<p class="hint">Bundes-, Staats- und Kreisstraßen sowie Sammelstraßen. Beschriftung unter „Straßennamen“.</p>' },
     { grp: 'verk', id: 'minor', name: () => 'Wohn- und Anliegerstraßen', eye: 'minor.on', col: 'minor.color', fill: 'minor.fill', alpha: 'minor.alpha', w: 'minor.w', only: ['mi', 'mk'], keys: ['minor'],
       opt: k => roadMode('minor') + (k === 'mi' ? '<label class="check"><input type="checkbox" data-s="road.tracks"> Feldwege und Zufahrten auch ab 1:50.000</label>' : '') + '<p class="hint">Ortsstraßen, Zufahrten und Wege. Im Stadtgebiet zum Beruhigen dezent grau oder ganz ausblenden.</p>' },
+    { grp: 'verk', id: 'rnames', name: () => 'Straßennamen', eye: 'rn.on', keys: ['rn'],
+      opt: k => [['mwRef', 'Autobahnen (A 8)'], ['bRef', 'Bundesstraßen (B 27)']].map(([t, n]) => `<div class="tier"><b><label class="check"><input type="checkbox" data-s="rn.${t}.on"> ${n}</label></b><div class="row">
+          <label class="f">Größe (pt)<input type="number" data-s="rn.${t}.size" min="4" max="14" step="0.5"></label><label class="f">Schildfarbe<button class="sw" data-s="rn.${t}.col" aria-label="Schildfarbe ${n}"></button></label></div></div>`).join('')
+        + (k !== 'ov' ? `<div class="tier"><b><label class="check"><input type="checkbox" data-s="road.lbl"> Straßennamen</label></b>
+          <div class="row"><label class="f">Schriftart<select data-s="road.lblFont">${FONT_OPTS}</select></label><label class="f">Schnitt<select data-s="road.lblWeight" data-num>${WEIGHT_OPTS}</select></label></div>
+          <div class="row"><label class="f">Größe (pt)<input type="number" data-s="road.lblSize" min="4" max="16" step="0.5"></label><label class="f">Farbe<button class="sw" data-s="road.lblColor" aria-label="Schriftfarbe"></button></label>
+          <label class="check" style="align-self:end;padding-bottom:6px"><input type="checkbox" data-s="road.lblItalic"> Kursiv</label></div>
+          <label class="check"><input type="checkbox" data-s="road.lblAuto"> Größe passt sich dem Maßstab an (Angabe gilt bei ${k === 'mk' ? '1:10.000' : '1:50.000'})</label></div>`
+          + bgRow('road.lblBg', 'road.lblBgCol', 'rn.bgA') : '')
+        + '<p class="hint">Zu lange Namen werden bis 70 % verkleinert oder zweizeilig gesetzt.</p>' },
     { grp: 'verk', id: 'rail', name: () => 'Bahn', eye: 'rail.on', col: 'rail.color', alpha: 'rail.alpha', w: 'rail.w', keys: ['rail'],
       opt: k => '<label class="check"><input type="checkbox" data-s="rail.classic"> Klassisch: schwarz-weiß gestrichelt</label>' + (k !== 'ov' ? '<label class="check"><input type="checkbox" data-s="rail.st"> Bahnhöfe als Symbol</label>' : '') },
-    { grp: 'stadt', id: 'cities', name: k => k === 'ov' ? 'Städte' : 'Ortsnamen', eye: 'cities.on', only: ['ov', 'mi'], keys: ['cities'],
-      opt: k => k === 'ov' ? `<label class="f">Schwellenwert<select data-s="cities.min" data-num>${[10000, 20000, 50000, 100000, 500000, 1000000].map(v => `<option value="${v}">ab ${v >= 1e6 ? '1 Mio.' : v.toLocaleString('de-DE')} Einwohnern</option>`).join('')}</select></label>
-        <label class="check"><input type="checkbox" data-s="cities.abroad"> Auch Städte im Ausland (ab 100.000 EW)</label>`
-        : `<label class="f">ab Einwohnern (in 500er-Schritten)<input type="number" data-s="cities.min" min="500" step="500"></label><p class="hint">Orte mit Einwohnerzahl aus OpenStreetMap für den sichtbaren Ausschnitt.</p>`,
-      lbl: k => tierRows(k) + '<label class="check"><input type="checkbox" data-s="halo.cities"> Weißer Hintergrund</label><p class="hint">Schriftart aus der Ebene „Schrift“. Ohne eigene Farbe wird die Schriftfarbe je Kategorie etwas heller.</p>' },
-    { grp: 'stadt', id: 'dist', name: () => 'Stadtteile', eye: 'dist.on', col: 'dist.color', only: ['mi', 'mk'], keys: ['dist'],
-      inact: k => scaleOf(k) > 50000 ? 'Stadtteile erscheinen ab 1:50.000.' : null,
-      opt: () => `<div class="row"><label class="f">Größe (pt)<input type="number" data-s="dist.size" min="4" max="16" step="0.5"></label>
-        <label class="f">Schnitt<select data-s="dist.w"><option value="300">leicht</option><option value="400">normal</option><option value="600">halbfett</option><option value="700">fett</option></select></label></div>
-        <label class="check"><input type="checkbox" data-s="dist.caps"> Versalien</label><p class="hint">Namen von Stadtteilen und -bezirken, nur in Großstädten ab 100.000 Einwohnern und ab 1:50.000.</p>` },
+    { grp: 'stadt', id: 'names', name: () => 'Städtenamen', eye: 'names.on', keys: ['names', 'cities', 'ct', 'ts', 'dist', 'halo'],
+      opt: k => (k !== 'mk' ? (k === 'ov' ? `<label class="check"><input type="checkbox" data-s="cities.on"> Städte zeigen</label><label class="f">Schwellenwert<select data-s="cities.min" data-num>${[10000, 20000, 50000, 100000, 500000, 1000000].map(v => `<option value="${v}">ab ${v >= 1e6 ? '1 Mio.' : v.toLocaleString('de-DE')} Einwohnern</option>`).join('')}</select></label>
+          <label class="check"><input type="checkbox" data-s="cities.abroad"> Auch Städte im Ausland (ab 100.000 EW)</label>`
+          : `<label class="check"><input type="checkbox" data-s="cities.on"> Ortsnamen zeigen</label><label class="f">ab Einwohnern (in 500er-Schritten)<input type="number" data-s="cities.min" min="500" step="500"></label>`) + tierRows(k) : '')
+        + (k !== 'ov' ? `<div class="tier"><b><label class="check"><input type="checkbox" data-s="dist.on"> Stadtteile</label></b><div class="row"><label class="f">Größe (pt)<input type="number" data-s="dist.size" min="4" max="16" step="0.5"></label>
+          <label class="f">Farbe<button class="sw" data-s="dist.color" aria-label="Farbe Stadtteile"></button></label>
+          <label class="f">Schnitt<select data-s="dist.w"><option value="300">leicht</option><option value="400">normal</option><option value="600">halbfett</option><option value="700">fett</option></select></label></div>
+          <label class="check"><input type="checkbox" data-s="dist.caps"> Versalien</label><p class="hint">Nur in Großstädten ab 100.000 Einwohnern, ab 1:50.000.</p></div>` : '')
+        + bgRow('names.bg', 'names.bgCol', 'names.bgA') + '<p class="hint">Schriftart aus der Ebene „Schrift“. Ohne eigene Farbe wird die Schriftfarbe je Kategorie etwas heller.</p>' },
     { grp: 'stadt', id: 'settle', name: () => 'Siedlungsflächen', eye: 'settle.on', col: 'settle.color', alpha: 'settle.alpha', keys: ['settle'],
       opt: k => k === 'ov' ? '<label class="f">Umfang<select data-s="settle.mode"><option value="shown">Um alle angezeigten Städte</option><option value="big">Nur Großstädte ab 100.000 EW</option></select></label>'
         : '<p class="hint">Bei Siedlungsflächen-Darstellung in voller Farbe, bei Einzelgebäuden aufgehellt dahinter.</p>' },
@@ -3622,7 +3649,8 @@ return maplibregl$1;
       let v = getP(T, el.dataset.s);
       if (el.dataset.near != null) v = WSTEPS.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a, WSTEPS[0]);   // nächste feste Stufe
       if (el.dataset.mul) v = v / +el.dataset.mul;
-      if (el.classList.contains('sw')) el.style.background = v || (/^ct\./.test(el.dataset.s) ? ({ big: TCOL, mid: mix(TCOL, '#FFFFFF', 0.3), small: mix(TCOL, '#FFFFFF', 0.42) })[el.dataset.s.split('.')[1]] : ''); else if (el.type === 'checkbox') el.checked = !!v; else el.value = String(v);
+      if (el.classList.contains('sw') && !v && el.dataset.s === 'rn.mwRef.col') el.style.background = mix(T.mw.color, '#000000', 0.45);
+      else if (el.classList.contains('sw')) el.style.background = v || (/^ct\./.test(el.dataset.s) ? ({ big: TCOL, mid: mix(TCOL, '#FFFFFF', 0.3), small: mix(TCOL, '#FFFFFF', 0.42) })[el.dataset.s.split('.')[1]] : ''); else if (el.type === 'checkbox') el.checked = !!v; else el.value = String(v);
     });
     root.querySelectorAll('[data-f]').forEach(el => { const F = S.focus[kind], key = el.dataset.f; if (el.type === 'checkbox') el.checked = !!F[key]; else el.value = key === 'r' && kind === 'ov' ? F.r / 1000 : F[key]; });
     root.querySelectorAll('[data-out]').forEach(o => { o.textContent = getP(T, o.dataset.out) + ' %'; });
@@ -3820,7 +3848,7 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 8;
+  const FAM_VER = 9;
   const FAMS = {
     kontrast: { name: 'ATLAS · Kontrast Dunkelblau/Orange', desc: 'weißes Land, dunkelblaues Wasser, orange Hauptstraßen, dunkle Gebäude', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B', hi: '#F0642D', north: { color: '#14284B' },

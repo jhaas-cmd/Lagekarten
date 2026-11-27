@@ -145,3 +145,5 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - Städte-/Ortsnamen je Kategorie (`ct.big/mid/small`: col, w, caps; Größen weiter in `ts`), leere Farbe = aus Schriftfarbe abgeleitet; `tierRows`.
 - Stadtteile (`dist`, `drawDistricts`): place suburb/quarter/borough aus den Kacheln, nur nahe Großstädten ≥ 100.000 EW, Makro/Mikro ab 1:50.000.
 - Straßennamen: Hintergrund als Rechteck (`box`), zu lange Namen zuerst bis 70 % kleiner (`fit`, `fontAt`), dann zweizeilig an Leerzeichen/Bindestrich, sonst weggelassen. `FAM_VER = 8`.
+- Namen zentral: Ebene „Städtenamen“ (Stadt, `names`; ersetzt Ortsnamen- und Stadtteil-Zeile) mit Kategorien Groß-/Mittel-/Kleinstadt (`ct.*.on`, Stil) und Stadtteile (`dist`); Ebene „Straßennamen“ (Verkehr, `rn`): Schilder Autobahn (`rn.mwRef`) und Bundesstraße (`rn.bRef`) mit Größe/Schildfarbe in allen Karten, Straßennamen (`road.lbl*`, Makro/Mikro).
+- Hintergrund hinter Namen (`bgRow`): an/aus, Farbe, Deckung voll/50 % (`names.bg/bgCol/bgA`, `nameBg`; Straßen `road.lblBg/lblBgCol` + `rn.bgA`). `FAM_VER = 9`.
