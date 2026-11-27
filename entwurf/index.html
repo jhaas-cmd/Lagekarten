@@ -549,7 +549,7 @@ return maplibregl$1;
       <section id="sec_kz" data-open>
         <h2>Standortkennzahlen</h2>
         <label class="f">Assetklasse</label>
-        <div class="seg" id="kzAsset"><button data-a="wohnen">Wohnen</button><button data-a="buero">Büro</button><button data-a="light">Light Industrial</button><button data-a="logistik">Logistik</button></div>
+        <div class="seg" id="kzAsset"><button data-a="wohnen">Wohnen</button><button data-a="buero">Büro</button><button data-a="light">Light Industrial</button><button data-a="logistik">Logistik</button><button data-a="fue">Forschung &amp; Entwicklung</button></div>
         <label class="f">Radius um den Projektpunkt<select id="kzR"><option value="500">500 m</option><option value="1000">1 km</option><option value="2000">2 km</option><option value="3000">3 km</option><option value="5000">5 km</option><option value="10000">10 km</option><option value="20000">20 km</option></select></label>
         <label class="cb"><input type="checkbox" id="kzShowR"> Radius in Makro- und Mikrolage einzeichnen</label>
         <button id="kzGo" class="primary">Neu berechnen</button>
@@ -617,6 +617,7 @@ return maplibregl$1;
           <button data-v="wohnen"><b>Wohnen</b><span>Nahversorgung, Kitas und Schulen, ÖPNV, Mieten, Bevölkerung</span></button>
           <button data-v="buero"><b>Büro</b><span>ÖPNV, Flughafen, große Arbeitgeber, Hotels, Gastronomie</span></button>
           <button data-v="light"><b>Light Industrial</b><span>Autobahn, Arbeitsmarkt, Einzugsgebiet</span></button>
+          <button data-v="fue"><b>Forschung &amp; Entwicklung</b><span>Hochschulen, Forschungseinrichtungen, Flughafen, Arbeitsmarkt</span></button>
           <button data-v="logistik"><b>Logistik</b><span>Autobahn, Flughafen, Einwohner im Umkreis 25 km</span></button>
         </div>
       </div>
@@ -947,6 +948,7 @@ return maplibregl$1;
   const LBL = (o) => Object.assign({ lbl: false, lblFont: '', lblWeight: 400, lblItalic: false, lblSize: 5, lblColor: '#3C4044', lblBg: true, lblBgCol: '#FFFFFF' }, o);
   const stDef = kind => ({
     font: 'aptos', weight: 300, italic: false, caps: true, txt: true, tcol: '#0A0A0A', hi: '',
+    ptitle: { on: true }, ppoint: { on: true },
     ts: kind === 'ov' ? { big: 7, mid: 5.5, small: 5 } : { big: 8, mid: 6.5, small: 5.5 },
     ct: { big: { on: true, col: '', w: '', caps: true }, mid: { on: true, col: '', w: '', caps: false }, small: { on: true, col: '', w: '', caps: false } },
     names: { on: true, bg: true, bgCol: '#FFFFFF', bgA: 'halb' },
@@ -968,7 +970,7 @@ return maplibregl$1;
       : { on: true, color: kind === 'mk' ? '#8F9398' : '#CFD1D4', w: 0.35, mode: kind === 'mk' ? 'both' : 'line', fill: '#FFFFFF', alpha: 100 },
     rail: kind === 'ov' ? { on: true, color: '#7E8388', w: 0.15, classic: false, st: false, alpha: 100 } : { on: true, color: '#3C4044', w: 0.35, classic: true, st: true, alpha: 100 },
     border: { on: true, color: '#9A9EA3', w: 0.25, dash: 'solid', alpha: 100 },
-    water: LBL({ on: true, color: S.waterBlack === false ? '#8FB8DE' : '#111111', inner: 0, lblItalic: true, lblSize: 5.5, lblColor: '#3A3F44', alpha: 100 }),
+    water: LBL({ on: true, color: S.waterBlack === false ? '#8FB8DE' : '#111111', inner: 0, lake: true, lblItalic: true, lblSize: 5.5, lblColor: '#3A3F44', alpha: 100 }),
     wood: { on: kind !== 'ov', mode: 'dots', color: '#B4B8BD', alpha: 100 },
     field: { on: false, mode: 'green', color: '#E4EEDB', alpha: 100 },
     veg: { on: true, preset: 'eigen' },
@@ -1412,7 +1414,7 @@ return maplibregl$1;
     drawWaterShadow(g, map, k, W, H, T);
     if (T.contour.on) drawContours(g, map, kind, k, T);
     if (T.grid.on) drawGrid(g, map, kind, k, W, H, false);
-    const titleOn = ({ ov: S.ovTitle, mi: S.miTitle, mk: S.mkTitle })[kind];
+    const titleOn = ({ ov: S.ovTitle, mi: S.miTitle, mk: S.mkTitle })[kind] && (!T.ptitle || T.ptitle.on !== false);
     const fsT = +({ ov: S.fsOv, mi: S.fsMi, mk: S.fsMk })[kind] || (kind === 'ov' ? 8 : 7.5);
     const plate = !!T.halo.title;
     // erst die Projektbeschriftung messen, dann nur kollidierende Namen weglassen
@@ -1439,6 +1441,7 @@ return maplibregl$1;
     if (T.north.on) obst.push(northBox(k, W, H, T));
     if (T.txt) {
       if (T.water.on && T.water.lbl) drawWaterNames(g, map, k, W, H, obst, T, inF);
+      if (T.water.on && T.water.lake) drawLakeNames(g, map, k, W, H, obst, T, inF, kind);
       if (!T.rn || T.rn.on !== false) {
         drawRoadRefs(g, map, k, W, H, obst, T, inF, kind);
         if (kind !== 'ov' && (T.road.lbl || (T.rn && T.rn.minor))) drawRoadNames(g, map, k, W, H, obst, T, inF, kind);
@@ -1447,7 +1450,7 @@ return maplibregl$1;
     const namesOn = !T.names || T.names.on !== false;
     if (kind !== 'mk' && T.cities.on && namesOn) drawCities(g, map, k, W, H, proj, T, obst, box0, kind, inF);
     if (kind !== 'ov' && namesOn && T.dist && T.dist.on && T.txt && scaleOf(kind) <= 50000) drawDistricts(g, map, k, W, H, T, obst, inF);
-    if (kind === 'ov' || (!P.site.length && !P.bld.length)) drawDot(g, proj.x, proj.y, k, { color: pp.color || A, r: +pp.r || 1.2, ring: pp.ring, shadow: pp.shadow });
+    if ((!T.ppoint || T.ppoint.on !== false) && (kind === 'ov' || (!P.site.length && !P.bld.length))) drawDot(g, proj.x, proj.y, k, { color: pp.color || A, r: +pp.r || 1.2, ring: pp.ring, shadow: pp.shadow });
     const box = titleOn ? projectLabel(g, kind, k, proj, fsT, plate) : null;
     if (kind !== 'ov' && drawRing.length) {
       g.fillStyle = A;
@@ -1661,6 +1664,24 @@ return maplibregl$1;
     return { font: fontAt(1), fontAt, size, color: L.lblColor || TCOL,
       halo: L.lblBg !== false, haloCol: L.lblBgCol || '#FFFFFF', minD: minD * k, inF };
   };
+  // Namen von Seen und Weihern (Kachel-Ebene water_name, Punkt in der Wasserfläche); Schrift wie Flussnamen
+  function drawLakeNames(g, map, k, W, H, obst, T, inF, kind) {
+    let fs = []; try { fs = map.querySourceFeatures('omt', { sourceLayer: 'water_name' }); } catch (e) { return; }
+    const o = lblOpts(k, T, T.water, 0, inF), mm = v => v * k, seen = new Set();
+    const list = fs.filter(f => f.geometry.type === 'Point' && /^(lake|pond|reservoir|basin|sea|bay)$/.test((f.properties || {}).class || '') || (f.geometry.type === 'Point' && !(f.properties || {}).class))
+      .map(f => ({ f, name: (f.properties || {})['name:de'] || (f.properties || {}).name_de || (f.properties || {}).name })).filter(x => x.name);
+    g.font = o.font; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const { f, name } of list) {
+      if (seen.has(name)) continue;
+      const p = map.project(f.geometry.coordinates); if (p.x < mm(3) || p.y < mm(3) || p.x > W - mm(3) || p.y > H - mm(3) || (inF && !inF(p))) continue;
+      const tw = g.measureText(name).width, th = o.size, b = { x: p.x - tw / 2 - mm(0.4), y: p.y - th * 0.7, w: tw + mm(0.8), h: th * 1.4 };
+      if (obst.some(q => hit(b, q))) continue;
+      seen.add(name); obst.push(b);
+      if (o.halo) { g.lineJoin = 'round'; g.strokeStyle = o.haloCol || 'rgba(255,255,255,.9)'; g.lineWidth = mm(0.6); g.strokeText(name, p.x, p.y); }
+      g.fillStyle = o.color; g.fillText(name, p.x, p.y);
+    }
+    g.textAlign = 'left';
+  }
   function drawWaterNames(g, map, k, W, H, obst, T, inF) {
     let fs = []; try { fs = map.querySourceFeatures('omt', { sourceLayer: 'waterway' }); } catch (e) {}
     const items = [];
@@ -3455,6 +3476,10 @@ return maplibregl$1;
       opt: k => `<div class="row"><label class="f">Radius (${k === 'ov' ? 'km' : 'm'})<input type="number" data-s="focus.r" data-mul="${k === 'ov' ? 1000 : 1}" min="${k === 'ov' ? 1 : 50}" step="${k === 'ov' ? 5 : 50}"></label>
         <label class="f">Außen aufhellen (%)<input type="number" data-s="focus.fade" min="0" max="80" step="5"></label></div>
         <p class="hint">Innerhalb des Radius farbig und beschriftet; außerhalb grau, Orts-, Straßen- und Flussnamen entfallen.</p>` },
+    { grp: 'darst', id: 'ptitle', name: () => 'Projekttitel', eye: 'ptitle.on', keys: ['ptitle'],
+      opt: () => '<p class="hint">Titel am Projektpunkt ein- oder ausblenden. Text, Größe und Lage stehen im Reiter Übersicht unter „Projektpunkt und Titel“.</p>' },
+    { grp: 'darst', id: 'ppoint', name: () => 'Projektpunkt', eye: 'ppoint.on', keys: ['ppoint'],
+      opt: () => '<p class="hint">Punkt am Projektort ein- oder ausblenden. Farbe und Größe stehen im Reiter Übersicht. Ein gezeichnetes Baufeld oder markierte Gebäude ersetzen den Punkt in Makro- und Mikrolage.</p>' },
     { grp: 'darst', id: 'north', name: () => 'Nordpfeil', eye: 'north.on', col: 'north.color', keys: ['north'],
       opt: () => `<label class="f">Typ<select data-s="north.type"><option value="atlas">ATLAS · Kreis mit A</option><option value="kreis">Kreis mit Pfeil</option><option value="pfeil">Schlanker Pfeil</option><option value="nadel">Klassischer Halbpfeil</option><option value="kompass">Kompassrose</option></select></label>
         <div class="row"><label class="f">Position<select data-s="north.pos"><option value="br">unten rechts</option><option value="tr">oben rechts</option><option value="tl">oben links</option><option value="bl">unten links</option></select></label>
@@ -3506,7 +3531,7 @@ return maplibregl$1;
         : '<p class="hint">Bei Siedlungsflächen-Darstellung in voller Farbe, bei Einzelgebäuden aufgehellt dahinter.</p>' },
     { grp: 'stadt', id: 'bldg', inact: k => k === 'mi' && builtMode('mi') === 'flaeche' ? 'Bei diesem Maßstab als Siedlungsfläche – Einzelgebäude bis 1:50.000.' : null, name: () => 'Gebäude', eye: 'bldg.on', col: 'bldg.color', alpha: 'bldg.alpha', only: ['mi', 'mk'], keys: ['bldg'],
       opt: () => '<label class="check"><input type="checkbox" data-s="bldg.line"> Feine Kontur</label><label class="check"><input type="checkbox" data-s="bldg.shadow"> Schlagschatten (ab 1:25.000, Länge maßstabsabhängig)</label><label class="f">Schatten-Deckkraft · <span data-out="bldg.shAlpha"></span><input type="range" data-s="bldg.shAlpha" min="5" max="60" step="5"></label>' },
-    { grp: 'land', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', alpha: 'water.alpha', keys: ['water'], lbl: () => lblUI('water', 'Flussnamen'),
+    { grp: 'land', id: 'water', name: () => 'Gewässer', eye: 'water.on', col: 'water.color', alpha: 'water.alpha', keys: ['water'], lbl: () => lblUI('water', 'Flussnamen') + '<label class="check"><input type="checkbox" data-s="water.lake"> Seen und Weiher beschriften</label>',
       opt: () => '<label class="f"><span>Schatten nach innen · <b data-out="water.inner"></b></span><input type="range" data-s="water.inner" min="0" max="80" step="5"></label><p class="hint">Gibt Seen und Flüssen Tiefe: das Ufer wirft einen weichen Schatten ins Wasser. 0 = aus.</p>' },
     { grp: 'land', id: 'veg', inact: k => k !== 'ov' && ST(k).crowns.on && k === 'mi' && scaleOf('mi') > 25000 ? 'Bäume erscheinen erst ab 1:25.000.' : null, name: () => 'Vegetation', eye: 'veg.on', col: 'park.color', nofarbe: true, keys: ['veg', 'wood', 'park', 'green', 'field', 'crowns'],
       opt: k => `<label class="f">Stimmung<select data-s="veg.preset"><option value="eigen">eigene Einstellung</option><option value="baeume">Bäume mit Schatten auf zarter Fläche</option><option value="halbton">Halbtonraster</option><option value="flaeche">Grün zart (Flächen)</option><option value="schwarzplan">Schwarzplan (Punktraster grau)</option></select></label>
@@ -3862,7 +3887,7 @@ return maplibregl$1;
   ensureZg = track('Zensus-Raster', ensureZg); zAgg = track('Zensus-Auswertung', zAgg); loadRA = track('Regionalatlas', loadRA); loadTraffic = track('Verkehrsstärken', loadTraffic); loadCity = track('Stadtvergleich', loadCity); loadInfra = track('Infrastruktur', loadInfra); loadEmployers = track('Arbeitgeber', loadEmployers); mapShot = track('Dossier-Karte', mapShot);
   loadPlaces = track('Orte', loadPlaces); loadMapping = track('Nutzungen', loadMapping); exportPng = track('Export', exportPng); loadCities = track('Städte', loadCities);
   // ---------- GIEAG-Vorlagen je Zielgruppe (geschützt, je Karte eine Fassung, als Familie für alle Karten wählbar) ----------
-  const FAM_VER = 10;
+  const FAM_VER = 11;
   const FAMS = {
     kontrast: { name: 'ATLAS · Kontrast Dunkelblau/Orange', desc: 'weißes Land, dunkelblaues Wasser, orange Hauptstraßen, dunkle Gebäude', veg: 'grau',
       st: k => ({ font: 'inter', weight: 500, caps: true, tcol: '#14284B', hi: '#F0642D', north: { color: '#14284B' },
@@ -4191,15 +4216,17 @@ return maplibregl$1;
     { id: 'apo', n: 'Apotheken', q: ['nwr["amenity"="pharmacy"]'], near: 1500, far: 10000, good: 600, ok: 1200, as: ['wohnen'], w: 0.25 },
     { id: 'kita', n: 'Kindertagesstätten', q: ['nwr["amenity"="kindergarten"]'], near: 1500, far: 8000, good: 500, ok: 1000, as: ['wohnen'], w: 0.75 },
     { id: 'schule', n: 'Schulen', q: ['nwr["amenity"="school"]'], near: 2000, far: 10000, good: 800, ok: 1500, as: ['wohnen'], w: 0.5 },
-    { id: 'gastro', n: 'Gastronomie (Restaurants, Cafés, Bars)', q: ['nwr["amenity"~"^(restaurant|cafe|bar|pub|biergarten|fast_food)$"]'], near: 1000, far: 8000, good: 300, ok: 800, as: ['wohnen', 'buero'], w: 0.5 },
-    { id: 'hotel', n: 'Hotels', q: ['nwr["tourism"~"^(hotel|apartment)$"]'], near: 2000, far: 15000, good: 800, ok: 2500, as: ['buero'], w: 0.5, name: true },
-    { id: 'ubahn', n: 'U-/Stadtbahn-Halte', q: ['node["railway"~"^(station|halt)$"]["station"~"^(subway|light_rail)$"]'], near: 2000, far: 6000, good: 600, ok: 1000, as: ['wohnen', 'buero'], name: true, opv: true },
-    { id: 'bahn', n: 'S-Bahn- und Bahnhalte', q: ['node["railway"~"^(station|halt)$"]["station"!~"^(subway|light_rail|monorail|funicular|miniature)$"]["usage"!="tourism"]["railway:preserved"!="yes"]'], near: 3000, far: 30000, good: 800, ok: 1500, as: ['wohnen', 'buero'], name: true, opv: true }
+    { id: 'gastro', n: 'Gastronomie (Restaurants, Cafés, Bars)', q: ['nwr["amenity"~"^(restaurant|cafe|bar|pub|biergarten|fast_food)$"]'], near: 1000, far: 8000, good: 300, ok: 800, as: ['wohnen', 'buero', 'fue'], w: 0.5 },
+    { id: 'hotel', n: 'Hotels', q: ['nwr["tourism"~"^(hotel|apartment)$"]'], near: 2000, far: 15000, good: 800, ok: 2500, as: ['buero', 'fue'], w: 0.5, name: true },
+    { id: 'uni', n: 'Hochschulen', q: ['nwr["amenity"="university"]', 'nwr["amenity"="college"]["name"~"Hochschule|Akademie|Fachhochschule"]'], near: 15000, far: 80000, good: 3000, ok: 10000, as: ['fue'], name: true, list: 6, w: 1.5 },
+    { id: 'forsch', n: 'Forschungseinrichtungen', q: ['nwr["amenity"="research_institute"]', 'nwr["office"="research"]["name"]'], near: 10000, far: 50000, good: 3000, ok: 10000, as: ['fue'], name: true, list: 6, w: 1 },
+    { id: 'ubahn', n: 'U-/Stadtbahn-Halte', q: ['node["railway"~"^(station|halt)$"]["station"~"^(subway|light_rail)$"]'], near: 2000, far: 6000, good: 600, ok: 1000, as: ['wohnen', 'buero', 'fue'], name: true, opv: true },
+    { id: 'bahn', n: 'S-Bahn- und Bahnhalte', q: ['node["railway"~"^(station|halt)$"]["station"!~"^(subway|light_rail|monorail|funicular|miniature)$"]["usage"!="tourism"]["railway:preserved"!="yes"]'], near: 3000, far: 30000, good: 800, ok: 1500, as: ['wohnen', 'buero', 'fue'], name: true, opv: true }
   ];
   const infraFor = asset => INFRA.filter(c => c.as.includes(asset));
   async function loadInfra() {
     const Z = P.kz; if (!Z) return;
-    const R = Z.r, L = `${P.lat.toFixed(5)},${P.lon.toFixed(5)}`, cats = infraFor('wohnen').concat(INFRA.filter(c => c.as.includes('buero') && !c.as.includes('wohnen')));
+    const R = Z.r, L = `${P.lat.toFixed(5)},${P.lon.toFixed(5)}`, cats = INFRA;
     const here = [P.lon, P.lat], dist = e => crow(here, e.center ? [e.center.lon, e.center.lat] : [e.lon, e.lat]) * 1000;
     const set = (c, rad) => '(' + c.q.map(x => `${x}(around:${rad},${L});`).join('') + ')';
     const outq = c => c.name ? 'out tags center qt;' : 'out skel center qt;';
@@ -4214,6 +4241,13 @@ return maplibregl$1;
     const out = {};
     const fill = (c, list) => {
       const ds = list.map(e => { const p = e.center ? [e.center.lon, e.center.lat] : [e.lon, e.lat]; return { d: dist(e), nm: e.tags ? (e.tags['name:de'] || e.tags.name || '') : '', p: [+p[0].toFixed(5), +p[1].toFixed(5)] }; }).sort((a, b) => a.d - b.d);
+      if (c.list) {       // Campus mit vielen Gebäuden gleichen Namens: je Name nur der nächste Eintrag
+        const u = new Map(); for (const x of ds) if (x.nm && !u.has(x.nm)) u.set(x.nm, x);
+        const uniq = [...u.values()];
+        out[c.id] = { n: uniq.filter(x => x.d <= R).length, d: uniq.length ? Math.round(uniq[0].d) : null, nm: uniq.length ? uniq[0].nm : '',
+          list: uniq.slice(0, c.list).map(x => ({ nm: x.nm, d: Math.round(x.d) })), pts: uniq.filter(x => x.d <= R * 1.6).slice(0, 40).map(x => [x.p[0], x.p[1], x.nm]) };
+        return;
+      }
       out[c.id] = { n: ds.filter(x => x.d <= R).length, d: ds.length ? Math.round(ds[0].d) : null, nm: ds.length ? ds[0].nm : '',
         pts: ds.filter(x => x.d <= R * 1.6).slice(0, 220).map(x => c.name ? [x.p[0], x.p[1], x.nm] : x.p) };
     };
@@ -4287,28 +4321,29 @@ return maplibregl$1;
     { g: 'arbeit', n: 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)', ra: 'apd', u: '', d: 0 },
     { g: 'verkehr', n: 'Verkehrsstärken in der Umgebung', traffic: true },
     { g: 'arbg', n: 'Große Arbeitgeber', emp: true },
-    ...INFRA.map(c => ({ g: 'infra', n: c.n, inf: c.id, assets: c.as, src: 'OpenStreetMap' })),
+    ...INFRA.filter(c => !c.list).map(c => ({ g: 'infra', n: c.n, inf: c.id, assets: c.as, src: 'OpenStreetMap' })),
+    ...INFRA.filter(c => c.list).map(c => ({ g: 'wiss', n: c.n, wl: c.id, src: 'OpenStreetMap' })),
     { g: 'anb', n: 'Bahnhof', anb: 'st', src: 'OpenStreetMap · Valhalla' }, { g: 'anb', n: 'Hauptbahnhof', anb: 'hbf' },
-    { g: 'anb', n: 'Autobahn-Anschlussstelle', anb: 'as' }, { g: 'anb', n: 'Verkehrsflughafen', anb: 'fh' }, { g: 'anb', n: 'Internationales Drehkreuz', anb: 'fhx', assets: ['buero', 'light', 'logistik'] },
-    { g: 'anb', n: 'Messegelände', anb: 'messe', assets: ['buero', 'light', 'logistik'] }, { g: 'anb', n: 'Zentrum', anb: 'zt' }, { g: 'anb', n: 'Großstadtzentrum', anb: 'zc' }
+    { g: 'anb', n: 'Autobahn-Anschlussstelle', anb: 'as' }, { g: 'anb', n: 'Verkehrsflughafen', anb: 'fh' }, { g: 'anb', n: 'Internationales Drehkreuz', anb: 'fhx', assets: ['buero', 'light', 'logistik', 'fue'] },
+    { g: 'anb', n: 'Messegelände', anb: 'messe', assets: ['buero', 'light', 'logistik', 'fue'] }, { g: 'anb', n: 'Zentrum', anb: 'zt' }, { g: 'anb', n: 'Großstadtzentrum', anb: 'zc' }
   ];
   // Einschätzung der Verkehrsanbindung (km Straße bzw. Fußweg): gut bis, ordentlich bis; Gewicht je Assetklasse
   const ANB = {
-    st: { good: 1, ok: 2.5, w: { wohnen: 0.5, buero: 0.5 } }, hbf: { good: 10, ok: 30, w: { buero: 0.5 } },
-    as: { good: 5, ok: 15, w: { wohnen: 0.25, buero: 0.5, light: 1.5, logistik: 2 } }, fh: { good: 30, ok: 70, w: { buero: 1, light: 0.5, logistik: 0.5 } },
-    fhx: { good: 60, ok: 150, w: { buero: 0.5 } }, messe: { good: 25, ok: 60, w: { buero: 0.25 } }, zt: { good: 3, ok: 10, w: { wohnen: 0.5 } }, zc: { good: 15, ok: 40, w: { wohnen: 0.25, buero: 0.5 } }
+    st: { good: 1, ok: 2.5, w: { wohnen: 0.5, buero: 0.5, fue: 0.5 } }, hbf: { good: 10, ok: 30, w: { buero: 0.5, fue: 0.5 } },
+    as: { good: 5, ok: 15, w: { wohnen: 0.25, buero: 0.5, light: 1.5, logistik: 2, fue: 0.5 } }, fh: { good: 30, ok: 70, w: { buero: 1, light: 0.5, logistik: 0.5, fue: 1 } },
+    fhx: { good: 60, ok: 150, w: { buero: 0.5, fue: 0.5 } }, messe: { good: 25, ok: 60, w: { buero: 0.25 } }, zt: { good: 3, ok: 10, w: { wohnen: 0.5 } }, zc: { good: 15, ok: 40, w: { wohnen: 0.25, buero: 0.5, fue: 0.5 } }
   };
-  const ADW = { wohnen: 1, buero: 1.5 };      // Gewicht des besten ÖPNV-Halts (U-/S-Bahn)
+  const ADW = { wohnen: 1, buero: 1.5, fue: 1 };      // Gewicht des besten ÖPNV-Halts (U-/S-Bahn)
   // Bewertungsrichtung je Kennzahl (+1 höher ist besser, −1 niedriger ist besser, 0 neutral), Gewicht, je Assetklasse
   const KZPOL = {
-    'Ø Nettokaltmiete (Bestand)': { wohnen: 1.5, buero: 0.5, light: 0, logistik: 0 },
-    'Einwohnerdichte': { wohnen: 0.5, buero: 1, light: 0, logistik: 0 },
-    'Entwicklung 2011–2022': { wohnen: 2, buero: 1, light: 1, logistik: 0.5 },
+    'Ø Nettokaltmiete (Bestand)': { wohnen: 1.5, buero: 0.5, light: 0, logistik: 0, fue: 0.25 },
+    'Einwohnerdichte': { wohnen: 0.5, buero: 1, light: 0, logistik: 0, fue: 0.5 },
+    'Entwicklung 2011–2022': { wohnen: 2, buero: 1, light: 1, logistik: 0.5, fue: 1 },
     'Anteil unter 18 Jahre': { wohnen: 0.5 }, 'Anteil ab 65 Jahre': { wohnen: -0.5, buero: -0.5 },
     'Leerstand marktaktiv': { wohnen: -1.5, buero: -0.5 }, 'Gebäude ab 2011': { wohnen: 0.5, buero: 0.5 },
-    'Verfügbares Einkommen je Einwohner': { wohnen: 1, buero: 1, light: 0.5, logistik: 0.5 }, 'Einkünfte je Steuerpflichtigen': { wohnen: 1, buero: 0.5 },
-    'Fertiggestellte Wohnungen je 1.000 Einwohner': { wohnen: 0.5 }, 'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)': { wohnen: 1.5, buero: 1, light: 0.5, logistik: 0.5 },
-    'Arbeitslosenquote': { wohnen: -1, buero: -1, light: -0.5, logistik: -0.5 }, 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)': { wohnen: 0.5, buero: 1.5, light: 1, logistik: 1 }
+    'Verfügbares Einkommen je Einwohner': { wohnen: 1, buero: 1, light: 0.5, logistik: 0.5, fue: 0.5 }, 'Einkünfte je Steuerpflichtigen': { wohnen: 1, buero: 0.5 },
+    'Fertiggestellte Wohnungen je 1.000 Einwohner': { wohnen: 0.5 }, 'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)': { wohnen: 1.5, buero: 1, light: 0.5, logistik: 0.5, fue: 1 },
+    'Arbeitslosenquote': { wohnen: -1, buero: -1, light: -0.5, logistik: -0.5, fue: -0.5 }, 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)': { wohnen: 0.5, buero: 1.5, light: 1, logistik: 1, fue: 1.5 }
   };
   const polOf = k => (KZPOL[k.n] || {})[kzSet().asset] || 0;
   // Abweichung zum Vergleichswert: relativ, bei Prozent-Entwicklungen in Prozentpunkten
@@ -4323,7 +4358,8 @@ return maplibregl$1;
     wohnen: ['Ø Nettokaltmiete (Bestand)', 'Entwicklung 2011–2022', 'Lebensmittelmärkte', 'ÖPNV'],
     buero: ['ÖPNV', 'Verkehrsflughafen', 'Einwohner im Umkreis 25 km', 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)'],
     light: ['Autobahn-Anschlussstelle', 'Verkehrsflughafen', 'Einwohner im Umkreis 25 km', 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)'],
-    logistik: ['Autobahn-Anschlussstelle', 'Einwohner im Umkreis 25 km', 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)', 'Verkehrsflughafen']
+    logistik: ['Autobahn-Anschlussstelle', 'Einwohner im Umkreis 25 km', 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)', 'Verkehrsflughafen'],
+    fue: ['Hochschulen', 'Forschungseinrichtungen', 'Verkehrsflughafen', 'ÖPNV']
   };
   const SHORT = {
     'Ø Nettokaltmiete (Bestand)': 'Ø Nettokaltmiete', 'Entwicklung 2011–2022': 'Bevölkerung 2011–2022', 'Einwohner im Umkreis 25 km': 'Einwohner 25 km',
@@ -4333,15 +4369,16 @@ return maplibregl$1;
     'Ein- und Auspendler, Pendlersaldo': 'Pendlersaldo', 'Wohnfläche je Haushalt': 'Ø Wohnfläche je Haushalt', 'Kaufkraftindex (GfK/Nexiga)': 'Kaufkraftindex', 'Gastronomie (Restaurants, Cafés, Bars)': 'Gastronomie'
   };
   const short = n => SHORT[n] || n;
-  const KZGS = { infra: 'Infrastruktur im Umgriff', anb: 'Verkehrsanbindung', bau: 'Bautätigkeit', bestand: 'Gebäudebestand', kk: 'Einkommen', arbg: 'Große Arbeitgeber' };
-  const KZG = { arbg: 'Große Arbeitgeber im Umkreis', infra: 'Nahversorgung, soziale Infrastruktur und ÖPNV im Umgriff', anb: 'Verkehrsanbindung', bau: 'Bautätigkeit und Entwicklung (Gemeinde)', miete: 'Mieten', bev: 'Bevölkerung', kk: 'Einkommen und Kaufkraft', pend: 'Pendler', boden: 'Boden', hh: 'Haushalte', alter: 'Altersstruktur', bestand: 'Wohnungs- und Gebäudebestand', arbeit: 'Arbeitsmarkt', verkehr: 'Verkehr', err: 'Erreichbarkeit' };
+  const KZGS = { wiss: 'Hochschulen und Forschung', infra: 'Infrastruktur im Umgriff', anb: 'Verkehrsanbindung', bau: 'Bautätigkeit', bestand: 'Gebäudebestand', kk: 'Einkommen', arbg: 'Große Arbeitgeber' };
+  const KZG = { wiss: 'Hochschulen und Forschung', arbg: 'Große Arbeitgeber im Umkreis', infra: 'Nahversorgung, soziale Infrastruktur und ÖPNV im Umgriff', anb: 'Verkehrsanbindung', bau: 'Bautätigkeit und Entwicklung (Gemeinde)', miete: 'Mieten', bev: 'Bevölkerung', kk: 'Einkommen und Kaufkraft', pend: 'Pendler', boden: 'Boden', hh: 'Haushalte', alter: 'Altersstruktur', bestand: 'Wohnungs- und Gebäudebestand', arbeit: 'Arbeitsmarkt', verkehr: 'Verkehr', err: 'Erreichbarkeit' };
   const KZORDER = {
     wohnen: ['miete', 'infra', 'bev', 'bau', 'kk', 'anb', 'arbg', 'hh', 'alter', 'bestand', 'pend', 'boden'],
     buero: ['anb', 'infra', 'arbg', 'bev', 'arbeit', 'kk', 'bau', 'miete', 'alter', 'pend', 'boden'],
     light: ['anb', 'arbg', 'verkehr', 'bev', 'arbeit', 'kk', 'pend', 'boden'],
-    logistik: ['anb', 'arbg', 'verkehr', 'bev', 'arbeit', 'pend', 'boden']
+    logistik: ['anb', 'arbg', 'verkehr', 'bev', 'arbeit', 'pend', 'boden'],
+    fue: ['wiss', 'anb', 'arbg', 'infra', 'bev', 'arbeit', 'kk', 'bau', 'miete', 'pend', 'boden']
   };
-  const ANAME = { wohnen: 'Wohnen', buero: 'Büro', light: 'Light Industrial', logistik: 'Logistik' };
+  const ANAME = { wohnen: 'Wohnen', buero: 'Büro', light: 'Light Industrial', logistik: 'Logistik', fue: 'Forschung & Entwicklung' };
   const kzSet = () => { S.kz = S.kz || { asset: 'wohnen', r: 1000 }; return S.kz; };
   const infraStale = () => { const I = P.kz && P.kz.infra; return !I || I.r !== P.kz.r || !samePt(I) || INFRA.some(c => !(c.id in (I.items || {}))); };
   const kpiOk = () => !!(P.kpiList && P.kpiAt && P.kpiAt.lon === P.lon && P.kpiAt.lat === P.lat);
@@ -4413,6 +4450,7 @@ return maplibregl$1;
     const order = KZORDER[kzSet().asset] || KZORDER.wohnen, out = [];
     for (const g of order) for (const k of KZK.filter(k => k.g === g && (!k.assets || k.assets.includes(kzSet().asset)))) {
       if (k.txt) { const t = k.txt(); out.push({ g, k, txt: t }); continue; }
+      if (k.wl) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.wl] : undefined; out.push({ g, k, wl: I || null, c: INFRA.find(c => c.id === k.wl) }); continue; }
       if (k.brw) { out.push({ g, k, brw: P.brw && +P.brw.v > 0 ? P.brw : null }); continue; }
       if (k.emp) { const E = Z.emp && samePt(Z.emp) ? Z.emp : null; if (E && E.list) E.list.forEach(e => out.push({ g, k, empItem: e })); else out.push({ g, k, empItem: null, empErr: E && E.err }); continue; }
       if (k.inf) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.inf] : undefined;
@@ -4438,7 +4476,7 @@ return maplibregl$1;
       const p = polOf(r.k); if (!p) continue;
       let dv = null;
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null && r.raw.land != null) dv = devOf(r.k, r.raw.v, r.raw.land); }
-      else if (!r.ext && r.txt == null && r.traffic === undefined && r.empItem === undefined && r.brw === undefined && !r.k.sum) dv = devOf(r.k, r.v, r.um);
+      else if (!r.ext && r.txt == null && r.traffic === undefined && r.empItem === undefined && r.brw === undefined && r.wl === undefined && !r.k.sum) dv = devOf(r.k, r.v, r.um);
       if (dv == null) continue;
       const c = Math.max(-0.5, Math.min(0.5, dv)) * Math.sign(p);
       sw += Math.abs(p); sv += c * Math.abs(p); items.push({ n: r.k.n, c, raw: r.raw !== undefined });
@@ -4450,6 +4488,7 @@ return maplibregl$1;
       if (r.inf && r.c && r.c.opv && r.inf.d != null) { const v = distEv(r.inf.d, r.c.good, r.c.ok); if (opv == null || v > opv.v) opv = { v, n: 'ÖPNV-Anbindung (' + r.k.n.replace('-Halte', '').replace(' und Bahnhalte', '') + ')' }; }
       if (r.anb && ANB[r.k.anb]) { const A = ANB[r.k.anb], km = r.anb.km; add(r.k.n, distEv(km, A.good, A.ok), A.w[asset]); }
     }
+    for (const r of rows) if (r.wl && r.wl.d != null && r.c && r.c.as.includes(asset)) add('Nähe ' + r.k.n, distEv(r.wl.d, r.c.good, r.c.ok), r.c.w);
     if (opv) add(opv.n, opv.v, ADW[asset]);
     if (sw < 2) return null;
     return { idx: Math.round(100 + sv / sw * 100), items: items.sort((a, b) => b.c - a.c) };
@@ -4492,6 +4531,8 @@ return maplibregl$1;
     const KEYFILL = ['Einwohnerdichte', 'Ø Nettokaltmiete (Bestand)', 'Entwicklung 2011–2022', 'Autobahn-Anschlussstelle', 'Lebensmittelmärkte', 'Verkehrsflughafen', 'Einwohner im Umkreis 25 km'];
     const tileRows = [...new Set((KZKEY[K.asset] || []).concat(KEYFILL))].map(n => n === 'ÖPNV' ? opvRow() : rows.find(r => r.k.n === n)).filter(Boolean);
     const tiles = tileRows.map(r => {
+      if (r.wl !== undefined) { const I = r.wl; if (!I || I.d == null) return null;
+        return `<div><div class="tv">${fmtD(I.d).replace(/ (k?m)$/, '<small>$1</small>')}</div><div class="tn">${esc(r.k.n)} · nächste</div><div class="tc">${esc(I.nm || '')}</div></div>`; }
       if (r.inf) { const I = r.inf; if (!I) return null;
         if (r.c.opv) return `<div><div class="tv">${fmtD(I.d).replace(/ (k?m)$/, '<small>$1</small>')}</div><div class="tn">nächster Halt ${r.k.n.includes('U-') ? 'U-/Stadtbahn' : 'S-Bahn/Bahn'}</div><div class="tc">${esc(I.nm || '')}${I.n ? ' · ' + I.n + ' im Radius' : ''}</div></div>`;
         return `<div><div class="tv">${I.n}<small>im Radius</small></div><div class="tn">${esc(short(r.k.n))}</div><div class="tc">nächster ${fmtD(I.d)}</div></div>`; }
@@ -4511,6 +4552,7 @@ return maplibregl$1;
     const th = g => `<tr>${G(g)}<th class="hs">Radius ${radTxt(Z.r)}</th><th class="hc">${cHead}</th><th>Deutschland</th><th>Einschätzung</th></tr>`;
     const thI = g => `<tr>${G(g)}<th class="hs">im Radius ${radTxt(Z.r)}</th><th class="hc">nächste</th><th></th><th>Einschätzung</th></tr>`;
     const thA = g => `<tr>${G(g)}<th class="hc" style="text-align:left">Ziel</th><th class="hs">Entfernung</th><th>Fahrzeit</th><th>Einschätzung</th></tr>`;
+    const thW = g => `<tr>${G(g)}<th class="hs">Entfernung</th><th class="hc">Radius ${radTxt(Z.r)}</th><th></th><th>Einschätzung</th></tr>`;
     const thE = g => `<tr>${G(g)}<th class="hs">Beschäftigte</th><th class="hc">Entfernung</th><th colspan="2"></th></tr>`;
     const thR = g => `<tr>${G(g)}<th></th><th class="hc">Gemeinde / Kreis</th><th>Land</th><th>Einschätzung</th></tr>`;
     const thX = g => `<tr>${G(g)}<th colspan="4"></th></tr>`;
@@ -4524,8 +4566,16 @@ return maplibregl$1;
         const src = [...new Set(grp.map(x => x.raw !== undefined ? 'Regionalatlas' : (x.k.src || '').replace(/\s*\(.*\)$/, '').replace('Zensus 2011/2022', 'Zensus 2022')).filter(Boolean))].join(' · ');
         srcNow = src;
         const ra = grp.some(x => x.raw !== undefined);
+        if (cur === 'wiss') srcNow = 'OpenStreetMap · Luftlinie';
         if (cur === 'arbg') srcNow = 'Wikidata · Beschäftigte des Unternehmens insgesamt, nicht je Standort';
-        html += `<table>` + (cur === 'arbg' ? thE(cur) : cur === 'infra' ? thI(cur) : cur === 'anb' ? thA(cur) : num ? th(cur) : ra ? thR(cur) : thX(cur));
+        html += `<table>` + (cur === 'wiss' ? thW(cur) : cur === 'arbg' ? thE(cur) : cur === 'infra' ? thI(cur) : cur === 'anb' ? thA(cur) : num ? th(cur) : ra ? thR(cur) : thX(cur));
+      }
+      if (r.wl !== undefined) {
+        const I = r.wl, c = r.c;
+        if (!I || !I.list) { html += `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="4" class="c" style="text-align:left">${Z.infraErr ? 'OpenStreetMap gerade nicht erreichbar' : I ? 'keine im Umkreis von ' + fmtD(c.far) : 'wird geladen …'}</td></tr>`; continue; }
+        if (!I.list.length) { html += `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="4" class="c" style="text-align:left">keine im Umkreis von ${fmtD(c.far)}</td></tr>`; continue; }
+        html += I.list.map((x, i) => `<tr><td class="nm" title="${esc(x.nm)}">${i ? '' : `<b style="font-weight:600">${r.k.n}</b> · `}${esc(x.nm)}</td><td class="v">${fmtD(x.d)}</td><td class="vs">${i ? '' : I.n + ' im Radius'}</td><td></td><td class="e">${i ? '' : evDist(distEv(x.d, c.good, c.ok), ['weiter entfernt', 'gut erreichbar', 'in der Nähe'])}</td></tr>`).join('');
+        continue;
       }
       if (r.brw !== undefined) {
         const B = r.brw, ART = { W: 'Wohnen', M: 'gemischt', G: 'Gewerbe', S: 'Sonstiges' };
@@ -4656,7 +4706,7 @@ return maplibregl$1;
     if (R >= 400) ring(R / 2, 0.18, [0.3, 0.9], radTxt(R / 2).toUpperCase());
     ring(R, 0.35, [1.6, 1.0], radTxt(R).toUpperCase());
     // Einrichtungen: Versorgung dunkelblau, Bildung und Betreuung orange, Gesundheit hellblau, Halte als Ring
-    const LEG = [['nahv', 'Lebensmittel', NAVY, 'sq'], ['arzt', 'Ärzte und Apotheken', '#7D8FB0', 'sq'], ['apo', null, '#7D8FB0', 'sq'], ['kita', 'Kitas und Schulen', HI, 'sq'], ['schule', null, HI, 'sq'], ['ubahn', 'U-/S-Bahn, Bahn', NAVY, 'ring'], ['bahn', null, NAVY, 'ring']];
+    const LEG = [['nahv', 'Lebensmittel', NAVY, 'sq'], ['arzt', 'Ärzte und Apotheken', '#7D8FB0', 'sq'], ['apo', null, '#7D8FB0', 'sq'], ['kita', 'Kitas und Schulen', HI, 'sq'], ['schule', null, HI, 'sq'], ['ubahn', 'U-/S-Bahn, Bahn', NAVY, 'ring'], ['bahn', null, NAVY, 'ring'], ['uni', 'Hochschulen und Forschung', '#255AA8', 'ring'], ['forsch', null, '#255AA8', 'ring']];
     const used = [];
     for (const [id, lab, col, sym] of LEG) {
       const it = I[id]; if (!it || !it.pts || !it.pts.length) continue;
@@ -4824,6 +4874,7 @@ return maplibregl$1;
     for (const r of kzRows()) {
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null) lines.push(`${r.k.n}: ${fmtN(r.raw.v, r.k.d, r.k.u, r.k.sign)} (${r.raw.where || ''}${r.raw.land != null ? ', Land ' + fmtN(r.raw.land, r.k.d, r.k.u, r.k.sign) : ''})`); continue; }
       if (r.traffic !== undefined) { if (r.traffic && r.traffic.list) r.traffic.list.forEach(t => lines.push(`Verkehr ${t.name}: ${fmtN(t.dtv, 0, 'Kfz/24 h')} (${fmtN(t.dist / 1000, 1, 'km')} entfernt)`)); continue; }
+      if (r.wl !== undefined) { if (r.wl && r.wl.list) r.wl.list.slice(0, 3).forEach(x => lines.push(`${r.k.n}: ${x.nm}, ${fmtD(x.d)}`)); continue; }
       if (r.brw !== undefined) { if (r.brw) lines.push(`Bodenrichtwert: ${fmtN(+r.brw.v, 0, '€/m²')}${r.brw.d ? ' (Stichtag ' + r.brw.d + ')' : ''}`); continue; }
       if (r.empItem !== undefined) { if (r.empItem) lines.push(`Arbeitgeber ${r.empItem.n}: ${r.empItem.emp.toLocaleString('de-DE')} Beschäftigte (gesamt), ${fmtD(r.empItem.d)}`); continue; }
       if (r.inf !== undefined) { if (r.inf) lines.push(`${r.k.n}: ${r.inf.n} im Radius` + (r.c.count ? '' : `, nächste ${fmtD(r.inf.d)}${r.inf.nm ? ' (' + r.inf.nm + ')' : ''}`)); continue; }
@@ -4840,7 +4891,7 @@ return maplibregl$1;
   $('kzPng').onclick = async () => {
     const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst berechnen.'; return; }
     await loadFonts();
-    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.raw === undefined && r.traffic === undefined && r.inf === undefined && r.anb === undefined && r.empItem === undefined && r.brw === undefined && r.v != null).slice(0, 6);
+    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.raw === undefined && r.traffic === undefined && r.inf === undefined && r.anb === undefined && r.empItem === undefined && r.brw === undefined && r.wl === undefined && r.v != null).slice(0, 6);
     const W = 1800, H = 1000, c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d'), F = famOf(ST(active).font, 400), FB = famOf(ST(active).font, 700);
     g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
@@ -5564,9 +5615,9 @@ return maplibregl$1;
   // ---------- Projekteinstieg: Ort → Nutzung → Zweck → Zusammenfassung; Vorgaben zentral in START_DEF ----------
   const START_DEF = {
     // Radius der Kennzahlen je Nutzung: Stadt / Land
-    radius: { wohnen: [1000, 2000], buero: [1000, 3000], light: [5000, 5000], logistik: [10000, 10000] },
+    radius: { wohnen: [1000, 2000], buero: [1000, 3000], light: [5000, 5000], logistik: [10000, 10000], fue: [3000, 5000] },
     // empfohlene Vorlage je Nutzung
-    fam: { wohnen: 'pastell', buero: 'kontrast', light: 'signal', logistik: 'signal' },
+    fam: { wohnen: 'pastell', buero: 'kontrast', light: 'signal', logistik: 'signal', fue: 'kontrast' },
     // Maßstäbe Makro-/Mikrolage: Stadt / Land
     scale: { mi: [25000, 50000], mk: [10000, 15000] },
     // Formate je Zweck (Schlüssel aus PRESETS)
