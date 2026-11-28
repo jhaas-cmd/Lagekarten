@@ -190,3 +190,4 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 - Entwicklerhinweis: INKAR-Abruf älter als 300 Tage → „neuen Jahrgang prüfen“.
 - Teil 1 hat je Indikator nur ein Jahr (keine Zeitreihe); Pendler, Beschäftigte, Hochqualifizierte fehlen noch (Teil 2).
 - INKAR-Werkzeug: breiter Suchbegriff-Vorschlag `INK_KEYS` (Knopf `#inkDef`), Ergebnis wahlweise gepackt (`#inkGz`, CompressionStream gzip → `INKAR_Auswahl.csv.gz`, ca. 1/10 der Größe); Dialog scrollbar.
+- INKAR-Werkzeug speicherschonend: Treffer werden laufend (alle 4 MB) in einen gzip-Strom geschrieben statt gesammelt, Anzeige alle 0,3 s mit Pause für den Browser, Knopf „Abbrechen“ (`#inkStop`), Dateianfang wird sofort in der Vorschau gezeigt. Test: 212 MB in ~11 s.

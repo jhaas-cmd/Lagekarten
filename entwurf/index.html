@@ -761,7 +761,7 @@ return maplibregl$1;
     <label class="f">INKAR-Datei (CSV)<input type="file" id="inkFile" accept=".csv,.txt"></label>
     <div id="inkProg" class="hint"></div>
     <pre id="inkPrev" style="max-height:180px;overflow:auto;font-size:10.5px;background:#F4F5F7;padding:6px;white-space:pre" hidden></pre>
-    <div class="row" style="justify-content:flex-end"><button id="inkSave" class="primary" disabled>Auswahl speichern</button><button id="inkClose">Schließen</button></div>
+    <div class="row" style="justify-content:flex-end"><button id="inkStop" hidden>Abbrechen</button><button id="inkSave" class="primary" disabled>Auswahl speichern</button><button id="inkClose">Schließen</button></div>
   </div>
 </div>
 <div class="dlg-bg" id="expDlg" hidden>
@@ -6218,43 +6218,56 @@ return maplibregl$1;
     $('devB').style.cursor = 'pointer'; $('devB').onclick = openInk;
     $('inkClose').onclick = () => { $('inkDlg').hidden = true; };
     const norm = t => t.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+    // Speicherschonend: Ergebnis wird laufend (gepackt) weggeschrieben statt im Speicher gesammelt; Anzeige nur alle 0,3 s
+    let inkStop = false;
     $('inkFile').onchange = async e => {
       const file = e.target.files[0]; if (!file) return;
       const keys = $('inkKeys').value.split('\n').map(k => k.trim()).filter(Boolean); store.set('inkKeys', keys);
       const must = $('inkMust').value.split(',').map(x => norm(x.trim())).filter(Boolean); store.set('inkMust', $('inkMust').value);
-      const nk = keys.map(norm), hits = nk.map(() => 0), out = [], prev = []; let head = null, n = 0, kept = 0, size = 0, rest = '';
-      // Zeichensatz: UTF-8, sonst Windows-1252 (ältere INKAR-Exporte)
+      const nk = keys.map(norm), hits = nk.map(() => 0), prev = []; let head = null, n = 0, kept = 0, size = 0, rest = '';
+      // Zeichensatz: UTF-8, sonst Windows-1252; die ersten Zeilen sofort zeigen (Aufbau der Datei)
       const probe = new Uint8Array(await file.slice(0, 1 << 20).arrayBuffer());
       let enc = 'utf-8'; try { new TextDecoder('utf-8', { fatal: true }).decode(probe.subarray(0, probe.length - 4)); } catch (x) { enc = 'windows-1252'; }
-      const dec = new TextDecoder(enc), rd = file.stream().getReader(); $('inkSave').disabled = true; $('inkPrev').hidden = true;
+      $('inkPrev').textContent = 'Anfang der Datei:\n' + new TextDecoder(enc).decode(probe.subarray(0, 6000)).split(/\r?\n/).slice(0, 12).join('\n'); $('inkPrev').hidden = false;
+      const gzOn = $('inkGz').checked && !!window.CompressionStream, te = new TextEncoder();
+      let gzW = null, gzBlob = null; const parts = [];
+      if (gzOn) { const cs = new CompressionStream('gzip'); gzW = cs.writable.getWriter(); gzBlob = new Response(cs.readable).blob(); }
+      let buf = '﻿';
+      const flush = async () => { if (!buf) return; if (gzW) await gzW.write(te.encode(buf)); else parts.push(buf); buf = ''; };
+      const dec = new TextDecoder(enc), rd = file.stream().getReader(); $('inkSave').disabled = true; inkOut = null; inkStop = false;
+      $('inkStop').hidden = false;
       const take = line => {
         if (!line) return; n++;
-        if (head === null) { head = line; out.push(line); return; }
-        const l = norm(line); let hit = false;
+        if (head === null) { head = line; buf += line + '\n'; return; }
+        const l = norm(line);
         if (must.length && !must.some(m => l.includes(m))) return;
-        for (let i = 0; i < nk.length; i++) if (l.includes(nk[i])) { hits[i]++; hit = true; }
-        if (hit) { out.push(line); kept++; size += line.length + 1; if (prev.length < 40) prev.push(line); }
+        let hit = false; for (let i = 0; i < nk.length; i++) if (l.includes(nk[i])) { hits[i]++; hit = true; }
+        if (hit) { buf += line + '\n'; kept++; size += line.length + 1; if (prev.length < 25) prev.push(line); }
       };
-      for (let read = 0; ;) {
-        const { done, value } = await rd.read(); if (done) break;
-        read += value.length; const txt = rest + dec.decode(value, { stream: true }), lines = txt.split(/\r?\n/); rest = lines.pop();
-        for (const ln of lines) take(ln);
-        $('inkProg').textContent = `gelesen ${Math.round(read / 1048576)} von ${Math.round(file.size / 1048576)} MB · ${kept.toLocaleString('de-DE')} Zeilen behalten (${(size / 1048576).toFixed(1)} MB)`;
-      }
-      take(rest + dec.decode());
-      inkOut = new Blob(['\ufeff' + out.join('\n')], { type: 'text/csv;charset=utf-8' });
-      $('inkProg').innerHTML = `Fertig: ${n.toLocaleString('de-DE')} Zeilen gelesen, <b>${kept.toLocaleString('de-DE')} behalten</b> · Ergebnis ${(inkOut.size / 1048576).toFixed(1)} MB<br>` + keys.map((k, i) => `${k}: ${hits[i].toLocaleString('de-DE')}`).join(' · ')
-        + (inkOut.size > 300 * 1048576 ? '<br><b>Sehr groß</b> – „muss enthalten“ (z. B. Kreise) nutzen oder Suchbegriffe enger fassen.' : '');
-      $('inkPrev').textContent = [head, ...prev].join('\n'); $('inkPrev').hidden = false; $('inkSave').disabled = false;
+      let read = 0, lastUi = 0;
+      try {
+        for (;;) {
+          if (inkStop) break;
+          const { done, value } = await rd.read(); if (done) break;
+          read += value.length; const txt = rest + dec.decode(value, { stream: true }), lines = txt.split(/\r?\n/); rest = lines.pop();
+          for (const ln of lines) take(ln);
+          if (buf.length > 4e6) await flush();
+          if (Date.now() - lastUi > 300) { lastUi = Date.now();
+            $('inkProg').textContent = `gelesen ${Math.round(read / 1048576)} von ${Math.round(file.size / 1048576)} MB · ${kept.toLocaleString('de-DE')} Zeilen behalten (${(size / 1048576).toFixed(0)} MB ungepackt)`;
+            await new Promise(r => setTimeout(r, 0)); }
+        }
+        if (!inkStop) take(rest + dec.decode());
+        await flush();
+        if (gzW) { await gzW.close(); inkOut = await gzBlob; inkOut.gz = true; } else inkOut = new Blob(parts, { type: 'text/csv;charset=utf-8' });
+      } catch (err) { $('inkProg').textContent = 'Abgebrochen: ' + err.message; $('inkStop').hidden = true; return; }
+      $('inkStop').hidden = true;
+      $('inkProg').innerHTML = `${inkStop ? 'Abgebrochen nach' : 'Fertig:'} ${n.toLocaleString('de-DE')} Zeilen gelesen, <b>${kept.toLocaleString('de-DE')} behalten</b> · Ergebnis ${(inkOut.size / 1048576).toFixed(1)} MB${inkOut.gz ? ' (gepackt)' : ''}<br>`
+        + keys.map((k, i) => `${k}: ${hits[i].toLocaleString('de-DE')}`).join(' · ');
+      $('inkPrev').textContent = 'Kopfzeile und erste Treffer:\n' + [head, ...prev].join('\n'); $('inkSave').disabled = false;
     };
+    $('inkStop').onclick = () => { inkStop = true; };
     $('inkDef').onclick = () => { $('inkKeys').value = INK_KEYS.join('\n'); store.set('inkKeys', INK_KEYS); };
-    $('inkSave').onclick = async () => {
-      if (!inkOut) return;
-      if ($('inkGz').checked && window.CompressionStream) {
-        const gz = await new Response(inkOut.stream().pipeThrough(new CompressionStream('gzip'))).blob();
-        saveBlob(gz, 'INKAR_Auswahl.csv.gz'); $('inkProg').insertAdjacentHTML('beforeend', `<br>Gepackt gespeichert: ${(gz.size / 1048576).toFixed(1)} MB`);
-      } else saveBlob(inkOut, 'INKAR_Auswahl.csv');
-    };
+    $('inkSave').onclick = () => { if (inkOut) saveBlob(inkOut, inkOut.gz ? 'INKAR_Auswahl.csv.gz' : 'INKAR_Auswahl.csv'); };
     document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); store.set('devMode', !devOn()); status('Entwicklermodus ' + (devOn() ? 'an' : 'aus') + '.'); devCheck(); } });
     setTimeout(devCheck, 1500);
   }
