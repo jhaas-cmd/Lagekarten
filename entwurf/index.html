@@ -4549,36 +4549,45 @@ return maplibregl$1;
     { g: 'miete', n: 'Marktmiete', mm: true },
     { g: 'miete', n: 'Angebotsmiete Wohnen (Kreis)', bbsr: true, assets: ['wohnen'] },
     { g: 'miete', n: 'Ø Nettokaltmiete (Bestand)', assets: ['wohnen'], u: '€/m²', d: 2, f: s => s.r == null ? null : s.r / 100, src: 'Zensus 2022 · Wohnen, alle laufenden Mietverträge – keine Marktmiete' },
-    { g: 'miete', n: 'Mietentwicklung (Angebotsmieten)', ext: 'Kreisebene · folgt' },
     { g: 'bev', n: 'Einwohner im Radius', u: '', d: 0, sum: true, f: s => s.p, src: 'Zensus 2022' },
     { g: 'bev', n: 'Einwohnerdichte', u: 'EW/km²', d: 0, f: s => s.p / s.km2, src: 'Zensus 2022' },
     { g: 'bev', n: 'Entwicklung 2011–2022', u: '%', d: 1, sign: true, f: s => s.q > 0 ? (s.p / s.q - 1) * 100 : null, src: 'Zensus 2011/2022' },
     { g: 'bev', n: 'Einwohner im Umkreis 25 km', u: '', d: 0, sum: true, big: true, f: (s, x) => x.r25 ? x.r25.p : null, assets: ['buero', 'light', 'logistik'], src: 'Zensus 2022' },
     { g: 'kk', n: 'Verfügbares Einkommen je Einwohner', ra: 'ek', u: '€', d: 0 },
     { g: 'kk', n: 'Einkünfte je Steuerpflichtigen', ra: 'est', u: '€', d: 0 },
-    // INKAR (BBSR), Kreisebene; Vergleich „Land“ = Median der Kreise im Bundesland
-    { g: 'kk', n: 'Kaufkraft je Einwohner', ink: 'kauf', u: '€', d: 0 },
-    { g: 'kk', n: 'Einzelhandelsrelevante Kaufkraft je Einwohner', ink: 'ekk', u: '€', d: 0, assets: ['wohnen', 'buero'] },
-    { g: 'kk', n: 'Monatliches Haushaltseinkommen', ink: 'hhek', u: '€', d: 0, assets: ['wohnen', 'buero', 'fue'] },
+    // INKAR (BBSR): Gemeinde, wo INKAR sie führt, sonst Kreis; Vergleich „Land“ = Landeswert aus INKAR; tr = Entwicklung 10 Jahre zeigen
+    { g: 'kk', n: 'Kaufkraft je Einwohner', ink: 'kauf', u: '€', d: 0, tr: true },
+    { g: 'kk', n: 'Einzelhandelsrelevante Kaufkraft je Einwohner', ink: 'ekk', u: '€', d: 0, tr: true, assets: ['wohnen', 'buero'] },
+    { g: 'kk', n: 'Monatliches Haushaltseinkommen', ink: 'hhek', u: '€', d: 0, tr: true, assets: ['wohnen', 'buero', 'fue'] },
     { g: 'kk', n: 'Haushalte mit hohem Einkommen', ink: 'hhhoch', u: '%', d: 1, assets: ['wohnen'] },
-    { g: 'kk', n: 'Medianeinkommen (Beschäftigte, brutto/Monat)', ink: 'med', u: '€', d: 0 },
-    { g: 'kk', n: 'Medianeinkommen Akademiker', ink: 'medak', u: '€', d: 0, assets: ['buero', 'fue'] },
+    { g: 'kk', n: 'Medianeinkommen (Beschäftigte, brutto/Monat)', ink: 'med', u: '€', d: 0, tr: true },
+    { g: 'kk', n: 'Medianeinkommen Akademiker', ink: 'medak', u: '€', d: 0, tr: true, assets: ['buero', 'fue'] },
+    { g: 'kk', n: 'Steuerkraft je Einwohner', ink: 'stkraft', u: '€', d: 0, tr: true, assets: ['buero', 'light', 'logistik', 'fue'] },
     { g: 'kk', n: 'Kaufkraftindex (GfK/Nexiga)', ext: 'kostenpflichtig – nicht frei verfügbar' },
-    { g: 'pend', n: 'Ein- und Auspendler, Pendlersaldo', ext: 'Bundesagentur für Arbeit · keine frei abrufbare Schnittstelle, Abruf manuell im Pendleratlas' },
+    { g: 'pend', n: 'Pendlersaldo je 100 Beschäftigte', ink: 'pend', u: '', d: 1, sign: true },
+    { g: 'pend', n: 'Arbeitsplatzzentralität (Arbeitsort/Wohnort)', ink: 'zentral', u: '', d: 2, assets: ['buero', 'light', 'logistik', 'fue'] },
     { g: 'boden', n: 'Bodenrichtwert', brw: true },
-    { g: 'boden', n: 'Kaufpreise für Bauland', ext: 'Kreisebene · noch keine frei abrufbare Schnittstelle gefunden' },
     { g: 'bau', n: 'Fertiggestellte Wohnungen je 1.000 Einwohner', ra: 'fert', u: '', d: 1 },
-    { g: 'bau', n: 'Baugenehmigungen Wohnungen je 1.000 EW (Kreis)', ink: 'bgen', u: '', d: 1, assets: ['wohnen'] },
-    { g: 'bau', n: 'Baulandpreise (Kreis)', ink: 'baul', u: '€/m²', d: 0, assets: ['wohnen', 'buero', 'fue'] },
+    { g: 'bau', n: 'Baugenehmigungen Wohnungen je 1.000 EW', ink: 'bgen', u: '', d: 1, assets: ['wohnen'] },
+    { g: 'bau', n: 'Neubauwohnungen in Mehrfamilienhäusern je 1.000 EW', ink: 'fertmfh', u: '', d: 1, assets: ['wohnen'] },
+    { g: 'bau', n: 'Baulandpreise (Kreis)', ink: 'baul', u: '€/m²', d: 0, tr: true, assets: ['wohnen', 'buero', 'fue'] },
     { g: 'bev', n: 'Bevölkerungsprognose 2022–2030 (Kreis)', ink: 'prog30', u: '%', d: 1, sign: true },
     { g: 'bev', n: 'Bevölkerungsprognose 2022–2045 (Kreis)', ink: 'prog45', u: '%', d: 1, sign: true },
-    { g: 'bev', n: 'Bevölkerungsentwicklung 10 Jahre (Kreis)', ink: 'bev10', u: '%', d: 1, sign: true },
-    { g: 'bev', n: 'Wanderungssaldo je 1.000 EW (Kreis)', ink: 'wans', u: '', d: 1, sign: true, assets: ['wohnen', 'buero', 'fue'] },
-    { g: 'hh', n: 'Einpersonenhaushalte (Kreis)', ink: 'ein1', u: '%', d: 1, assets: ['wohnen'] },
-    { g: 'alter', n: 'Durchschnittsalter (Kreis)', ink: 'alt', u: 'Jahre', d: 1, assets: ['wohnen'] },
-    { g: 'arbeit', n: 'Gewerbesteuer je Einwohner (Kreis)', ink: 'gewst', u: '€', d: 0, assets: ['buero', 'light', 'logistik', 'fue'] },
-    { g: 'arbeit', n: 'Bruttoverdienst Produzierendes Gewerbe', ink: 'bvpg', u: '€', d: 0, assets: ['light', 'logistik'] },
-    { g: 'wiss', n: 'Studierende je 1.000 EW (Kreis)', ink: 'stud', u: '', d: 1, assets: ['buero', 'fue'] },
+    { g: 'bev', n: 'Bevölkerungsentwicklung 10 Jahre', ink: 'bev10', u: '%', d: 1, sign: true },
+    { g: 'bev', n: 'Wanderungssaldo je 1.000 EW', ink: 'wans', u: '', d: 1, sign: true, assets: ['wohnen', 'buero', 'fue'] },
+    { g: 'hh', n: 'Einpersonenhaushalte', ink: 'ein1', u: '%', d: 1, assets: ['wohnen'] },
+    { g: 'hh', n: 'Haushalte mit Kindern', ink: 'hhkind', u: '%', d: 1, assets: ['wohnen'] },
+    { g: 'alter', n: 'Durchschnittsalter', ink: 'alt', u: 'Jahre', d: 1, assets: ['wohnen'] },
+    { g: 'arbeit', n: 'Beschäftigte am Arbeitsort', ink: 'sva', u: '', d: 0, tr: true, sum: true, assets: ['buero', 'light', 'logistik', 'fue'] },
+    { g: 'arbeit', n: 'Beschäftigte mit akademischem Abschluss', ink: 'akad', u: '%', d: 1, assets: ['buero', 'fue'] },
+    { g: 'arbeit', n: 'Beschäftigte unternehmensnahe Dienstleistungen', ink: 'udl', u: '%', d: 1, assets: ['buero'] },
+    { g: 'arbeit', n: 'Beschäftigte IT und Naturwissenschaften', ink: 'it', u: '%', d: 1, assets: ['buero', 'fue'] },
+    { g: 'arbeit', n: 'Beschäftigte wissensintensive Industrie', ink: 'wissind', u: '%', d: 1, assets: ['light', 'fue'] },
+    { g: 'arbeit', n: 'Bruttoinlandsprodukt je Erwerbstätigen', ink: 'bipet', u: 'Tsd. €', d: 1, tr: true, assets: ['buero', 'light', 'logistik', 'fue'] },
+    { g: 'arbeit', n: 'Gewerbesteuer je Einwohner', ink: 'gewst', u: '€', d: 0, assets: ['buero', 'light', 'logistik', 'fue'] },
+    { g: 'arbeit', n: 'Bruttoverdienst Produzierendes Gewerbe', ink: 'bvpg', u: '€', d: 0, tr: true, assets: ['light', 'logistik'] },
+    { g: 'arbeit', n: 'Glasfaser/Gigabit verfügbar (Haushalte)', ink: 'gbit', u: '%', d: 1, assets: ['buero', 'fue', 'wohnen'] },
+    { g: 'wiss', n: 'Studierende je 1.000 EW', ink: 'stud', u: '', d: 1, assets: ['buero', 'fue'] },
     { g: 'bau', n: 'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)', ra: 'bevd', u: '', d: 0, sign: true },
     { g: 'hh', n: 'Ø Haushaltsgröße', u: 'Pers.', d: 2, f: s => s.h == null ? null : s.h / 100, src: 'Zensus 2022' },
     { g: 'hh', n: 'Haushalte im Radius', u: '', d: 0, sum: true, f: s => s.n, src: 'Zensus 2022' },
@@ -4620,10 +4629,10 @@ return maplibregl$1;
     'Baulandpreise (Kreis)': { wohnen: 0.5, buero: 0.25, fue: 0.25 },
     'Bevölkerungsprognose 2022–2030 (Kreis)': { wohnen: 1.5, buero: 1, light: 0.5, logistik: 0.5, fue: 1 },
     'Bevölkerungsprognose 2022–2045 (Kreis)': { wohnen: 1, buero: 0.5, light: 0.25, logistik: 0.25, fue: 0.5 },
-    'Bevölkerungsentwicklung 10 Jahre (Kreis)': { wohnen: 0.5, buero: 0.5, light: 0.25, logistik: 0.25, fue: 0.5 },
-    'Wanderungssaldo je 1.000 EW (Kreis)': { wohnen: 1, buero: 0.5, fue: 0.5 },
-    'Gewerbesteuer je Einwohner (Kreis)': { buero: 0.5, light: 0.5, logistik: 0.5, fue: 0.5 },
-    'Studierende je 1.000 EW (Kreis)': { buero: 0.25, fue: 1 },
+    'Bevölkerungsentwicklung 10 Jahre': { wohnen: 0.5, buero: 0.5, light: 0.25, logistik: 0.25, fue: 0.5 },
+    'Wanderungssaldo je 1.000 EW': { wohnen: 1, buero: 0.5, fue: 0.5 },
+    'Gewerbesteuer je Einwohner': { buero: 0.5, light: 0.5, logistik: 0.5, fue: 0.5 },
+    'Studierende je 1.000 EW': { buero: 0.25, fue: 1 },
     'Ø Nettokaltmiete (Bestand)': { wohnen: 1.5, buero: 0.5, light: 0, logistik: 0, fue: 0.25 },
     'Einwohnerdichte': { wohnen: 0.5, buero: 1, light: 0, logistik: 0, fue: 0.5 },
     'Entwicklung 2011–2022': { wohnen: 2, buero: 1, light: 1, logistik: 0.5, fue: 1 },
@@ -4633,6 +4642,16 @@ return maplibregl$1;
     'Fertiggestellte Wohnungen je 1.000 Einwohner': { wohnen: 0.5 }, 'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)': { wohnen: 1.5, buero: 1, light: 0.5, logistik: 0.5, fue: 1 },
     'Arbeitslosenquote': { wohnen: -1, buero: -1, light: -0.5, logistik: -0.5, fue: -0.5 }, 'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)': { wohnen: 0.5, buero: 1.5, light: 1, logistik: 1, fue: 1.5 }
   };
+  Object.assign(KZPOL, {
+    'Steuerkraft je Einwohner': { buero: 0.25, light: 0.25, logistik: 0.25, fue: 0.25 },
+    'Pendlersaldo je 100 Beschäftigte': { wohnen: 0, buero: 0.5, light: 0.25, logistik: 0.25, fue: 0.5 },
+    'Arbeitsplatzzentralität (Arbeitsort/Wohnort)': { buero: 0.5, light: 0.25, logistik: 0.25, fue: 0.5 },
+    'Baugenehmigungen Wohnungen je 1.000 EW': { wohnen: -0.25 }, 'Neubauwohnungen in Mehrfamilienhäusern je 1.000 EW': { wohnen: -0.25 },
+    'Haushalte mit Kindern': { wohnen: 0.25 }, 'Beschäftigte mit akademischem Abschluss': { buero: 0.5, fue: 1 },
+    'Beschäftigte unternehmensnahe Dienstleistungen': { buero: 0.5 }, 'Beschäftigte IT und Naturwissenschaften': { buero: 0.5, fue: 0.5 },
+    'Beschäftigte wissensintensive Industrie': { light: 0.5, fue: 0.5 }, 'Bruttoinlandsprodukt je Erwerbstätigen': { buero: 0.5, light: 0.25, logistik: 0.25, fue: 0.5 },
+    'Glasfaser/Gigabit verfügbar (Haushalte)': { wohnen: 0.25, buero: 0.5, fue: 0.5 }
+  });
   const polOf = k => (KZPOL[k.n] || {})[kzSet().asset] || 0;
   // Abweichung zum Vergleichswert: relativ, bei Prozent-Entwicklungen in Prozentpunkten
   const devOf = (k, v, c) => v == null || c == null || !isFinite(v) || !isFinite(c) ? null : k.sign ? (v - c) / (k.u === '%' ? 40 : 200) : c ? v / c - 1 : null;
@@ -4654,7 +4673,11 @@ return maplibregl$1;
     'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)': 'Arbeitsplatzdichte je 1.000 EW', 'Fertiggestellte Wohnungen je 1.000 Einwohner': 'Fertigstellungen je 1.000 EW',
     'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)': 'Bevölkerung je 10.000 EW / Jahr', 'Verfügbares Einkommen je Einwohner': 'Verfügb. Einkommen je EW',
     'Einkünfte je Steuerpflichtigen': 'Einkünfte je Steuerpflichtigem', 'Einzelhandel gesamt (Geschäfte)': 'Geschäfte gesamt', 'Autobahn-Anschlussstelle': 'Autobahn',
-    'Ein- und Auspendler, Pendlersaldo': 'Pendlersaldo', 'Wohnfläche je Haushalt': 'Ø Wohnfläche je Haushalt', 'Kaufkraftindex (GfK/Nexiga)': 'Kaufkraftindex', 'Gastronomie (Restaurants, Cafés, Bars)': 'Gastronomie'
+    'Pendlersaldo je 100 Beschäftigte': 'Pendlersaldo je 100 Besch.', 'Arbeitsplatzzentralität (Arbeitsort/Wohnort)': 'Arbeitsplatzzentralität',
+    'Neubauwohnungen in Mehrfamilienhäusern je 1.000 EW': 'Neubau MFH je 1.000 EW', 'Beschäftigte mit akademischem Abschluss': 'Beschäftigte Akademiker',
+    'Beschäftigte unternehmensnahe Dienstleistungen': 'Besch. Unternehmensdienste', 'Beschäftigte IT und Naturwissenschaften': 'Besch. IT/Naturwiss.',
+    'Beschäftigte wissensintensive Industrie': 'Besch. wissensint. Industrie', 'Bruttoinlandsprodukt je Erwerbstätigen': 'BIP je Erwerbstätigen',
+    'Glasfaser/Gigabit verfügbar (Haushalte)': 'Gigabit-Anschluss', 'Einzelhandelsrelevante Kaufkraft je Einwohner': 'Einzelhandelskaufkraft je EW', 'Wohnfläche je Haushalt': 'Ø Wohnfläche je Haushalt', 'Kaufkraftindex (GfK/Nexiga)': 'Kaufkraftindex', 'Gastronomie (Restaurants, Cafés, Bars)': 'Gastronomie'
   };
   const short = n => SHORT[n] || n;
   const KZGS = { wiss: 'Hochschulen und Forschung', infra: 'Infrastruktur im Umgriff', anb: 'Verkehrsanbindung', bau: 'Bautätigkeit', bestand: 'Gebäudebestand', kk: 'Einkommen', arbg: 'Große Arbeitgeber' };
@@ -4749,7 +4772,7 @@ return maplibregl$1;
         if (!kpiOk()) later.push(computeKpi().then(() => renderKz()));
         if (!P.kz.ra || opt.ra) later.push(loadRA().then(() => { renderKz(); snap(); }));
         if (!P.kz.bbsr || P.kz.bbsr.err || P.kz.bbsr.missing || !samePt(P.kz.bbsr)) later.push(loadBBSR().then(() => { renderKz(); snap(); }));
-        if (!P.kz.ink || P.kz.ink.err || !samePt(P.kz.ink) || !INK) later.push(loadInkar().then(() => { renderKz(); snap(); }));
+        if (!P.kz.ink || P.kz.ink.err || !samePt(P.kz.ink) || !INK || !('gem' in P.kz.ink) || (P.kz.ink.gem && !(P.kz.ink.gem.slice(0, 2) in INKG))) later.push(loadInkar().then(() => { renderKz(); snap(); }));
         await Promise.all(later);
       } catch (e) { $('kzHint').textContent = 'Zensusdaten gerade nicht erreichbar (' + e.message + ').'; }
       $('kzGo').disabled = false; renderCalc();
@@ -4776,7 +4799,7 @@ return maplibregl$1;
       if (k.wl) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.wl] : undefined; out.push({ g, k, wl: I || null, c: INFRA.find(c => c.id === k.wl) }); continue; }
       if (k.brw) { out.push({ g, k, brw: P.brw && (+P.brw.v > 0 || P.brw.t) ? P.brw : null }); continue; }
       if (k.bbsr) { out.push({ g, k, bbsr: Z.bbsr || null }); continue; }
-      if (k.ink) { out.push({ g, k, raw: inkRaw(k.ink) }); continue; }
+      if (k.ink) { const R = inkRaw(k.ink); if (R && k.sum) R.land = null; out.push({ g, k, raw: R }); continue; }
       if (k.mm) { const M = (P.mm || {})[kzSet().asset]; out.push({ g, k, mm: M && (+M.v > 0 || M.t) ? M : null }); continue; }
       if (k.emp) { const E = Z.emp && samePt(Z.emp) ? Z.emp : null; if (E && E.list) E.list.forEach(e => out.push({ g, k, empItem: e })); else out.push({ g, k, empItem: null, empErr: E && E.err }); continue; }
       if (k.inf) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.inf] : undefined;
@@ -4889,7 +4912,7 @@ return maplibregl$1;
         if (cur) html += '</table>' + (srcNow ? `<div class="tsrc">Quelle: ${esc(srcNow)}</div>` : '');
         cur = r.g;
         const grp = rows.filter(x => x.g === cur), num = grp.some(x => !x.ext && x.txt == null && x.raw === undefined && x.traffic === undefined && x.inf === undefined && x.anb === undefined);
-        const src = [...new Set(grp.map(x => x.raw !== undefined ? (x.k.ink ? 'INKAR (BBSR), Kreise' : 'Regionalatlas') : (x.k.src || '').replace(/\s*\(.*\)$/, '').replace('Zensus 2011/2022', 'Zensus 2022')).filter(Boolean))].join(' · ');
+        const src = [...new Set(grp.map(x => x.raw !== undefined ? (x.k.ink ? 'INKAR (BBSR), Gemeinde bzw. Kreis' : 'Regionalatlas') : (x.k.src || '').replace(/\s*\(.*\)$/, '').replace('Zensus 2011/2022', 'Zensus 2022')).filter(Boolean))].join(' · ');
         srcNow = src;
         const ra = grp.some(x => x.raw !== undefined);
         if (cur === 'wiss') srcNow = 'OpenStreetMap · Luftlinie';
@@ -4905,7 +4928,7 @@ return maplibregl$1;
       }
       if (r.bbsr !== undefined) {
         const B = r.bbsr, nm = 'Angebotsmiete Wohnen (Kreis)';
-        html += B && B.v > 0 ? `<tr><td class="nm">${nm}</td><td class="v">${fmtN(+B.v, 2, '€/m²')}</td><td class="vs">${esc(B.kreis || '')}${B.de ? ' · Ø Deutschland ' + fmtN(+B.de, 2, '€/m²') : ''}</td><td colspan="2" class="c" style="text-align:left" title="${esc(B.def || '')}">Quelle: ${esc(B.quelle || 'BBSR')}${B.j ? ', ' + esc(String(B.j)) : ''}</td></tr>`
+        html += B && B.v > 0 ? `<tr><td class="nm">${nm}</td><td class="v">${fmtN(+B.v, 2, '€/m²')}</td><td class="vs">${esc(B.kreis || '')}${B.de ? ' · Ø Deutschland ' + fmtN(+B.de, 2, '€/m²') : ''}${B.tr ? `<br><b style="color:${B.tr.p >= 0 ? '#2E7D32' : '#C0392B'}">${B.tr.p >= 0 ? '+' : '−'}${fmtN(Math.abs(B.tr.p), 0, '%')} seit ${B.tr.y0}</b>` : ''}</td><td colspan="2" class="c" style="text-align:left" title="${esc(B.def || '')}">Quelle: ${esc(B.quelle || 'BBSR')}${B.j ? ', ' + esc(String(B.j)) : ''}</td></tr>`
           : `<tr class="ext"><td class="nm">${nm}</td><td colspan="4" class="c" style="text-align:left">${B && B.err ? esc(B.err) : B && B.missing ? 'BBSR-Daten noch nicht eingebaut' : 'wird geladen …'}</td></tr>`;
         continue;
       }
@@ -4945,7 +4968,7 @@ return maplibregl$1;
       }
       if (r.raw !== undefined) {
         const R = r.raw;
-        html += R && R.v != null ? `<tr><td class="nm" title="${esc(r.k.n)}">${short(r.k.n)}</td><td class="c">–</td><td class="v" title="${esc(R.where || '')}">${fmtN(R.v, r.k.d, r.k.u, r.k.sign)}<br><span style="font-weight:400;color:#8A9096;font-size:10.5px">${esc(R.where || '')}${R.jahr ? ', ' + R.jahr : ''}</span></td><td class="c">${R.land != null ? 'Land ' + fmtN(R.land, r.k.d, r.k.u, r.k.sign) : ''}</td><td class="e">${evCell(r.k, R.v, R.land, 'Land')}</td></tr>`
+        html += R && R.v != null ? `<tr><td class="nm" title="${esc(r.k.n)}">${short(r.k.n)}</td><td class="c">–</td><td class="v" title="${esc(R.where || '')}">${fmtN(R.v, r.k.d, r.k.u, r.k.sign)}<br><span style="font-weight:400;color:#8A9096;font-size:10.5px">${R.lvl ? R.lvl + ' ' : ''}${esc(R.where || '')}${R.jahr ? ', ' + R.jahr : ''}${r.k.tr && R.tr ? `<br><b style="color:${R.tr.p >= 0 ? '#2E7D32' : '#C0392B'}">${R.tr.p >= 0 ? '+' : '−'}${fmtN(Math.abs(R.tr.p), 0, '%')} seit ${R.tr.y0}</b>` : ''}</span></td><td class="c">${R.land != null ? 'Land ' + fmtN(R.land, r.k.d, r.k.u, r.k.sign) : ''}</td><td class="e">${evCell(r.k, R.v, R.land, 'Land')}</td></tr>`
           : `<tr class="ext"><td class="nm" title="${esc(r.k.n)}">${short(r.k.n)}</td><td colspan="3" class="c">${r.k.ink ? (INK && INK.missing ? 'INKAR-Daten nicht erreichbar' : Z.ink && Z.ink.err ? esc(Z.ink.err) : Z.ink ? 'kein Wert (INKAR)' : 'wird geladen …') : Z.raErr ? 'Regionalatlas gerade nicht erreichbar' : Z.ra ? 'kein Wert' : 'wird geladen …'}</td><td></td></tr>`;
         continue;
       }
@@ -5137,16 +5160,18 @@ return maplibregl$1;
     return BBSR;
   }
   // Kreis am Projektpunkt (Kreisschlüssel) aus den amtlichen Grenzen des Regionalatlas, gemerkt
-  async function kreisAt(lon, lat) {
-    const key = 'kreis:' + lon.toFixed(3) + ',' + lat.toFixed(3), hit = await DBC.get(key); if (hit) return hit.v;
+  const kreisAt = (lon, lat) => admAt(lon, lat, 3);
+  // Verwaltungseinheit am Punkt: typ 3 = Kreis, typ 5 = Gemeinde
+  async function admAt(lon, lat, typ) {
+    const key = (typ === 3 ? 'kreis:' : 'adm' + typ + ':') + lon.toFixed(3) + ',' + lat.toFixed(3), hit = await DBC.get(key); if (hit) return hit.v;
     const layer = { source: { dataSource: { geometryType: 'esriGeometryPolygon', workspaceId: 'gdb', oidFields: 'id', spatialReference: { wkid: 25832 }, type: 'queryTable',
-      query: 'SELECT * FROM verwaltungsgrenzen_gesamt WHERE typ = 3' }, type: 'dataLayer' } };
+      query: 'SELECT * FROM verwaltungsgrenzen_gesamt WHERE typ = ' + typ }, type: 'dataLayer' } };
     const q = new URLSearchParams({ layer: JSON.stringify(layer), geometry: JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } }), geometryType: 'esriGeometryPoint',
       inSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: '*', returnGeometry: 'false', f: 'json' });
     const js = await (await fetch(RA_URL + '?' + q.toString())).json(); if (js.error) throw new Error(js.error.message || 'Regionalatlas');
     const get = (a, k) => { const x = Object.keys(a).find(y => y.toLowerCase() === k || y.toLowerCase().endsWith('.' + k)); return x ? a[x] : undefined; };
     let best = null; for (const f of js.features || []) { const a = f.attributes || {}, j = +(get(a, 'jahr') || 0); if (!best || j > best.j) best = { ags: String(get(a, 'ags') || ''), gen: get(a, 'gen') || '', j }; }
-    if (!best || !best.ags) throw new Error('Kreis nicht gefunden');
+    if (!best || !best.ags) throw new Error(typ === 3 ? 'Kreis nicht gefunden' : 'Gemeinde nicht gefunden');
     DBC.set(key, { t: Date.now(), v: best }); return best;
   }
   // INKAR-Kreiswerte (daten/inkar/kreise.json, erzeugt mit tools/inkar_kreise.py)
@@ -5162,17 +5187,44 @@ return maplibregl$1;
     const xs = Object.entries((INK.v || {})[id] || {}).filter(([a]) => a.slice(0, 2) === land).map(([, v]) => inkLast(v)).filter(v => v != null).sort((a, b) => a - b);
     return INK_LAND[key] = xs.length ? (xs.length % 2 ? xs[(xs.length - 1) / 2] : (xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2) : null;
   }
+  // Gemeindewerte je Bundesland (daten/inkar/gemeinden/<LL>.json), nur bei Bedarf geladen
+  const INKG = {};
+  async function inkGem(land) {
+    if (land in INKG) return INKG[land];
+    try { const r = await fetch(ZBASE.replace(/zensus\/$/, 'inkar/') + 'gemeinden/' + land + '.json'); INKG[land] = r.ok ? await r.json() : null; } catch (e) { INKG[land] = null; }
+    return INKG[land];
+  }
+  // Entwicklung über rund 10 Jahre (Prozent), aus der Zeitreihe
+  function inkTrend(ser, span = 10) {
+    if (!ser || typeof ser !== 'object') return null;
+    const ys = Object.keys(ser).map(Number).sort((a, b) => a - b); if (ys.length < 3) return null;
+    const y1 = ys[ys.length - 1], y0 = ys.find(y => y >= y1 - span); if (y0 == null || y0 === y1 || !(ser[y0] > 0)) return null;
+    return { p: (ser[y1] / ser[y0] - 1) * 100, y0, y1 };
+  }
+  const inkName = n => String(n || '').replace(/,\s*(Stadt|Landeshauptstadt|Universitätsstadt|Hansestadt|Wissenschaftsstadt|Kreisstadt|Große Kreisstadt|Markt|M|St)\.?$/i, '');
+  // Wert für den Projektort: Gemeinde, wenn INKAR ihn dort führt, sonst Kreis; Vergleich Land (und Bund) im selben Jahr
   function inkRaw(id) {
     const Z = P.kz; if (!INK || INK.missing || !Z || !Z.ink || !Z.ink.ags) return null;
-    const v = inkLast(((INK.v || {})[id] || {})[Z.ink.ags]); if (v == null) return null;
-    const I = INK.ind[id] || {};
-    return { v, land: inkLandMed(id, Z.ink.ags.slice(0, 2)), where: (INK.n || {})[Z.ink.ags] || Z.ink.kreis || '', jahr: I.j || null };
+    const I = INK.ind[id] || {}, G = Z.ink.gem ? INKG[Z.ink.gem.slice(0, 2)] : null;
+    const gs = I.gem && G && G.v && G.v[id] ? G.v[id][Z.ink.gem] : null;
+    const ser = gs || ((INK.v || {})[id] || {})[Z.ink.ags]; if (ser == null) return null;
+    const v = inkLast(ser); if (v == null) return null;
+    const jahr = typeof ser === 'object' ? +Object.keys(ser).sort().pop() : I.j || null;
+    const L = ((INK.land || {})[id] || {})[Z.ink.ags.slice(0, 2)], D = (INK.de || {})[id];
+    const land = L ? (L[jahr] != null ? L[jahr] : inkLast(L)) : inkLandMed(id, Z.ink.ags.slice(0, 2));
+    return { v, land, de: D ? (D[jahr] != null ? D[jahr] : inkLast(D)) : null, lvl: gs ? 'Gemeinde' : 'Kreis',
+      where: inkName(gs ? (G.n || {})[Z.ink.gem] || Z.ink.gemN : (INK.n || {})[Z.ink.ags] || Z.ink.kreis), jahr, tr: inkTrend(ser) };
   }
   async function loadInkar() {
     const Z = P.kz; if (!Z) return;
     const D = await inkData(); if (D.missing) { Z.ink = { err: 'INKAR-Daten nicht erreichbar' }; return; }
-    try { const K = await kreisAt(P.lon, P.lat); Z.ink = { ags: K.ags.padStart(5, '0').slice(0, 5), kreis: K.gen, lon: P.lon, lat: P.lat }; }
-    catch (e) { Z.ink = { err: 'Kreis nicht ermittelbar' }; }
+    try { const K = await kreisAt(P.lon, P.lat); Z.ink = { ags: K.ags.padStart(5, '0').slice(0, 5), kreis: K.gen, lon: P.lon, lat: P.lat, gem: null }; }
+    catch (e) { Z.ink = { err: 'Kreis nicht ermittelbar' }; return; }
+    try {                                              // Gemeinde (AGS 8-stellig; Regionalschlüssel 12-stellig wird umgerechnet)
+      const Gm = await admAt(P.lon, P.lat, 5); let g = String(Gm.ags || '').replace(/\D/g, '');
+      if (g.length === 12) g = g.slice(0, 5) + g.slice(9); g = g.padStart(8, '0');
+      if (g.slice(0, 5) === Z.ink.ags) { Z.ink.gem = g; Z.ink.gemN = Gm.gen; await inkGem(g.slice(0, 2)); }
+    } catch (e) { console.warn('INKAR Gemeinde', e.message); }
   }
   async function loadBBSR() {
     const Z = P.kz; if (!Z) return;
@@ -5180,7 +5232,7 @@ return maplibregl$1;
     if (D.missing) { Z.bbsr = { missing: true }; return; }
     try {
       const K = await kreisAt(P.lon, P.lat), id = K.ags.padStart(5, '0').slice(0, 5), rec = (D.kreise || {})[id];
-      Z.bbsr = rec ? { v: rec.v, j: rec.j || D.stand, kreis: rec.n || K.gen, de: D.de, quelle: D.quelle, def: D.def, at: Date.now(), lon: P.lon, lat: P.lat } : { err: 'kein Wert für ' + (K.gen || id) };
+      Z.bbsr = rec ? { v: rec.v, j: rec.j || D.stand, tr: inkTrend(rec.reihe), kreis: rec.n || K.gen, de: D.de, quelle: D.quelle, def: D.def, at: Date.now(), lon: P.lon, lat: P.lat } : { err: 'kein Wert für ' + (K.gen || id) };
     } catch (e) { Z.bbsr = { err: 'Kreis nicht ermittelbar (' + e.message + ')' }; }
   }
   async function loadRA() {
@@ -6192,7 +6244,7 @@ return maplibregl$1;
       let meta = null; try { const r = await fetch(ZBASE.replace(/zensus\/$/, 'inkar/') + 'meta.json', { cache: 'no-store' }); if (r.ok) meta = await r.json(); } catch (e) {}
       const J = meta && meta.abruf ? new Date(meta.abruf) : null, ageD = J ? (Date.now() - J) / 864e5 : 0, dj = meta && meta.datenjahre ? Math.max(...meta.datenjahre) : null;
       if (!J) notes.push({ id: 'inkar-fehlt', t: 'INKAR-Datenbanken sind noch nicht eingebaut.', d: 'inkar.de → „Datenbankdownload“ (mehrere Jahrgänge für Trends) herunterladen und Claude geben.' });
-      else if (ageD > 300) notes.push({ id: 'inkar-' + Y, t: `INKAR: abgerufen am ${J.toLocaleDateString('de-DE')} (Daten bis ${dj}) – prüfen, ob ein neuer Jahrgang erschienen ist.`, d: 'inkar.de: dieselben Abfragen neu exportieren und Claude geben, damit die neuen Zahlen hier hereingeladen werden.' });
+      else if (ageD > 300) notes.push({ id: 'inkar-' + Y, t: `INKAR: abgerufen am ${J.toLocaleDateString('de-DE')} (Daten bis ${dj}) – prüfen, ob ein neuer Jahrgang erschienen ist.`, d: 'inkar.de → Datenbankdownload (Gesamt-CSV), hier mit „INKAR-Datei verkleinern“ gepackt speichern und Claude geben – Umwandlung mit tools/inkar_gesamt.py.' });
       const B = await bbsrData();
       if (B.missing) notes.push({ id: 'bbsr-fehlt', t: 'BBSR-Angebotsmieten fehlen noch.', d: 'Kommen mit dem INKAR-Download.' });
       else if (B.stand && B.stand < Y - 1) notes.push({ id: 'bbsr-' + Y, t: `Angebotsmieten (BBSR) mit Stand ${B.stand} – neuere Werte sollten vorliegen.`, d: 'Mit dem nächsten INKAR-Jahrgang aktualisieren.' });
