@@ -752,11 +752,12 @@ return maplibregl$1;
 </div>
 
 <div class="dlg-bg" id="inkDlg" hidden>
-  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="inkTitle" style="max-width:620px">
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="inkTitle" style="max-width:620px;max-height:90vh;overflow:auto">
     <h3 id="inkTitle">INKAR-Datei verkleinern</h3>
     <p class="hint">Die große INKAR-Datei bleibt auf deinem Rechner. ATLAS liest sie hier im Browser Zeile für Zeile und behält nur die Zeilen, in denen einer der Suchbegriffe vorkommt. Das Ergebnis ist klein genug zum Senden.</p>
-    <label class="f">Suchbegriffe (je Zeile einer, Groß-/Kleinschreibung egal)<textarea id="inkKeys" rows="7" style="width:100%;font:12px/1.4 monospace"></textarea></label>
+    <label class="f">Suchbegriffe (je Zeile einer, Groß-/Kleinschreibung egal)<textarea id="inkKeys" rows="5" style="width:100%;font:12px/1.4 monospace"></textarea></label>
     <label class="f">Zeile muss außerdem enthalten (optional, z. B. „Kreise“ – mehrere mit Komma: eines davon genügt)<input type="text" id="inkMust" placeholder="leer = keine Einschränkung"></label>
+    <div class="row"><button id="inkDef" style="font-size:11px">Suchbegriffe: breiter ATLAS-Vorschlag</button><label class="cb"><input type="checkbox" id="inkGz" checked> gepackt speichern (.gz, viel kleiner)</label></div>
     <label class="f">INKAR-Datei (CSV)<input type="file" id="inkFile" accept=".csv,.txt"></label>
     <div id="inkProg" class="hint"></div>
     <pre id="inkPrev" style="max-height:180px;overflow:auto;font-size:10.5px;background:#F4F5F7;padding:6px;white-space:pre" hidden></pre>
@@ -6206,7 +6207,12 @@ return maplibregl$1;
       $('devInkTool').onclick = openInk;
     }
     // INKAR-Gesamtdatei (≈ 600 MB) lokal filtern: nur Zeilen mit Suchbegriffen behalten (Kopfzeile immer)
-    const INK_KEYS = ['angebotsmiet', 'bauland', 'pendler', 'prognose', 'hochqualifiziert', 'akademisch', 'sozialversicherungspflichtig beschäftigt'];
+    // breiter Vorschlag (Julius, 28.11.2026): alles, was für Wohnen, Büro, Light Industrial, Logistik und F&E relevant sein kann
+    const INK_KEYS = ['miet', 'bauland', 'kaufpreis', 'immobilienpreis', 'baugenehmig', 'fertiggestellt', 'neubauwohnung', 'bauüberh', 'leerstand', 'wohnfläche', 'wohnungen in', 'raumwohnung',
+      'kaufkraft', 'einkommen', 'verdienst', 'bruttoinlandsprodukt', 'bruttowertschöpfung', 'gewerbesteuer', 'steuerkraft', 'steuereinnahmen',
+      'pendler', 'beschäftigt', 'erwerbstätig', 'arbeitslos', 'arbeitsplatz', 'hochqualifiz', 'akademisch', 'auszubildend', 'studierend', 'unternehmen', 'betriebe',
+      'bevölkerung', 'prognos', 'wanderung', 'zuzug', 'fortzug', 'haushalt', 'durchschnittsalter', 'einwohnerdichte', 'siedlungsdichte', 'ländlichkeit',
+      'bandbreite', 'siedlungs- und verkehrsfläche', 'flächenneuinanspruchnahme', 'gewerbe- und industriefläche'];
     let inkOut = null;
     function openInk() { $('inkKeys').value = store.get('inkKeys', INK_KEYS).join('\n'); $('inkMust').value = store.get('inkMust', ''); $('inkFile').value = ''; $('inkDlg').hidden = false; }
     $('devB').style.cursor = 'pointer'; $('devB').onclick = openInk;
@@ -6238,10 +6244,17 @@ return maplibregl$1;
       take(rest + dec.decode());
       inkOut = new Blob(['\ufeff' + out.join('\n')], { type: 'text/csv;charset=utf-8' });
       $('inkProg').innerHTML = `Fertig: ${n.toLocaleString('de-DE')} Zeilen gelesen, <b>${kept.toLocaleString('de-DE')} behalten</b> · Ergebnis ${(inkOut.size / 1048576).toFixed(1)} MB<br>` + keys.map((k, i) => `${k}: ${hits[i].toLocaleString('de-DE')}`).join(' · ')
-        + (inkOut.size > 30 * 1048576 ? '<br><b>Noch zu groß</b> – Suchbegriffe enger fassen und Datei erneut wählen.' : '');
+        + (inkOut.size > 300 * 1048576 ? '<br><b>Sehr groß</b> – „muss enthalten“ (z. B. Kreise) nutzen oder Suchbegriffe enger fassen.' : '');
       $('inkPrev').textContent = [head, ...prev].join('\n'); $('inkPrev').hidden = false; $('inkSave').disabled = false;
     };
-    $('inkSave').onclick = () => { if (inkOut) saveBlob(inkOut, 'INKAR_Auswahl.csv'); };
+    $('inkDef').onclick = () => { $('inkKeys').value = INK_KEYS.join('\n'); store.set('inkKeys', INK_KEYS); };
+    $('inkSave').onclick = async () => {
+      if (!inkOut) return;
+      if ($('inkGz').checked && window.CompressionStream) {
+        const gz = await new Response(inkOut.stream().pipeThrough(new CompressionStream('gzip'))).blob();
+        saveBlob(gz, 'INKAR_Auswahl.csv.gz'); $('inkProg').insertAdjacentHTML('beforeend', `<br>Gepackt gespeichert: ${(gz.size / 1048576).toFixed(1)} MB`);
+      } else saveBlob(inkOut, 'INKAR_Auswahl.csv');
+    };
     document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); store.set('devMode', !devOn()); status('Entwicklermodus ' + (devOn() ? 'an' : 'aus') + '.'); devCheck(); } });
     setTimeout(devCheck, 1500);
   }
