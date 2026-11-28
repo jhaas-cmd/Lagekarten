@@ -1172,11 +1172,18 @@ return maplibregl$1;
   function styleFor(kind, k) {
     const st = styleBase(kind, k);
     photoLayers(kind, st);
-    if (ST(kind).hill.on) {
-      st.sources.dem = DEM;
-      const at = st.layers.findIndex(l => ['field', 'wood', 'water', 'river', 'waterway'].includes(l.id));
-      const zi = st.layers.findIndex(l => l.id === 'zones-fill');
-      st.layers.splice(at < 0 ? zi + 1 : at, 0, hillLayer(kind));
+    // Schummerung und Höhenlinien liegen im Kartenhintergrund: über Siedlungs- und Vegetationsflächen,
+    // aber unter Wasser, Straßen, Bahn, Gebäuden und allen Beschriftungen
+    const bgAt = () => { let i = st.layers.findIndex(l => ['water', 'river', 'waterway'].includes(l.id));
+      if (i < 0) i = st.layers.findIndex(l => l.type !== 'background' && l.type !== 'fill' && l.type !== 'raster' && l.type !== 'hillshade');
+      return i < 0 ? st.layers.length : i; };
+    if (ST(kind).hill.on) { st.sources.dem = DEM; st.layers.splice(bgAt(), 0, hillLayer(kind)); }
+    const cg = contourGeo(kind);
+    if (cg) {
+      const C = ST(kind).contour, w = k * (+C.w || 0.1);
+      st.sources.contours = { type: 'geojson', data: cg };
+      st.layers.splice(bgAt(), 0, { id: 'contour', type: 'line', source: 'contours', layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': C.color, 'line-width': ['case', ['get', 'i'], w * 2, w], 'line-opacity': Math.min(1, (C.alpha == null ? 100 : +C.alpha) / 100) } });
     }
     return st;
   }
@@ -1485,7 +1492,6 @@ return maplibregl$1;
     inF.fade = F && F.on ? Math.min(0.8, (+F.fade || 0) / 100) : 0;     // außerhalb des Fokus: grau und aufgehellt
     g.textBaseline = 'middle';
     drawWaterShadow(g, map, k, W, H, T);
-    if (T.contour.on) drawContours(g, map, kind, k, T);
     if (T.grid.on) drawGrid(g, map, kind, k, W, H, false);
     const titleOn = !T.ptitle || T.ptitle.on !== false;       // ein Schalter: Ebene „Projekttitel“ (Übersicht-Häkchen schaltet dieselbe Ebene)
     const fsT = +({ ov: S.fsOv, mi: S.fsMi, mk: S.fsMk })[kind] || (kind === 'ov' ? 8 : 7.5);
@@ -2954,7 +2960,12 @@ return maplibregl$1;
     }
     DEMS[kind] = { key, z, tx0: x0, ty0: y0, W, H, el, min: mn, max: mx, cont: {}, tint: null };
     demBusy[kind] = null; status('');
-    paintBase(); repaint();
+    paintBase();
+    if (kind === active) {                              // Höhenlinien nachreichen: vorhandene Ebene nur mit neuen Daten füllen, sonst Stil neu
+      const v = views[kind], src = v.map.getSource && v.map.getSource('contours'), cg = contourGeo(kind);
+      if (src && cg) { src.setData(cg); v.sig = styleSig(styleFor(kind, v.k)); } else if (cg) relayout();
+    }
+    repaint();
   }
   const contourStep = kind => { const T = ST(kind); if (T.contour.step !== 'auto') return +T.contour.step || 20;
     return [1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500].find(v => v >= scaleOf(kind) / 5000) || 500; };
@@ -2978,6 +2989,21 @@ return maplibregl$1;
       }
     }
     return (d.cont[step] = out);
+  }
+  // Höhenlinien als Kartenebene (GeoJSON in geografischen Koordinaten, damit sie im Stil unter Straßen und Gebäuden liegen)
+  function contourGeo(kind) {
+    const T = ST(kind), d = DEMS[kind]; if (!T.contour.on || !d) return null;
+    const step = contourStep(kind), idx = !!T.contour.idx, key = d.key + '|' + step + '|' + idx;
+    if (d.geo && d.geo._k === key) return d.geo;
+    const feats = [];
+    for (const [L, a] of getContours(d, step)) {
+      const lines = [];
+      for (let i = 0; i < a.length; i += 4) lines.push([demLL(d, a[i], a[i + 1]), demLL(d, a[i + 2], a[i + 3])]);
+      feats.push({ type: 'Feature', properties: { i: idx && Math.round(L / step) % 5 === 0 }, geometry: { type: 'MultiLineString', coordinates: lines } });
+    }
+    const geo = { type: 'FeatureCollection', features: feats };
+    Object.defineProperty(geo, '_k', { value: key, enumerable: false });
+    return (d.geo = geo);
   }
   function drawContours(g, map, kind, k, T) {
     const d = DEMS[kind]; if (!d) return;
@@ -3227,6 +3253,7 @@ return maplibregl$1;
   // Vorschau der aktiven Karte neu aufbauen (Blattgröße, Linienstärken, Ausschnitt); die anderen Karten folgen beim Wechsel
   const detailZoom = kind => zoomForScale(kind, scaleOf(kind), P.lat) - Math.log2(exportCss(kind).w / (views[kind].sz.w * views[kind].f));
   const miPreviewZoom = () => detailZoom('mi');
+  const styleSig = st => JSON.stringify(st, (key, val) => val && val._k ? val._k : val);   // Höhenlinien nur über ihren Schlüssel vergleichen
   function relayout(restyle = true) {
     const v = views[active]; if (!v) return;
     const f = fmt(v.kind);
@@ -3238,7 +3265,7 @@ return maplibregl$1;
     v.map.off('styleimagemissing', v.hook); v.hook = hookPatterns(v.map, v.k, v.f > 1 ? 1 : (window.devicePixelRatio || 1));
     if (restyle) {
       if (v.kind === 'ov') v.genLvl = ovGen().lvl;
-      const st = styleFor(v.kind, v.k), sig = JSON.stringify(st);
+      const st = styleFor(v.kind, v.k), sig = styleSig(st);
       if (sig !== v.sig) { v.sig = sig; v.map.setStyle(st); }        // unveränderter Stil: Kacheln bleiben, kein Neuaufbau
     }
     if (v.kind === 'ov') v.map.jumpTo({ center: P.ov.center, zoom: ovZoomE() - Math.log2(exportCss('ov').w / v.sz.w) });
@@ -3814,7 +3841,7 @@ return maplibregl$1;
     if (/^crowns\.(dens|size|vari|grp|forest)$/.test(path)) repaint();
     if (/^(crowns|green|veg)\./.test(path)) { ensureGreen(active); loadTrees(); paintBase(); }
     saveS(); syncAllPresets();
-    if (/^(contour|hypso)\./.test(path)) { ensureDem(active); paintBase(); }
+    if (/^(contour|hypso)\./.test(path)) { ensureDem(active); paintBase(); relayout(); }
     if (/^green\./.test(path)) { ensureGreen(active); paintBase(); }
     if (/^cities\./.test(path)) loadPlaces();
     if (/^trees\./.test(path)) loadTrees();

@@ -208,3 +208,7 @@ GIEAG-Akzentfarbe #255AA8. Haltung: schlicht, wenig Text, präzise – die Karte
 3. **Siedlungsflächen mit Schraffur und Halbton** (wie Vegetation: `half-s/m/l`, Schraffuren), je Nutzungsart (Wohnen, Gewerbe, Industrie) unterscheidbar.
 4. **Vorlagen stark verbessern** (abstrakt / diagrammatisch / kartografisch): Karto-Feintuning von Julius steht noch aus; Vorher-Nachher-Vergleich je Maßstab.
 5. **Dossier entschlacken**: geführtes Intro („Welche Daten zeigen?“ – Themenblöcke je Assetklasse an/aus, Kurz/Standard/Ausführlich), Diagramme statt Tabellenzeilen (Zeitreihen INKAR als kleine Linien, Vergleich Gemeinde/Land/Bund als Balken, Altersstruktur, Lageindex), Auswahl im Projekt speichern.
+## Schummerung und Höhenlinien im Hintergrund (28.11.2026)
+- Höhenlinien sind jetzt eine Kartenebene im Stil (`contourGeo(kind)` → GeoJSON-Quelle `contours`, Ebene `contour`, Hauptlinien über Eigenschaft `i`), nicht mehr auf dem Overlay (`drawContours` ungenutzt).
+- Schummerung (`hill`) und Höhenlinien werden in `styleFor` über `bgAt()` vor der ersten Wasser-/Linienebene eingefügt: über Siedlungs- und Vegetationsflächen, unter Wasser, Straßen, Bahn, Gebäuden, Beschriftungen. Gilt auch im Export.
+- Stil-Vergleich `styleSig` vergleicht die Höhenliniendaten nur über ihren Schlüssel (`_k`); nach dem Laden neuer Höhendaten `setData` statt neuem Stil.
