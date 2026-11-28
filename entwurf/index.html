@@ -751,6 +751,18 @@ return maplibregl$1;
   </div>
 </div>
 
+<div class="dlg-bg" id="inkDlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="inkTitle" style="max-width:620px">
+    <h3 id="inkTitle">INKAR-Datei verkleinern</h3>
+    <p class="hint">Die große INKAR-Datei bleibt auf deinem Rechner. ATLAS liest sie hier im Browser Zeile für Zeile und behält nur die Zeilen, in denen einer der Suchbegriffe vorkommt. Das Ergebnis ist klein genug zum Senden.</p>
+    <label class="f">Suchbegriffe (je Zeile einer, Groß-/Kleinschreibung egal)<textarea id="inkKeys" rows="7" style="width:100%;font:12px/1.4 monospace"></textarea></label>
+    <label class="f">Zeile muss außerdem enthalten (optional, z. B. „Kreise“ – mehrere mit Komma: eines davon genügt)<input type="text" id="inkMust" placeholder="leer = keine Einschränkung"></label>
+    <label class="f">INKAR-Datei (CSV)<input type="file" id="inkFile" accept=".csv,.txt"></label>
+    <div id="inkProg" class="hint"></div>
+    <pre id="inkPrev" style="max-height:180px;overflow:auto;font-size:10.5px;background:#F4F5F7;padding:6px;white-space:pre" hidden></pre>
+    <div class="row" style="justify-content:flex-end"><button id="inkSave" class="primary" disabled>Auswahl speichern</button><button id="inkClose">Schließen</button></div>
+  </div>
+</div>
 <div class="dlg-bg" id="expDlg" hidden>
   <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="expTitle">
     <h3 id="expTitle">Exportieren</h3>
@@ -6129,11 +6141,49 @@ return maplibregl$1;
       const open = notes.filter(n => !(ack[n.id] > Date.now())); if (!open.length) return;
       const box = document.createElement('div'); box.id = 'devNote';
       box.innerHTML = '<b>Entwicklermodus · Datenstand</b>' + open.map(n => `<p><strong>${escH(n.t)}</strong><br>${escH(n.d)}</p>`).join('')
-        + '<button id="devOk">Gesehen – 30 Tage ausblenden</button> <button id="devInkar">inkar.de öffnen</button>';
+        + '<button id="devOk">Gesehen – 30 Tage ausblenden</button> <button id="devInkar">inkar.de öffnen</button> <button id="devInkTool">INKAR-Datei verkleinern</button>';
       document.body.appendChild(box);
       $('devOk').onclick = () => { const a = store.get('devAck', {}); open.forEach(n => a[n.id] = Date.now() + 30 * 864e5); store.set('devAck', a); box.remove(); };
       $('devInkar').onclick = () => window.open('https://www.inkar.de/', '_blank', 'noopener');
+      $('devInkTool').onclick = openInk;
     }
+    // INKAR-Gesamtdatei (≈ 600 MB) lokal filtern: nur Zeilen mit Suchbegriffen behalten (Kopfzeile immer)
+    const INK_KEYS = ['angebotsmiet', 'bauland', 'pendler', 'prognose', 'hochqualifiziert', 'akademisch', 'sozialversicherungspflichtig beschäftigt'];
+    let inkOut = null;
+    function openInk() { $('inkKeys').value = store.get('inkKeys', INK_KEYS).join('\n'); $('inkMust').value = store.get('inkMust', ''); $('inkFile').value = ''; $('inkDlg').hidden = false; }
+    $('devB').style.cursor = 'pointer'; $('devB').onclick = openInk;
+    $('inkClose').onclick = () => { $('inkDlg').hidden = true; };
+    const norm = t => t.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+    $('inkFile').onchange = async e => {
+      const file = e.target.files[0]; if (!file) return;
+      const keys = $('inkKeys').value.split('\n').map(k => k.trim()).filter(Boolean); store.set('inkKeys', keys);
+      const must = $('inkMust').value.split(',').map(x => norm(x.trim())).filter(Boolean); store.set('inkMust', $('inkMust').value);
+      const nk = keys.map(norm), hits = nk.map(() => 0), out = [], prev = []; let head = null, n = 0, kept = 0, size = 0, rest = '';
+      // Zeichensatz: UTF-8, sonst Windows-1252 (ältere INKAR-Exporte)
+      const probe = new Uint8Array(await file.slice(0, 1 << 20).arrayBuffer());
+      let enc = 'utf-8'; try { new TextDecoder('utf-8', { fatal: true }).decode(probe.subarray(0, probe.length - 4)); } catch (x) { enc = 'windows-1252'; }
+      const dec = new TextDecoder(enc), rd = file.stream().getReader(); $('inkSave').disabled = true; $('inkPrev').hidden = true;
+      const take = line => {
+        if (!line) return; n++;
+        if (head === null) { head = line; out.push(line); return; }
+        const l = norm(line); let hit = false;
+        if (must.length && !must.some(m => l.includes(m))) return;
+        for (let i = 0; i < nk.length; i++) if (l.includes(nk[i])) { hits[i]++; hit = true; }
+        if (hit) { out.push(line); kept++; size += line.length + 1; if (prev.length < 40) prev.push(line); }
+      };
+      for (let read = 0; ;) {
+        const { done, value } = await rd.read(); if (done) break;
+        read += value.length; const txt = rest + dec.decode(value, { stream: true }), lines = txt.split(/\r?\n/); rest = lines.pop();
+        for (const ln of lines) take(ln);
+        $('inkProg').textContent = `gelesen ${Math.round(read / 1048576)} von ${Math.round(file.size / 1048576)} MB · ${kept.toLocaleString('de-DE')} Zeilen behalten (${(size / 1048576).toFixed(1)} MB)`;
+      }
+      take(rest + dec.decode());
+      inkOut = new Blob(['\ufeff' + out.join('\n')], { type: 'text/csv;charset=utf-8' });
+      $('inkProg').innerHTML = `Fertig: ${n.toLocaleString('de-DE')} Zeilen gelesen, <b>${kept.toLocaleString('de-DE')} behalten</b> · Ergebnis ${(inkOut.size / 1048576).toFixed(1)} MB<br>` + keys.map((k, i) => `${k}: ${hits[i].toLocaleString('de-DE')}`).join(' · ')
+        + (inkOut.size > 30 * 1048576 ? '<br><b>Noch zu groß</b> – Suchbegriffe enger fassen und Datei erneut wählen.' : '');
+      $('inkPrev').textContent = [head, ...prev].join('\n'); $('inkPrev').hidden = false; $('inkSave').disabled = false;
+    };
+    $('inkSave').onclick = () => { if (inkOut) saveBlob(inkOut, 'INKAR_Auswahl.csv'); };
     document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); store.set('devMode', !devOn()); status('Entwicklermodus ' + (devOn() ? 'an' : 'aus') + '.'); devCheck(); } });
     setTimeout(devCheck, 1500);
   }
