@@ -431,6 +431,9 @@ return maplibregl$1;
   .famgrid button { display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 7px 8px 8px; border-radius: 9px; text-align: left; white-space: normal; height: auto; background: #F6F7F9; border: 1.5px solid transparent; box-shadow: none; }
   .famgrid button .sw4 { display: flex; height: 14px; border-radius: 4px; overflow: hidden; } .famgrid button .sw4 i { flex: 1; }
   .famgrid button b { font-size: 11px; font-weight: 600; line-height: 1.25; color: #14284B; }
+  .devb { margin-left: 6px; font-size: 10px; padding: 2px 6px; border-radius: 3px; background: #14284B; color: #fff; letter-spacing: .06em; }
+  #devNote { position: fixed; right: 14px; bottom: 14px; z-index: 60; max-width: 380px; background: #FFF8E6; border: 1px solid #E7C66B; border-radius: 8px; padding: 10px 12px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+  #devNote b { display: block; margin-bottom: 4px; } #devNote p { margin: 4px 0; } #devNote button { font-size: 11px; margin-top: 4px; }
   .famgrid button em { font-style: normal; font-size: 9.5px; font-weight: 600; color: #F0642D; text-transform: uppercase; letter-spacing: .04em; }
   .famact { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .famact button { flex: 1 1 auto; font-size: 11px; } .famact select { flex: 1 1 100%; font-size: 11px; }
   .famgrid button.on { border-color: #14284B; background: #fff; } .famgrid button:hover { background: #EEF1F5; }
@@ -458,7 +461,7 @@ return maplibregl$1;
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><defs><clipPath id="lgc"><circle cx="16" cy="16" r="14"/></clipPath></defs><circle cx="16" cy="16" r="14" fill="none" stroke="#14284B" stroke-width="1.5"/><g clip-path="url(#lgc)" fill="none"><path d="M7.25 31.16 L16.00 1.40 L24.75 31.16" stroke="#14284B" stroke-width="3" stroke-linejoin="miter" stroke-miterlimit="20"/><path d="M23.00 28.12 L12.50 15.06" stroke="#F0642D" stroke-width="2.2" stroke-linecap="butt"/></g></svg><div><h1>ATLAS</h1><span>axperon site information</span></div><b class="draft">ENTWURF</b></div>
+    <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><defs><clipPath id="lgc"><circle cx="16" cy="16" r="14"/></clipPath></defs><circle cx="16" cy="16" r="14" fill="none" stroke="#14284B" stroke-width="1.5"/><g clip-path="url(#lgc)" fill="none"><path d="M7.25 31.16 L16.00 1.40 L24.75 31.16" stroke="#14284B" stroke-width="3" stroke-linejoin="miter" stroke-miterlimit="20"/><path d="M23.00 28.12 L12.50 15.06" stroke="#F0642D" stroke-width="2.2" stroke-linecap="butt"/></g></svg><div><h1>ATLAS</h1><span>axperon site information</span></div><b class="draft">ENTWURF</b><b class="devb" id="devB" hidden title="Entwicklermodus (Strg+Alt+D)">DEV</b></div>
     <button class="projline" id="projLine" title="Projekt öffnen"><b id="plName"></b><small id="plSub"></small></button>
 
     <div class="group"><span>01</span>Projekt</div>
@@ -6104,6 +6107,36 @@ return maplibregl$1;
   loadFonts().then(() => repaint()); if (document.fonts) document.fonts.ready.then(() => repaint());
   // Verlauf starten
   hist.stack = [stateStr()]; hist.i = 0; hist.ready = true; updUndo();
+  // ---------- Entwicklermodus: Hinweise zum Datenstand (nur für Julius/Claude; einschalten mit ?dev oder Strg+Alt+D) ----------
+  // Datei daten/inkar/meta.json = { jahrgaenge: [2021, 2022, 2024, 2025], geladen: 'JJJJ-MM-TT' } – wird beim Einbau der INKAR-Datenbanken mitgeschrieben
+  {
+    const qp = new URLSearchParams(location.search);
+    if (qp.has('dev')) store.set('devMode', qp.get('dev') !== '0');
+    const devOn = () => !!store.get('devMode', false);
+    const escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    async function devCheck() {
+      $('devB').hidden = !devOn(); const old = document.getElementById('devNote'); if (old) old.remove();
+      if (!devOn()) return;
+      const now = new Date(), Y = now.getFullYear(), notes = [], ack = store.get('devAck', {});
+      let meta = null; try { const r = await fetch(ZBASE.replace(/zensus\/$/, 'inkar/') + 'meta.json', { cache: 'no-store' }); if (r.ok) meta = await r.json(); } catch (e) {}
+      const J = meta && meta.jahrgaenge && meta.jahrgaenge.length ? Math.max(...meta.jahrgaenge) : null;
+      if (!J) notes.push({ id: 'inkar-fehlt', t: 'INKAR-Datenbanken sind noch nicht eingebaut.', d: 'inkar.de → „Datenbankdownload“ (mehrere Jahrgänge für Trends) herunterladen und Claude geben.' });
+      else if (J < Y) notes.push({ id: 'inkar-' + Y, t: `INKAR: eingebaut bis Jahrgang ${J} – prüfen, ob der Jahrgang ${Y} erschienen ist.`, d: 'inkar.de → „Datenbankdownload“. Wenn ja: herunterladen und Claude geben, damit die neuen Zahlen hier hereingeladen werden.' });
+      const B = await bbsrData();
+      if (B.missing) notes.push({ id: 'bbsr-fehlt', t: 'BBSR-Angebotsmieten fehlen noch.', d: 'Kommen mit dem INKAR-Download.' });
+      else if (B.stand && B.stand < Y - 1) notes.push({ id: 'bbsr-' + Y, t: `Angebotsmieten (BBSR) mit Stand ${B.stand} – neuere Werte sollten vorliegen.`, d: 'Mit dem nächsten INKAR-Jahrgang aktualisieren.' });
+      if (Y > 2027) notes.push({ id: 'zensus-' + Y, t: 'Zensus 2022 ist die jüngste Vollerhebung – bei Gelegenheit prüfen, ob Fortschreibungen der Rasterdaten erschienen sind.', d: 'destatis.de / zensus2022.de' });
+      const open = notes.filter(n => !(ack[n.id] > Date.now())); if (!open.length) return;
+      const box = document.createElement('div'); box.id = 'devNote';
+      box.innerHTML = '<b>Entwicklermodus · Datenstand</b>' + open.map(n => `<p><strong>${escH(n.t)}</strong><br>${escH(n.d)}</p>`).join('')
+        + '<button id="devOk">Gesehen – 30 Tage ausblenden</button> <button id="devInkar">inkar.de öffnen</button>';
+      document.body.appendChild(box);
+      $('devOk').onclick = () => { const a = store.get('devAck', {}); open.forEach(n => a[n.id] = Date.now() + 30 * 864e5); store.set('devAck', a); box.remove(); };
+      $('devInkar').onclick = () => window.open('https://www.inkar.de/', '_blank', 'noopener');
+    }
+    document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); store.set('devMode', !devOn()); status('Entwicklermodus ' + (devOn() ? 'an' : 'aus') + '.'); devCheck(); } });
+    setTimeout(devCheck, 1500);
+  }
   window.__lk = { autoScale, ISO: () => ISO, views, P: () => P, S, styleFor, zoomForScale, cities: () => CITIES, mapData: () => mapData, tileItems: () => tileItems(), catOf, setTab, setZoom, vzoom, active: () => active, undo, redo, hist, DEMS, PLACES, TREES, ST, repaint, drawBase, makeZip, drawLineLabels, lblOpts };
 })();
 </script>
