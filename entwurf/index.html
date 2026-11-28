@@ -4531,6 +4531,7 @@ return maplibregl$1;
   // Kennzahlen: Gruppe, Rechenregel, ob Summe (dann kein Vergleich), Assetklassen-Reihenfolge
   const KZK = [
     { g: 'miete', n: 'Marktmiete', mm: true },
+    { g: 'miete', n: 'Angebotsmiete Wohnen (Kreis)', bbsr: true, assets: ['wohnen'] },
     { g: 'miete', n: 'Ø Nettokaltmiete (Bestand)', assets: ['wohnen'], u: '€/m²', d: 2, f: s => s.r == null ? null : s.r / 100, src: 'Zensus 2022 · Wohnen, alle laufenden Mietverträge – keine Marktmiete' },
     { g: 'miete', n: 'Mietentwicklung (Angebotsmieten)', ext: 'Kreisebene · folgt' },
     { g: 'bev', n: 'Einwohner im Radius', u: '', d: 0, sum: true, f: s => s.p, src: 'Zensus 2022' },
@@ -4602,7 +4603,7 @@ return maplibregl$1;
     fue: ['Hochschulen', 'Forschungseinrichtungen', 'Verkehrsflughafen', 'ÖPNV']
   };
   const SHORT = {
-    'Ø Nettokaltmiete (Bestand)': 'Wohnmiete Bestand', 'Entwicklung 2011–2022': 'Bevölkerung 2011–2022', 'Einwohner im Umkreis 25 km': 'Einwohner 25 km',
+    'Ø Nettokaltmiete (Bestand)': 'Wohnmiete Bestand (Zensus 2022)', 'Entwicklung 2011–2022': 'Bevölkerung 2011–2022', 'Einwohner im Umkreis 25 km': 'Einwohner 25 km',
     'Arbeitsplatzdichte (Erwerbstätige je 1.000 EW)': 'Arbeitsplatzdichte je 1.000 EW', 'Fertiggestellte Wohnungen je 1.000 Einwohner': 'Fertigstellungen je 1.000 EW',
     'Bevölkerungsentwicklung je 10.000 Einwohner (Jahr)': 'Bevölkerung je 10.000 EW / Jahr', 'Verfügbares Einkommen je Einwohner': 'Verfügb. Einkommen je EW',
     'Einkünfte je Steuerpflichtigen': 'Einkünfte je Steuerpflichtigem', 'Einzelhandel gesamt (Geschäfte)': 'Geschäfte gesamt', 'Autobahn-Anschlussstelle': 'Autobahn',
@@ -4678,6 +4679,7 @@ return maplibregl$1;
         if (infraStale()) later.push(loadInfra().catch(e => { P.kz.infraErr = true; renderKz(); }));
         if (!kpiOk()) later.push(computeKpi().then(() => renderKz()));
         if (!P.kz.ra || opt.ra) later.push(loadRA().then(() => { renderKz(); snap(); }));
+        if (!P.kz.bbsr || P.kz.bbsr.err || P.kz.bbsr.missing || !samePt(P.kz.bbsr)) later.push(loadBBSR().then(() => { renderKz(); snap(); }));
         await Promise.all(later);
       } catch (e) { $('kzHint').textContent = 'Zensusdaten gerade nicht erreichbar (' + e.message + ').'; }
       $('kzGo').disabled = false; renderCalc();
@@ -4703,6 +4705,7 @@ return maplibregl$1;
       if (k.txt) { const t = k.txt(); out.push({ g, k, txt: t }); continue; }
       if (k.wl) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.wl] : undefined; out.push({ g, k, wl: I || null, c: INFRA.find(c => c.id === k.wl) }); continue; }
       if (k.brw) { out.push({ g, k, brw: P.brw && (+P.brw.v > 0 || P.brw.t) ? P.brw : null }); continue; }
+      if (k.bbsr) { out.push({ g, k, bbsr: Z.bbsr || null }); continue; }
       if (k.mm) { const M = (P.mm || {})[kzSet().asset]; out.push({ g, k, mm: M && (+M.v > 0 || M.t) ? M : null }); continue; }
       if (k.emp) { const E = Z.emp && samePt(Z.emp) ? Z.emp : null; if (E && E.list) E.list.forEach(e => out.push({ g, k, empItem: e })); else out.push({ g, k, empItem: null, empErr: E && E.err }); continue; }
       if (k.inf) { const I = Z.infra && Z.infra.items ? Z.infra.items[k.inf] : undefined;
@@ -4728,7 +4731,7 @@ return maplibregl$1;
       const p = polOf(r.k); if (!p) continue;
       let dv = null;
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null && r.raw.land != null) dv = devOf(r.k, r.raw.v, r.raw.land); }
-      else if (!r.ext && r.txt == null && r.traffic === undefined && r.empItem === undefined && r.brw === undefined && r.mm === undefined && r.wl === undefined && !r.k.sum) dv = devOf(r.k, r.v, r.um);
+      else if (!r.ext && r.txt == null && r.traffic === undefined && r.empItem === undefined && r.brw === undefined && r.mm === undefined && r.bbsr === undefined && r.wl === undefined && !r.k.sum) dv = devOf(r.k, r.v, r.um);
       if (dv == null) continue;
       const c = Math.max(-0.5, Math.min(0.5, dv)) * Math.sign(p);
       sw += Math.abs(p); sv += c * Math.abs(p); items.push({ n: r.k.n, c, raw: r.raw !== undefined });
@@ -4827,6 +4830,12 @@ return maplibregl$1;
         if (!I || !I.list) { html += `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="4" class="c" style="text-align:left">${Z.infraErr ? 'OpenStreetMap gerade nicht erreichbar' : I ? 'keine im Umkreis von ' + fmtD(c.far) : 'wird geladen …'}</td></tr>`; continue; }
         if (!I.list.length) { html += `<tr class="ext"><td class="nm">${r.k.n}</td><td colspan="4" class="c" style="text-align:left">keine im Umkreis von ${fmtD(c.far)}</td></tr>`; continue; }
         html += I.list.map((x, i) => `<tr><td class="nm" title="${esc(x.nm)}">${i ? '' : `<b style="font-weight:600">${r.k.n}</b> · `}${esc(x.nm)}</td><td class="v">${fmtD(x.d)}</td><td class="vs">${i ? '' : I.n + ' im Radius'}</td><td></td><td class="e">${i ? '' : evDist(distEv(x.d, c.good, c.ok), ['weiter entfernt', 'gut erreichbar', 'in der Nähe'])}</td></tr>`).join('');
+        continue;
+      }
+      if (r.bbsr !== undefined) {
+        const B = r.bbsr, nm = 'Angebotsmiete Wohnen (Kreis)';
+        html += B && B.v > 0 ? `<tr><td class="nm">${nm}</td><td class="v">${fmtN(+B.v, 2, '€/m²')}</td><td class="vs">${esc(B.kreis || '')}${B.de ? ' · Ø Deutschland ' + fmtN(+B.de, 2, '€/m²') : ''}</td><td colspan="2" class="c" style="text-align:left" title="${esc(B.def || '')}">Quelle: ${esc(B.quelle || 'BBSR')}${B.j ? ', ' + esc(String(B.j)) : ''}</td></tr>`
+          : `<tr class="ext"><td class="nm">${nm}</td><td colspan="4" class="c" style="text-align:left">${B && B.err ? esc(B.err) : B && B.missing ? 'BBSR-Daten noch nicht eingebaut' : 'wird geladen …'}</td></tr>`;
         continue;
       }
       if (r.mm !== undefined) {
@@ -5048,6 +5057,36 @@ return maplibregl$1;
     }
     return best;
   }
+  // ---------- Angebotsmieten Wohnen je Kreis (BBSR-Wohnungsmarktbeobachtung, über INKAR; fest als Datei daten/mieten/) ----------
+  const MBASE = ZBASE.replace(/zensus\/$/, 'mieten/');
+  let BBSR = null;
+  async function bbsrData() {
+    if (BBSR) return BBSR;
+    try { const r = await fetch(MBASE + 'bbsr_angebotsmieten.json'); BBSR = r.ok ? await r.json() : { missing: true }; } catch (e) { BBSR = { missing: true }; }
+    return BBSR;
+  }
+  // Kreis am Projektpunkt (Kreisschlüssel) aus den amtlichen Grenzen des Regionalatlas, gemerkt
+  async function kreisAt(lon, lat) {
+    const key = 'kreis:' + lon.toFixed(3) + ',' + lat.toFixed(3), hit = await DBC.get(key); if (hit) return hit.v;
+    const layer = { source: { dataSource: { geometryType: 'esriGeometryPolygon', workspaceId: 'gdb', oidFields: 'id', spatialReference: { wkid: 25832 }, type: 'queryTable',
+      query: 'SELECT * FROM verwaltungsgrenzen_gesamt WHERE typ = 3' }, type: 'dataLayer' } };
+    const q = new URLSearchParams({ layer: JSON.stringify(layer), geometry: JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } }), geometryType: 'esriGeometryPoint',
+      inSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: '*', returnGeometry: 'false', f: 'json' });
+    const js = await (await fetch(RA_URL + '?' + q.toString())).json(); if (js.error) throw new Error(js.error.message || 'Regionalatlas');
+    const get = (a, k) => { const x = Object.keys(a).find(y => y.toLowerCase() === k || y.toLowerCase().endsWith('.' + k)); return x ? a[x] : undefined; };
+    let best = null; for (const f of js.features || []) { const a = f.attributes || {}, j = +(get(a, 'jahr') || 0); if (!best || j > best.j) best = { ags: String(get(a, 'ags') || ''), gen: get(a, 'gen') || '', j }; }
+    if (!best || !best.ags) throw new Error('Kreis nicht gefunden');
+    DBC.set(key, { t: Date.now(), v: best }); return best;
+  }
+  async function loadBBSR() {
+    const Z = P.kz; if (!Z) return;
+    const D = await bbsrData();
+    if (D.missing) { Z.bbsr = { missing: true }; return; }
+    try {
+      const K = await kreisAt(P.lon, P.lat), id = K.ags.padStart(5, '0').slice(0, 5), rec = (D.kreise || {})[id];
+      Z.bbsr = rec ? { v: rec.v, j: rec.j || D.stand, kreis: rec.n || K.gen, de: D.de, quelle: D.quelle, def: D.def, at: Date.now(), lon: P.lon, lat: P.lat } : { err: 'kein Wert für ' + (K.gen || id) };
+    } catch (e) { Z.bbsr = { err: 'Kreis nicht ermittelbar (' + e.message + ')' }; }
+  }
   async function loadRA() {
     const Z = P.kz; if (!Z) return;
     Z.ra = {}; Z.raErr = false;
@@ -5136,6 +5175,7 @@ return maplibregl$1;
       if (r.raw !== undefined) { if (r.raw && r.raw.v != null) lines.push(`${r.k.n}: ${fmtN(r.raw.v, r.k.d, r.k.u, r.k.sign)} (${r.raw.where || ''}${r.raw.land != null ? ', Land ' + fmtN(r.raw.land, r.k.d, r.k.u, r.k.sign) : ''})`); continue; }
       if (r.traffic !== undefined) { if (r.traffic && r.traffic.list) r.traffic.list.forEach(t => lines.push(`Verkehr ${t.name}: ${fmtN(t.dtv, 0, 'Kfz/24 h')} (${fmtN(t.dist / 1000, 1, 'km')} entfernt)`)); continue; }
       if (r.wl !== undefined) { if (r.wl && r.wl.list) r.wl.list.slice(0, 3).forEach(x => lines.push(`${r.k.n}: ${x.nm}, ${fmtD(x.d)}`)); continue; }
+      if (r.bbsr !== undefined) { const B = r.bbsr; if (B && B.v > 0) lines.push(`Angebotsmiete Wohnen (Kreis ${B.kreis || ''}): ${fmtN(+B.v, 2, '€/m²')} – Quelle: ${B.quelle || 'BBSR'}${B.j ? ', ' + B.j : ''}`); continue; }
       if (r.mm !== undefined) { const M = r.mm; if (M) lines.push('Marktmiete ' + ANAME[kzSet().asset] + ': ' + (+M.v > 0 ? fmtN(+M.v, 2, '') + (+M.v2 > +M.v ? '–' + fmtN(+M.v2, 2, '') : '') + ' €/m²' + (MMART[M.art] ? ' (' + MMART[M.art] + ')' : '') + (M.src ? ', Quelle: ' + M.src : '') + (M.d ? ', Stand ' + M.d : '') : M.t)); continue; }
       if (r.brw !== undefined) { if (r.brw) lines.push('Bodenrichtwert: ' + (+r.brw.v > 0 ? `${fmtN(+r.brw.v, 0, '€/m²')}${r.brw.d ? ' (Stichtag ' + r.brw.d + ')' : ''}` : r.brw.t)); continue; }
       if (r.empItem !== undefined) { if (r.empItem) lines.push(`Arbeitgeber ${r.empItem.n}: ${r.empItem.emp.toLocaleString('de-DE')} Beschäftigte (gesamt), ${fmtD(r.empItem.d)}`); continue; }
@@ -5153,7 +5193,7 @@ return maplibregl$1;
   $('kzPng').onclick = async () => {
     const Z = P.kz; if (!Z) { $('kzHint').textContent = 'Bitte zuerst berechnen.'; return; }
     await loadFonts();
-    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.raw === undefined && r.traffic === undefined && r.inf === undefined && r.anb === undefined && r.empItem === undefined && r.brw === undefined && r.mm === undefined && r.wl === undefined && r.v != null).slice(0, 6);
+    const rows = kzRows().filter(r => !r.ext && r.txt == null && r.raw === undefined && r.traffic === undefined && r.inf === undefined && r.anb === undefined && r.empItem === undefined && r.brw === undefined && r.mm === undefined && r.bbsr === undefined && r.wl === undefined && r.v != null).slice(0, 6);
     const W = 1800, H = 1000, c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d'), F = famOf(ST(active).font, 400), FB = famOf(ST(active).font, 700);
     g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
