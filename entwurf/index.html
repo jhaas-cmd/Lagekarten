@@ -570,7 +570,7 @@ return maplibregl$1;
             <button id="brwOpen" style="align-self:end">BORIS öffnen</button></div>
           <label class="f">oder Freitext<input type="text" id="brwT" placeholder="z. B. nicht frei verfügbar – muss eingeholt werden"></label>
           <button id="brwNA" style="font-size:11px">„nicht frei verfügbar“ eintragen</button>
-          <p class="hint">Automatisch abrufbar ist der Wert nicht: BORIS-BW zeigt ihn kostenfrei im Portal (Nutzungsbedingungen beachten), in Bayern ist er meist kostenpflichtig. Den Wert hier eintragen – er erscheint im Dossier.</p></div>
+          <p class="hint">Der Knopf öffnet das amtliche Portal des Bundeslands: in Bayern den BayernAtlas direkt am Projektort mit Bodenrichtwerten, in Baden-Württemberg BORIS-BW, sonst BORIS-D (die Adresse liegt dann in der Zwischenablage). ATLAS liest dort nichts automatisch aus – den Wert bitte hier eintragen, er erscheint im Dossier.</p></div>
         <button id="kzPrint">Dossier drucken / als PDF sichern</button>
         <div class="row"><button id="kzCopy">Text kopieren</button><button id="kzPng">Kachel als PNG</button></div>
         <button id="kzTraffic">Verkehrsstärken in der Umgebung laden</button>
@@ -4635,7 +4635,7 @@ return maplibregl$1;
     const K = kzSet();
     $('kzAsset').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === K.asset));
     $('kzR').value = String(K.r); $('kzShowR').checked = !!K.showR;
-    try { mmSync(); } catch (e) {}
+    try { mmSync(); brwLabel(); } catch (e) {}
     $('brwV').value = P.brw && P.brw.v ? P.brw.v : ''; $('brwT').value = P.brw ? P.brw.t || '' : ''; $('brwD').value = P.brw ? P.brw.d || '' : ''; $('brwA').value = P.brw ? P.brw.art || 'W' : 'W';
     $('kzHint').textContent = !P.kz ? 'Wird beim Öffnen automatisch berechnet.' : kzStale() ? 'Projektpunkt oder Radius geändert – wird neu berechnet.'
       : 'Berechnet am ' + new Date(P.kz.at).toLocaleDateString('de-DE') + ' für ' + radTxt(P.kz.r) + (P.kz.city && P.kz.city.name ? ' · Vergleich: ' + P.kz.city.name : '') + '.';
@@ -4655,7 +4655,29 @@ return maplibregl$1;
     P.brw = v > 0 || t ? { v: v > 0 ? v : null, t, d: $('brwD').value.trim(), art: $('brwA').value, src: P.region === 'BY' ? 'BORIS-Bayern' : P.region === 'BW' ? 'BORIS-BW' : 'BORIS' } : null; renderKz(); snap(); };
   ['brwV', 'brwD', 'brwA', 'brwT'].forEach(id => $(id).onchange = brwSet);
   $('brwNA').onclick = () => { $('brwT').value = 'Bodenrichtwert an dieser Stelle nicht frei verfügbar – muss eingeholt werden'; brwSet(); };
-  $('brwOpen').onclick = () => window.open('https://www.bodenrichtwerte-boris.de/', '_blank', 'noopener');
+  // Bodenrichtwert-Portal je Bundesland: nur Weiterleitung an den Projektort (keine automatische Datenübernahme)
+  function utm32(lon, lat) {                       // WGS84 → ETRS89/UTM Zone 32N (EPSG:25832)
+    const a = 6378137, f = 1 / 298.257222101, k0 = 0.9996, e2 = f * (2 - f), ep2 = e2 / (1 - e2), R = Math.PI / 180;
+    const ph = lat * R, dl = (lon - 9) * R, N = a / Math.sqrt(1 - e2 * Math.sin(ph) ** 2), T = Math.tan(ph) ** 2, C = ep2 * Math.cos(ph) ** 2, A = Math.cos(ph) * dl;
+    const M = a * ((1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256) * ph - (3 * e2 / 8 + 3 * e2 ** 2 / 32 + 45 * e2 ** 3 / 1024) * Math.sin(2 * ph) + (15 * e2 ** 2 / 256 + 45 * e2 ** 3 / 1024) * Math.sin(4 * ph) - (35 * e2 ** 3 / 3072) * Math.sin(6 * ph));
+    const E = 500000 + k0 * N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5 / 120);
+    const No = k0 * (M + N * Math.tan(ph) * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6 / 720));
+    return [Math.round(E), Math.round(No)];
+  }
+  // BayernAtlas mit den Bodenrichtwert-Ebenen aus Julius' Link (27.11.2026), zentriert auf den Projektpunkt
+  const BAYATLAS_L = 'atkis%2C2da5cc90-9e7d-41ef-9e08-94c4d84f2a24%2Ccabacb47-0421-4e4e-a729-b6bec6ae42e6%2C46c6ee92-ca65-4b5a-97ce-513aa3587d3e%2C28305567-09f9-4866-bf80-143944969ecb';
+  const BAYATLAS_LV = 'true%2Cfalse%2Cfalse%2Cfalse%2Ctrue';
+  const borisPortal = () => P.region === 'BY' ? { name: 'BayernAtlas', url: (() => { const [e, n] = utm32(P.lon, P.lat); return `https://atlas.bayern.de/?redirect=true&r=0&l_v=${BAYATLAS_LV}&c=${e}%2C${n}&t=ba&mid=1&z=13&l=${BAYATLAS_L}`; })() }
+    : P.region === 'BW' ? { name: 'BORIS-BW', url: 'https://www.gutachterausschuesse-bw.de/borisbw/?lang=de', copy: true }
+    : { name: 'BORIS-D', url: 'https://www.bodenrichtwerte-boris.de/', copy: true };
+  const brwLabel = () => { const b = $('brwOpen'); if (b) b.textContent = borisPortal().name + ' öffnen'; };
+  $('brwOpen').onclick = async () => {
+    if (P.regionAt !== regionKey()) { try { await ensureRegion(); } catch (e) {} }
+    const B = borisPortal(), adr = addrLines().line || '';
+    window.open(B.url, '_blank', 'noopener'); brwLabel();
+    if (B.copy && adr) { try { await navigator.clipboard.writeText(adr); status(B.name + ' geöffnet – Adresse in der Zwischenablage, im Suchfeld mit Strg+V einfügen.'); } catch (e) { status(B.name + ' geöffnet – Adresse: ' + adr); } }
+    else status(B.name + ' geöffnet' + (P.region === 'BY' ? ' – am Projektort, Bodenrichtwerte eingeschaltet.' : '.'));
+  };
   $('kzShowR').onchange = () => { kzSet().showR = $('kzShowR').checked; saveS(); repaint(); };
   let kzBusy = null;
   // Zensus im Radius (+ 25 km für Gewerbe), danach im Hintergrund Stadtvergleich und Regionalatlas
